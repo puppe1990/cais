@@ -749,6 +749,27 @@ func TestScaffoldNewApp_ContactHandlerValidatesName(t *testing.T) {
 	}
 }
 
+func TestScaffoldBlankApp_IncludesSecurityMiddleware(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "blankapp")
+	if err := scaffoldNewApp(appDir, scaffoldData{AppName: "blankapp", ModulePath: "github.com/puppe1990/blankapp"}, false, true); err != nil {
+		t.Fatal(err)
+	}
+	body, _ := os.ReadFile(filepath.Join(appDir, "internal/app/app.go"))
+	s := string(body)
+	for _, want := range []string{
+		"middleware.Recover",
+		"middleware.SecurityHeaders(cfg)",
+		"ReadHeaderTimeout",
+		"ReadTimeout",
+		"r.Static",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("blank app missing %q in app.go", want)
+		}
+	}
+}
+
 func TestCLI_NewBlankCreatesEmptyApp(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "empty")
