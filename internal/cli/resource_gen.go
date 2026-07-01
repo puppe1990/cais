@@ -92,7 +92,7 @@ func (s *SQLiteStore) Delete%s(id int64) error {
 
 func (s *SQLiteStore) Find%sByID(id int64) (models.%s, error) {
 	var c models.%s
-	%s
+%s
 	err := s.db.QueryRow(
 		"SELECT id, %s, created_at FROM %s WHERE id = ?",
 		id,
@@ -100,7 +100,7 @@ func (s *SQLiteStore) Find%sByID(id int64) (models.%s, error) {
 	if err != nil {
 		return models.%s{}, fmt.Errorf("find %s: %%w", err)
 	}
-	%s
+%s
 	return c, nil
 }
 
@@ -114,11 +114,11 @@ func (s *SQLiteStore) ListAll%s() ([]models.%s, error) {
 	var items []models.%s
 	for rows.Next() {
 		var c models.%s
-		%s
+%s
 		if err := rows.Scan(%s); err != nil {
 			return nil, fmt.Errorf("scan %s: %%w", err)
 		}
-		%s
+%s
 		items = append(items, c)
 	}
 	return items, rows.Err()
@@ -275,17 +275,26 @@ func scanDeclare(fields []FieldDef) string {
 	var extra []string
 	for _, f := range fields {
 		if f.GoType == "bool" {
-			extra = append(extra, "var "+boolScanTemp(f)+" int")
+			extra = append(extra, "\tvar "+boolScanTemp(f)+" int")
 		}
 	}
 	if len(extra) == 0 {
 		return ""
 	}
-	return strings.Join(extra, "\n\t") + "\n\t"
+	return strings.Join(extra, "\n") + "\n"
 }
 
 func scanLoopDeclare(fields []FieldDef) string {
-	return scanDeclare(fields)
+	var extra []string
+	for _, f := range fields {
+		if f.GoType == "bool" {
+			extra = append(extra, "\t\tvar "+boolScanTemp(f)+" int")
+		}
+	}
+	if len(extra) == 0 {
+		return ""
+	}
+	return strings.Join(extra, "\n") + "\n"
 }
 
 func scanVars(fields []FieldDef) string {
@@ -305,17 +314,26 @@ func scanAssign(fields []FieldDef) string {
 	var lines []string
 	for _, f := range fields {
 		if f.GoType == "bool" {
-			lines = append(lines, "c."+f.Pascal+" = "+boolScanTemp(f)+" == 1")
+			lines = append(lines, "\tc."+f.Pascal+" = "+boolScanTemp(f)+" == 1")
 		}
 	}
 	if len(lines) == 0 {
 		return ""
 	}
-	return strings.Join(lines, "\n\t") + "\n\t"
+	return strings.Join(lines, "\n") + "\n"
 }
 
 func scanLoopAssign(fields []FieldDef) string {
-	return scanAssign(fields)
+	var lines []string
+	for _, f := range fields {
+		if f.GoType == "bool" {
+			lines = append(lines, "\t\tc."+f.Pascal+" = "+boolScanTemp(f)+" == 1")
+		}
+	}
+	if len(lines) == 0 {
+		return ""
+	}
+	return strings.Join(lines, "\n") + "\n"
 }
 
 func buildAdminParseForm(data scaffoldData) string {
@@ -350,9 +368,9 @@ func buildAdminParseForm(data scaffoldData) string {
 			literal = append(literal, fmt.Sprintf("%s: strings.TrimSpace(r.FormValue(%q))", f.Pascal, f.Name))
 			if f.Required {
 				if f.HTMLType == "url" {
-					validations = append(validations, fmt.Sprintf("if err := validate.URL(item.%s); err != nil { return models.%s{}, err }", f.Pascal, data.Pascal))
+					validations = append(validations, fmt.Sprintf("if err := validate.URL(item.%s); err != nil {\n\t\treturn models.%s{}, err\n\t}", f.Pascal, data.Pascal))
 				} else {
-					validations = append(validations, fmt.Sprintf("if item.%s == \"\" { return models.%s{}, fmt.Errorf(%q) }", f.Pascal, data.Pascal, f.Name+" is required"))
+					validations = append(validations, fmt.Sprintf("if item.%s == \"\" {\n\t\treturn models.%s{}, fmt.Errorf(%q)\n\t}", f.Pascal, data.Pascal, f.Name+" is required"))
 				}
 			}
 		}
@@ -413,10 +431,10 @@ import (
 	"net/http"
 %s	"strings"
 %s
-	"%s/internal/models"
-	"%s/internal/store"
 	"%s/pkg/cais"
 	"%s/pkg/cais/httpx"
+	"%s/internal/models"
+	"%s/internal/store"
 )
 
 type Admin%sHandler struct {
@@ -500,10 +518,10 @@ func (h *Admin%sHandler) parseForm(r *http.Request) (models.%s, error) {
 	}
 	%s
 }
-	`,
+`,
 		boolImport(hasStrconv, "\t\"strconv\"\n"),
 		boolImport(hasValidate, "\t\""+frameworkModule+"/pkg/cais/validate\"\n"),
-		data.ModulePath, data.ModulePath, frameworkModule, frameworkModule,
+		frameworkModule, frameworkModule, data.ModulePath, data.ModulePath,
 		data.PluralPascal,
 		data.PluralPascal, data.Pascal,
 		data.Pascal, data.Pascal,
@@ -525,10 +543,10 @@ func buildResourcePublicHandler(data scaffoldData) string {
 import (
 	"net/http"
 
-	"%s/internal/models"
-	"%s/internal/store"
 	"%s/pkg/cais"
 	"%s/pkg/cais/httpx"
+	"%s/internal/models"
+	"%s/internal/store"
 )
 
 type %sHandler struct {
@@ -553,7 +571,7 @@ func (h *%sHandler) List(w http.ResponseWriter, r *http.Request) {
 	httpx.RenderOrError(w, h.renderer, "base", "%s", %sListData{Items: items})
 }
 `,
-		data.ModulePath, data.ModulePath, frameworkModule, frameworkModule,
+		frameworkModule, frameworkModule, data.ModulePath, data.ModulePath,
 		data.PluralPascal, data.PluralPascal, data.Pascal,
 		data.PluralPascal, data.PluralPascal, data.PluralPascal,
 		data.PluralPascal, data.PluralPascal,

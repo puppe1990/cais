@@ -96,6 +96,10 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		}
 	}
 
+	if err := gofmtGoFiles(dir); err != nil {
+		return fmt.Errorf("gofmt: %w", err)
+	}
+
 	if err := pwa.InstallTo(dir, data.AppName); err != nil {
 		return fmt.Errorf("pwa assets: %w", err)
 	}
@@ -217,4 +221,12 @@ func writeTemplate(path, tpl string, data scaffoldData) error {
 	}
 	defer func() { _ = f.Close() }()
 	return t.Execute(f, data)
+}
+
+func gofmtGoFiles(dir string) error {
+	cmd := exec.Command("gofmt", "-w", "./internal/", "./cmd/")
+	cmd.Dir = dir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
