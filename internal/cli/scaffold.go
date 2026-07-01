@@ -234,13 +234,10 @@ func patchRoutes(dir string, data scaffoldData) error {
 	)
 
 	content := string(body)
-	marker := "\n}\n"
-	idx := strings.LastIndex(content, marker)
-	if idx == -1 {
-		return fmt.Errorf("could not patch routes.go")
+	updated, err := insertBeforeFunctionEnd(content, "registerRoutes", insert)
+	if err != nil {
+		return fmt.Errorf("could not patch routes.go: %w", err)
 	}
-
-	updated := content[:idx] + insert + content[idx:]
 	if err := os.WriteFile(path, []byte(updated), 0o644); err != nil {
 		return err
 	}

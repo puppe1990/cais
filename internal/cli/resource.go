@@ -375,12 +375,11 @@ func patchRoutesForResource(dir string, data scaffoldData) error {
 	fmt.Fprintf(&insert, "\t\tg.Post(\"/admin/%s/{id}/delete\", cais.IntParam(\"id\", %s.Delete))\n", data.Plural, adminVar)
 	fmt.Fprintf(&insert, "\t})\n")
 
-	marker := "\n}\n"
-	idx := strings.LastIndex(content, marker)
-	if idx == -1 {
-		return fmt.Errorf("could not patch routes.go")
+	var err2 error
+	content, err2 = insertBeforeFunctionEnd(content, "registerRoutes", insert.String())
+	if err2 != nil {
+		return fmt.Errorf("could not patch routes.go: %w", err2)
 	}
-	content = content[:idx+1] + insert.String() + content[idx+1:]
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return err
 	}
