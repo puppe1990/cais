@@ -53,6 +53,7 @@ func (c *CLI) printHelp() {
 Usage:
   cais new <app> [dir]       Create a new app (default dir: ./<app>)
   cais new <app> [dir] --minimal   Slim app (home only)
+  cais new <app> [dir] --blank     Empty app (no starter content)
   cais g handler <name>      Generate handler + test + page template
   cais g resource <name> [--fields title:string,url:url] [--public] [--no-seed]
   cais g page <name>         Generate page template only
@@ -68,26 +69,32 @@ Aliases:
 
 Examples:
   cais new dashboard ../dashboard
+  cais new myapp --blank
   cais g handler settings
   cais server`)
 }
 
 func (c *CLI) cmdNew(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: cais new <app> [dir] [--minimal]")
+		return fmt.Errorf("usage: cais new <app> [dir] [--minimal|--blank]")
 	}
 
 	minimal := false
+	blank := false
 	positional := make([]string, 0, len(args))
 	for _, arg := range args {
 		if arg == "--minimal" {
 			minimal = true
 			continue
 		}
+		if arg == "--blank" {
+			blank = true
+			continue
+		}
 		positional = append(positional, arg)
 	}
 	if len(positional) == 0 {
-		return fmt.Errorf("usage: cais new <app> [dir] [--minimal]")
+		return fmt.Errorf("usage: cais new <app> [dir] [--minimal|--blank]")
 	}
 
 	name := positional[0]
@@ -109,7 +116,7 @@ func (c *CLI) cmdNew(args []string) error {
 	if err := scaffoldNewApp(abs, scaffoldData{
 		AppName:    name,
 		ModulePath: module,
-	}, minimal); err != nil {
+	}, minimal, blank); err != nil {
 		return err
 	}
 

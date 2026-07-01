@@ -1264,3 +1264,233 @@ const tplLayoutMinimal = `{{"{{"}} define "base" {{"}}"}}
 </html>
 {{"{{"}} end {{"}}"}}
 `
+
+const tplMainBlank = `package main
+
+import (
+	"fmt"
+	"io/fs"
+	"log"
+	"os"
+	"path/filepath"
+
+	"{{.ModulePath}}/internal/app"
+	"{{.ModulePath}}/internal/store"
+	"github.com/puppe1990/cais/pkg/cais"
+	"{{.ModulePath}}/web"
+)
+
+func main() {
+	cfg := cais.Load()
+	a, err := bootstrapWithConfig(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf("{{.AppName}} rodando na porta %s...", cfg.Port)
+	if err := a.Run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func bootstrap() (*app.App, error) {
+	return bootstrapWithConfig(cais.Load())
+}
+
+func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
+	tmplFS, err := fs.Sub(web.Templates, "templates")
+	if err != nil {
+		return nil, fmt.Errorf("templates: %w", err)
+	}
+
+	renderer, err := cais.NewRenderer(tmplFS)
+	if err != nil {
+		return nil, fmt.Errorf("renderer: %w", err)
+	}
+
+	s, err := store.NewSQLiteStore(cfg.DBPath)
+	if err != nil {
+		return nil, fmt.Errorf("store: %w", err)
+	}
+
+	staticDir, err := findWebDir("static")
+	if err != nil {
+		_ = s.Close()
+		return nil, err
+	}
+
+	return app.New(cfg, app.Deps{
+		Renderer:  renderer,
+		Store:     s,
+		StaticDir: staticDir,
+	})
+}
+
+func findWebDir(subpath string) (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	for {
+		candidate := filepath.Join(wd, "web", subpath)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+		parent := filepath.Dir(wd)
+		if parent == wd {
+			return "", fmt.Errorf("web/%s not found", subpath)
+		}
+		wd = parent
+	}
+}
+`
+
+const tplAppBlank = `package app
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"time"
+
+	"{{.ModulePath}}/internal/store"
+	"github.com/puppe1990/cais/pkg/cais"
+)
+
+type Deps struct {
+	Renderer  *cais.Renderer
+	Store     store.Store
+	StaticDir string
+}
+
+type App struct {
+	config cais.Config
+	router *cais.Router
+	server *http.Server
+}
+
+func New(cfg cais.Config, deps Deps) (*App, error) {
+	if deps.Renderer == nil {
+		return nil, fmt.Errorf("renderer is required")
+	}
+	if deps.Store == nil {
+		return nil, fmt.Errorf("store is required")
+	}
+
+	r := cais.NewRouter()
+	registerRoutes(r, deps)
+	r.Get("/health", healthHandler)
+
+	return &App{
+		config: cfg,
+		router: r,
+		server: &http.Server{
+			Addr:    cfg.Port,
+			Handler: r,
+		},
+	}, nil
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+func (a *App) Handler() http.Handler {
+	return a.router
+}
+
+func (a *App) Run() error {
+	return a.RunContext(context.Background())
+}
+
+func (a *App) RunContext(ctx context.Context) error {
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- a.server.ListenAndServe()
+	}()
+
+	select {
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := a.server.Shutdown(shutdownCtx); err != nil {
+			return err
+		}
+		<-errCh
+		return nil
+	case err := <-errCh:
+		if err == http.ErrServerClosed {
+			return nil
+		}
+		return err
+	}
+}
+`
+
+const tplRoutesBlank = `package app
+
+import (
+	"{{.ModulePath}}/internal/handlers"
+	"github.com/puppe1990/cais/pkg/cais"
+)
+
+func registerRoutes(r *cais.Router, deps Deps) {
+}
+`
+
+const tplLayoutBlank = `{{"{{"}} define "base" {{"}}"}}
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{"{{"}} block "title" . {{"}}"}}{{.AppName}}{{"{{"}} end {{"}}"}}</title>
+    <link rel="stylesheet" href="/static/css/styles.css" />
+    <link rel="manifest" href="/static/manifest.webmanifest" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="{{.AppName}}" />
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
+    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />
+    <script src="/static/js/htmx.min.js" defer></script>
+  </head>
+  <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+    <header class="bg-white border-b border-slate-200 p-4 shadow-sm">
+      <div class="max-w-5xl mx-auto flex justify-between items-center">
+        <a href="/" class="font-bold text-xl text-indigo-600 hover:text-indigo-700 transition">{{.AppName}}</a>
+      </div>
+    </header>
+    <main class="flex-grow max-w-5xl w-full mx-auto p-6">{{"{{"}} template "content" . {{"}}"}}</main>
+    <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
+      {{.AppName}} — powered by Cais
+    </footer>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/static/js/sw.js");
+      }
+    </script>
+  </body>
+</html>
+{{"{{"}} end {{"}}"}}
+`
+
+const tplREADMEBlank = "# {{.AppName}}\n\n" +
+	"Full-stack Go app built with [Cais](https://github.com/puppe1990/cais): server-side HTML, HTMX, Tailwind, and SQLite.\n\n" +
+	"## Quick start\n\n" +
+	"```bash\n" +
+	"npm install\n" +
+	"make dev      # http://localhost:8080\n" +
+	"make test     # full test suite\n" +
+	"```\n\n" +
+	"## Add your first resource\n\n" +
+	"```bash\n" +
+	"cais g resource bookmark --fields title:string,url:url,notes:text?\n" +
+	"```\n\n" +
+	"This generates:\n" +
+	"- Model, migration, admin CRUD, and public list page\n" +
+	"- Tests for handlers and store\n" +
+	"- Routes with admin protection\n"
