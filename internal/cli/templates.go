@@ -2166,6 +2166,9 @@ DB_PATH=./data/app.db
 
 # Security (required when ENV=production)
 ADMIN_TOKEN=
+
+# Reverse proxy (comma-separated IPs; trust X-Forwarded-For for client IP)
+TRUSTED_PROXIES=
 `
 
 const tplI18nCatalog = `package i18n

@@ -25,6 +25,8 @@ Before writing production code:
 | `pkg/cais/console/`  | Interactive REPL (yaegi + SQL)                          |
 | `pkg/cais/csrf/`     | CSRF tokens (double-submit cookie)                      |
 | `pkg/cais/validate/` | Form field validation helpers                           |
+| `pkg/cais/forms/`    | Template helpers (`csrfField`, `fieldError`)            |
+| `pkg/cais/i18n/`     | Locale catalogs (`LOCALE` env, `t` template func)       |
 | `pkg/cais/testutil/` | Test helpers (`NewRenderer`, `NewRequest`, path values) |
 | `pkg/cais/pwa/`      | Default PWA assets generator (manifest, icons, og.png)  |
 | `internal/app/`      | Bootstrap: route and dependency wiring                  |
@@ -45,7 +47,14 @@ r.Group(middleware.Protect, func(g *cais.Router) {
 
 ## Admin protection
 
-Set `ADMIN_TOKEN` in production (`cfg.Validate()` fails on boot if missing). Use `middleware.AdminAuth(cfg)` on admin route groups — Bearer header only, no query params. No-op in development when unset.
+| Mode                    | Middleware                         | Generator flag            |
+| ----------------------- | ---------------------------------- | ------------------------- |
+| Browser admin (default) | `middleware.RequireAuth("/login")` | `cais g resource` default |
+| Bearer token API        | `middleware.AdminAuth(cfg)`        | `--admin-auth bearer`     |
+
+Set `ADMIN_TOKEN` in production (`cfg.Validate()` fails on boot if missing). `AdminAuth` accepts Bearer header only, no query params. No-op in development when unset.
+
+`cais g resource` defaults to session auth (`--admin-auth session`). Use `--admin-auth bearer` for token-only admin APIs without login pages.
 
 ## Session auth
 
@@ -79,7 +88,8 @@ Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap so layouts render corre
 
 - `middleware.CSRF(cfg)` on the router (validates POST/PUT/DELETE/PATCH)
 - Pass `meta.ForRequest(site, r)` in page data (CSRF + flash) — layout renders `<meta name="csrf-token">` + HTMX header script
-- HTML forms: `<input type="hidden" name="csrf_token" value="{{ .CSRFToken }}" />`
+- HTML forms: `{{ csrfField .CSRFToken }}` (`pkg/cais/forms`, registered on the renderer) or `<input type="hidden" name="csrf_token" value="{{ .CSRFToken }}" />`
+- Field errors in templates: `{{ fieldError .Errors "email" }}`
 - Integration tests: GET page first (cookie), then POST with matching token
 
 ## Flash messages
@@ -107,6 +117,8 @@ r.Post("/login", loginLimit.Middleware(http.HandlerFunc(auth.LoginPost)).ServeHT
 r.Post("/contact", contactLimit.Middleware(http.HandlerFunc(contact.Post)).ServeHTTP)
 ```
 
+Rate limiters use `middleware.ClientIP(r, cfg)` — set `TRUSTED_PROXIES` when behind a reverse proxy.
+
 ## HTMX interactions
 
 - Partial in `web/templates/partials/` — each file has `{{ define "name" }}` matching the filename
@@ -132,9 +144,11 @@ if item.Name == "" {
   errs.Add("name", "Name is required")
 }
 if errs.Any() {
-  // re-render form with errs
+  // re-render form with errs map — templates use {{ fieldError .Errors "name" }}
 }
 ```
+
+Pass `errs` as `.Errors` in page data when re-rendering forms.
 
 ## HTMX UX (app-like feel)
 
@@ -156,6 +170,18 @@ Layout loads `cais.js` after `htmx.min.js` — CSRF header, focus restore, optim
 4. Wrap DB with `sqllog.Wrap` in `NewSQLiteStore` for development query logs
 5. Migrations tracked in `schema_migrations` via `pkg/cais/migrate` (idempotent on boot)
 
+**Migration down sections** — use `-- up` / `-- down` markers in `.sql` files (generator default for resources):
+
+```sql
+-- up
+CREATE TABLE bookmarks (...);
+
+-- down
+DROP TABLE IF EXISTS bookmarks;
+```
+
+`cais db rollback` executes the `-- down` SQL when present, then removes the `schema_migrations` row. Without a down section, only the record is removed.
+
 ## Development logging
 
 In `ENV=development`:
@@ -168,21 +194,38 @@ Boot banner via `boot.Print` in `cmd/server/main.go`. Port auto-pick via `cais.R
 
 Set `APP_URL` for absolute OG image URLs. **`APP_URL` is required when `ENV=production`** — `cfg.Validate()` fails on boot if missing.
 
+Set `TRUSTED_PROXIES` (comma-separated IPs) when behind a reverse proxy so `middleware.ClientIP` trusts `X-Forwarded-For` for rate limiting and logging.
+
+Set `LOCALE=en` (default) or `LOCALE=pt` for UI strings via `pkg/cais/i18n`. See [i18n design](docs/superpowers/specs/2026-07-01-i18n-design.md).
+
 ## CLI generators
 
 ```bash
 cais new myapp              # includes GitHub Actions CI, pre-commit, golangci-lint, Prettier
 cais new myapp --minimal
 cais new myapp --blank
-cais g resource bookmark --fields title:string,url:url,notes:text? --public
-cais doctor                    # verify htmx, air, go.mod
-cais g handler settings
-cais g console              # scaffold cmd/console/main.go
-cais g auth                 # login/logout + protected dashboard
-cais g ci                   # add CI/pre-commit to existing apps
+cais new myapp --module github.com/acme/myapp
+cais g [--dry-run] resource bookmark --fields title:string,url:url,notes:text? --public --paginate
+cais g [--dry-run] model bookmark --fields title:string,url:url
+cais g [--dry-run] handler settings
+cais g [--dry-run] page about
+cais g [--dry-run] migration add_tags
+cais g [--dry-run] auth       # login/logout + protected dashboard
+cais g console                # scaffold cmd/console/main.go
+cais g ci                     # add CI/pre-commit to existing apps
+cais doctor                   # verify htmx, air, go.mod
+cais routes                   # list routes from internal/app/routes.go
 ```
 
 Field types: `string`, `text`, `url`, `bool`, `int`, `date`. Suffix `?` for optional.
+
+**Resource options:** `--public` (public list page), `--paginate` (admin index pagination, 25/page), `--no-seed` (skip demo data), `--admin-auth session|bearer` (default: session).
+
+**Model generator** — `cais g model` creates model struct, migration, and store methods only (no handlers, templates, or routes). Use for data layer without admin CRUD.
+
+**Dry-run** — `cais g --dry-run ...` prints files that would be created without writing them.
+
+**Demo seed** — `cais g resource` (unless `--no-seed`) generates `SeedDemo*` store methods and wires them into `cmd/server/main.go` at boot.
 
 ## App commands (run from a Cais app)
 
@@ -195,9 +238,10 @@ cais server   # go run ./cmd/server
 cais test     # go test ./...
 cais doctor   # verify htmx, air, go.mod
 cais console  # Rails-style REPL (store, cfg, db + sql)
+cais routes   # list HTTP routes from internal/app/routes.go
 cais db migrate        # run pending migrations
 cais db status         # list applied/pending migrations
-cais db rollback       # remove last applied migration record (no SQL down)
+cais db rollback       # roll back last migration (runs -- down SQL when present)
 cais db prune-sessions # delete expired login sessions from SQLite
 ```
 
