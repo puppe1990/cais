@@ -1,3 +1,31 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .htmx-swapping {
+    opacity: 0;
+    transition: opacity 150ms ease-out;
+  }
+
+  .htmx-settling {
+    opacity: 1;
+    transition: opacity 150ms ease-in;
+  }
+
+  form.htmx-request button[type="submit"] {
+    @apply opacity-60 pointer-events-none;
+  }
+
+  .htmx-indicator {
+    @apply hidden;
+  }
+
+  .htmx-request .htmx-indicator {
+    @apply inline-block;
+  }
+
+  .htmx-request .htmx-request-hide {
+    @apply hidden;
+  }
+}
