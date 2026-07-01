@@ -9,10 +9,13 @@ import (
 // Funcs returns template helpers for HTML forms.
 func Funcs() template.FuncMap {
 	return template.FuncMap{
-		"csrfField":  CSRFTokenField,
-		"fieldError": FieldError,
-		"makeField":  MakeField,
-		"fieldInput": FieldInput,
+		"csrfField":          CSRFTokenField,
+		"fieldError":         FieldError,
+		"makeField":          MakeField,
+		"fieldInput":         FieldInput,
+		"makeSelectField":    MakeSelectField,
+		"makeSelectFieldPtr": MakeSelectFieldPtr,
+		"fieldSelect":        FieldSelect,
 	}
 }
 
