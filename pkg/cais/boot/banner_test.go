@@ -19,16 +19,14 @@ func TestPrintDevBanner_ShowsCaisVersion(t *testing.T) {
 	if strings.Contains(out, "air") || strings.Contains(out, "AIR") {
 		t.Fatalf("banner should not mention air:\n%s", out)
 	}
-	lines := strings.Split(strings.TrimSuffix(devBannerArt, "\n"), "\n")
-	if len(lines) < 5 {
-		t.Fatal("banner art should have 5 lines")
+}
+
+func TestDevBannerArt_usesBlockCAISLogo(t *testing.T) {
+	lines := strings.Split(strings.TrimRight(devBannerArt, "\n"), "\n")
+	if len(lines) != 6 {
+		t.Fatalf("want 6 lines, got %d", len(lines))
 	}
-	// A has a pointed top, not a round cap like O
-	if !strings.Contains(lines[0], `/\`) {
-		t.Fatalf("A should have pointed top, got:\n%s", lines[0])
-	}
-	// I is a thin column — no full-width top bar (that reads as T)
-	if strings.Contains(lines[0], "_____") && strings.Count(lines[0], "_____") > 1 {
-		t.Fatalf("I should not look like T on first line:\n%s", lines[0])
+	if !strings.Contains(devBannerArt, "██████╗") {
+		t.Fatal("banner should use block CAIS logo")
 	}
 }
