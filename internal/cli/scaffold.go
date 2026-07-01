@@ -164,7 +164,12 @@ func scaffoldMigration(dir, name string) error {
 		return err
 	}
 
-	next := len(entries) + 1
+	next := 1
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".sql") {
+			next++
+		}
+	}
 	filename := fmt.Sprintf("%03d_%s.sql", next, data.Snake)
 	path := filepath.Join(migrationsDir, filename)
 	content := fmt.Sprintf("-- migration: %s\n", data.Snake)

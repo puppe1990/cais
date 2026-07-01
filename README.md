@@ -6,7 +6,8 @@ Full-stack Go framework for mini apps on Lightsail: server-side HTML, HTMX, Tail
 
 - Go 1.22+ (`net/http` stdlib)
 - `html/template` + HTMX 2.x
-- PWA by default (manifest, service worker, offline page, icons)
+- PWA by default (manifest, service worker, offline page, icons, fullscreen display)
+- Open Graph / Twitter preview (`pkg/cais/meta`, default `og.png`)
 - Tailwind CSS 3.x
 - SQLite (`modernc.org/sqlite`, no CGO)
 
@@ -34,17 +35,28 @@ export PATH="$HOME/go/bin:$PATH"
 | ------------------------------------------------------------------------------- | --------------------------------------------- |
 | `cais new <app> [dir]`                                                          | Scaffold a new app (home, contact, dashboard) |
 | `cais new <app> [dir] --minimal`                                                | Slim app (home only)                          |
+| `cais new <app> [dir] --blank`                                                  | Empty app (no starter content)                |
 | `cais g handler <name>`                                                         | Handler + test + page + route                 |
 | `cais g resource <name> [--fields title:string,url:url] [--public] [--no-seed]` | Full CRUD + optional public page              |
 | `cais g page <name>`                                                            | Page template only                            |
 | `cais g migration <name>`                                                       | SQL migration file                            |
-| `cais doctor`                                                                   | Check htmx, air, go.mod, CSS                  |
+| `cais g console`                                                                | Scaffold `cmd/console/main.go`                |
+| `cais install`                                                                  | `npm install` + `go mod tidy`                 |
+| `cais css`                                                                      | Build Tailwind CSS                            |
+| `cais dev`                                                                      | Hot reload (`air` + tailwind watch)           |
+| `cais build`                                                                    | Build `bin/server`                            |
 | `cais server`                                                                   | Run `go run ./cmd/server`                     |
 | `cais test`                                                                     | Run `go test ./...`                           |
+| `cais console`                                                                  | Interactive REPL (store, cfg, db + SQL)       |
+| `cais db migrate`                                                               | Run pending SQL migrations                    |
+| `cais db status`                                                                | List applied/pending migrations               |
+| `cais doctor`                                                                   | Check htmx, air, go.mod, CSS                  |
+
+Field types: `string`, `text`, `url`, `bool`, `int`, `date`. Suffix `?` for optional.
 
 ```bash
 cais new dashboard ../dashboard
-cd ../dashboard && npm install && make dev
+cd ../dashboard && cais install && cais dev
 ```
 
 ## Quick start
@@ -53,22 +65,39 @@ Requires Go on your PATH and `~/go/bin` for hot reload (`air`):
 
 ```bash
 export PATH="$HOME/go/bin:$PATH"
-make pwa      # regenerate manifest, icons, service worker
-make dev      # http://localhost:8080
+make pwa      # regenerate manifest, icons, og.png, service worker
+make dev      # http://localhost:8080 (auto-picks next free port if busy)
 make test     # full test suite
 make build    # builds bin/cais
 make docker   # optimized image
 ```
 
+## Development experience
+
+Rails-style boot banner on startup (environment, database, listen URL). In development:
+
+- **Port auto-pick** — if `:8080` is busy, shifts to the next free port
+- **Request logs** — timestamped `Started` / `Completed` lines (skips `/health`, `/static`, `/logs`)
+- **SQL logs** — query, args, duration via `sqllog.Wrap`
+- **`/logs`** — localhost-only log viewer with HTMX auto-refresh (2s)
+
 ## Structure
 
 ```
-pkg/cais/          → framework (router, render, config, htmx)
+pkg/cais/          → framework (router, render, config, htmx, validate)
+pkg/cais/meta/     → Open Graph / Twitter preview helpers
+pkg/cais/session/  → cookie sessions (SignIn, SignOut, RequireAuth)
+pkg/cais/boot/     → startup banner
+pkg/cais/devlog/   → /logs viewer + log buffer
+pkg/cais/sqllog/   → SQL query logging wrapper
+pkg/cais/console/  → interactive REPL (yaegi)
+pkg/cais/httpx/    → render and redirect helpers
+pkg/cais/pwa/      → PWA asset generator
 internal/app/      → bootstrap and routes
 internal/handlers/ → HTTP handlers
 internal/store/    → SQLite + migrations
 web/templates/     → HTML
-web/static/        → CSS + JS
+web/static/        → CSS + JS + PWA assets
 cmd/server/        → entry point
 ```
 
@@ -92,6 +121,13 @@ httpx.RenderPartial(w, renderer, "errors", data)
 httpx.SeeOther(w, r, "/admin")
 ```
 
+**meta** — embed `meta.Site` in page data for layout OG tags:
+
+```go
+site := meta.SiteFrom("MyApp", cfg.AppURL)
+httpx.RenderOrError(w, renderer, "base", "home", PageData{Site: site})
+```
+
 **testutil** — shared test helpers for scaffolded apps:
 
 ```go
@@ -105,6 +141,15 @@ req := testutil.NewRequest(http.MethodGet, "/items/1", testutil.PathValue("id", 
 r.Get("/admin/products", middleware.Protect(admin.Index))
 ```
 
+**Session auth** — cookie-based sessions for user-facing apps:
+
+```go
+store := session.NewMemoryStore()
+r.Use(middleware.LoadSession(store))
+r.Get("/dashboard", middleware.RequireAuth("/login")(dashboard.Index))
+session.SignIn(w, store, userID, session.CookieOptions{})
+```
+
 ## Environment variables
 
 | Variable      | Default         | Description                         |
@@ -112,6 +157,7 @@ r.Get("/admin/products", middleware.Protect(admin.Index))
 | `PORT`        | `:8080`         | Server port                         |
 | `DB_PATH`     | `./data/app.db` | SQLite file path                    |
 | `ENV`         | `development`   | Environment                         |
+| `APP_URL`     | _(empty)_       | Public base URL for OG/Twitter tags |
 | `ADMIN_TOKEN` | _(empty)_       | Bearer/query token for admin routes |
 
 ## Deploy (Lightsail)
@@ -125,4 +171,4 @@ Health check: `GET /health` → `{"status":"ok"}`
 
 ## AI-assisted development
 
-See [AGENTS.md](AGENTS.md) — mandatory TDD, handler conventions, HTMX, and store patterns.
+See [AGENTS.md](AGENTS.md) — mandatory TDD, handler conventions, HTMX, store patterns, and development tooling.

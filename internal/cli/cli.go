@@ -48,6 +48,8 @@ func (c *CLI) Run(args []string) error {
 		return c.cmdDoctor()
 	case "console", "c":
 		return c.cmdConsole()
+	case "db":
+		return c.cmdDB(args[1:])
 	case "help", "-h", "--help":
 		c.printHelp()
 		return nil
@@ -75,6 +77,8 @@ Usage:
   cais test                  Run tests (go test ./...)
   cais doctor                Check app setup (htmx, air, go.mod)
   cais console               Interactive app console (Go REPL + SQL)
+  cais db migrate            Run pending SQL migrations
+  cais db status             List migration status
   cais help                  Show this help
 
 Aliases:

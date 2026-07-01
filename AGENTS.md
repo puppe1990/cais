@@ -17,13 +17,20 @@ Before writing production code:
 | -------------------- | ------------------------------------------------------- |
 | `pkg/cais/`          | Framework: config, router, render, htmx, middleware     |
 | `pkg/cais/httpx/`    | Render and redirect helpers for handlers                |
+| `pkg/cais/meta/`     | Open Graph / Twitter preview (`Site`, `PreviewHTML`)    |
+| `pkg/cais/session/`  | Cookie sessions (`SignIn`, `SignOut`, `Store`)          |
+| `pkg/cais/boot/`     | Rails-style startup banner                              |
+| `pkg/cais/devlog/`   | Development log buffer + `/logs` viewer                 |
+| `pkg/cais/sqllog/`   | SQL query logging wrapper (`Wrap`, `EnabledForEnv`)     |
+| `pkg/cais/console/`  | Interactive REPL (yaegi + SQL)                          |
+| `pkg/cais/validate/` | Form field validation helpers                           |
 | `pkg/cais/testutil/` | Test helpers (`NewRenderer`, `NewRequest`, path values) |
+| `pkg/cais/pwa/`      | Default PWA assets generator (manifest, icons, og.png)  |
 | `internal/app/`      | Bootstrap: route and dependency wiring                  |
 | `internal/handlers/` | HTTP handlers                                           |
 | `internal/store/`    | SQLite persistence                                      |
 | `web/templates/`     | HTML templates (layouts, pages, partials)               |
 | `web/static/`        | Tailwind CSS, HTMX, PWA (manifest, sw.js, icons)        |
-| `pkg/cais/pwa/`      | Default PWA assets generator                            |
 | `cmd/server/`        | Entry point                                             |
 
 ## Router path params and groups
@@ -39,12 +46,28 @@ r.Group(middleware.Protect, func(g *cais.Router) {
 
 Set `ADMIN_TOKEN` in production. Use `middleware.Protect` on admin routes — no-op when env is empty.
 
+## Session auth
+
+For user-facing apps (not token-based admin):
+
+```go
+store := session.NewMemoryStore()
+r.Use(middleware.LoadSession(store))
+r.Get("/dashboard", middleware.RequireAuth("/login")(dashboard.Index))
+session.SignIn(w, store, userID, session.CookieOptions{})
+session.SignOut(w, store, r)
+```
+
+`RequireAuth` sends `HX-Redirect` for HTMX requests; others get 303 to `loginURL`.
+
 ## New page
 
 1. Test in `internal/handlers/foo_test.go`
 2. Template in `web/templates/pages/foo.html`
-3. Handler in `internal/handlers/foo.go`
+3. Handler in `internal/handlers/foo.go` — embed `meta.Site` in page data
 4. Register the route in `internal/app/app.go`
+
+Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap so layouts render correct OG/Twitter tags (`absURL` template func).
 
 ## HTMX interactions
 
@@ -58,18 +81,33 @@ Set `ADMIN_TOKEN` in production. Use `middleware.Protect` on admin routes — no
 1. Store test with `":memory:"` before the migration
 2. SQL in `internal/store/migrations/NNN_name.sql`
 3. Methods on the `store.Store` interface
+4. Wrap DB with `sqllog.Wrap` in `NewSQLiteStore` for development query logs
+5. Migrations tracked in `schema_migrations` via `pkg/cais/migrate` (idempotent on boot)
+
+## Development logging
+
+In `ENV=development`:
+
+- `middleware.LoggerTo(devlog.MirrorDefault(...))` — timestamped request logs
+- `sqllog.Wrap(db, sqllog.Config{Enabled: true})` — SQL query + duration logs
+- `devlog.Register(r, cfg.Env, buf)` — mounts `/logs` (localhost only, HTMX refresh)
+
+Boot banner via `boot.Print` in `cmd/server/main.go`. Port auto-pick via `cais.ResolvePort` when preferred port is busy.
+
+Set `APP_URL` for absolute OG image URLs in production.
 
 ## CLI generators
 
 ```bash
 cais new myapp --minimal
+cais new myapp --blank
 cais g resource bookmark --fields title:string,url:url,notes:text? --public
 cais doctor                    # verify htmx, air, go.mod
 cais g handler settings
 cais g console              # scaffold cmd/console/main.go
 ```
 
-Field types: `string`, `text`, `url`, `bool`, `int`. Suffix `?` for optional.
+Field types: `string`, `text`, `url`, `bool`, `int`, `date`. Suffix `?` for optional.
 
 ## App commands (run from a Cais app)
 
@@ -82,6 +120,8 @@ cais server   # go run ./cmd/server
 cais test     # go test ./...
 cais doctor   # verify htmx, air, go.mod
 cais console  # Rails-style REPL (store, cfg, db + sql)
+cais db migrate  # run pending migrations
+cais db status   # list applied/pending migrations
 ```
 
 Console bindings: `store`, `cfg`, `db`, plus any custom keys in `Bindings`. Commands: `help`, `sql`, `reload`, `history`, `!N`/`!!`, `exit`. Arrow keys when stdin is a TTY.
@@ -98,6 +138,7 @@ make format   # prettier --write
 make ci       # test + lint + format-check
 make dev      # hot reload + tailwind watch
 make build    # bin/cais
+make pwa      # regenerate PWA assets (manifest, icons, og.png)
 make docker   # ~15-20MB image
 ```
 

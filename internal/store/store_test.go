@@ -24,6 +24,11 @@ func TestStore_Migrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("contacts table not found: %v", err)
 	}
+
+	err = s.db.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name='schema_migrations'").Scan(&name)
+	if err != nil {
+		t.Fatalf("schema_migrations table not found: %v", err)
+	}
 }
 
 func TestStore_InsertContact(t *testing.T) {
