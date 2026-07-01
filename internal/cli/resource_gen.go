@@ -60,8 +60,9 @@ func buildResourceMigration(data scaffoldData) string {
 	for _, f := range data.Fields {
 		cols = append(cols, fmt.Sprintf("    %s %s", f.Name, f.SQLType))
 	}
-	return fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n%s,\n    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP\n);\n",
+	create := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n%s,\n    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
 		data.Plural, strings.Join(cols, ",\n"))
+	return fmt.Sprintf("-- up\n%s\n\n-- down\nDROP TABLE IF EXISTS %s;\n", create, data.Plural)
 }
 
 func buildResourceStoreMethods(data scaffoldData) string {

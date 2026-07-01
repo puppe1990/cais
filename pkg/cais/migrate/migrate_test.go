@@ -260,6 +260,111 @@ func TestApply_rollsBackOnRecordFailure(t *testing.T) {
 	}
 }
 
+func TestApply_upOnly(t *testing.T) {
+	migrations := fstest.MapFS{
+		"migrations/001_posts.sql": &fstest.MapFile{
+			Data: []byte(`-- migration: posts
+-- up
+CREATE TABLE posts (id INTEGER PRIMARY KEY, title TEXT NOT NULL);
+
+-- down
+DROP TABLE posts;`),
+		},
+	}
+
+	db := testDB(t)
+	if err := Apply(db, migrations, "migrations"); err != nil {
+		t.Fatal(err)
+	}
+
+	var name string
+	if err := db.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name='posts'").Scan(&name); err != nil {
+		t.Fatalf("posts table not found after apply: %v", err)
+	}
+
+	// Down SQL must not run during apply.
+	if _, err := db.Exec("INSERT INTO posts (title) VALUES ('hello')"); err != nil {
+		t.Fatalf("posts table should accept inserts: %v", err)
+	}
+}
+
+func TestRollbackLast_executesDownSQL(t *testing.T) {
+	migrations := fstest.MapFS{
+		"migrations/001_posts.sql": &fstest.MapFile{
+			Data: []byte(`-- up
+CREATE TABLE posts (id INTEGER PRIMARY KEY, title TEXT NOT NULL);
+
+-- down
+DROP TABLE posts;`),
+		},
+	}
+
+	db := testDB(t)
+	if err := Apply(db, migrations, "migrations"); err != nil {
+		t.Fatal(err)
+	}
+
+	var name string
+	if err := db.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name='posts'").Scan(&name); err != nil {
+		t.Fatalf("posts table should exist before rollback: %v", err)
+	}
+
+	version, err := RollbackLast(db, migrations, "migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version != "001_posts" {
+		t.Errorf("RollbackLast version = %q, want 001_posts", version)
+	}
+
+	err = db.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name='posts'").Scan(&name)
+	if err == nil {
+		t.Fatal("posts table should be dropped after rollback with down section")
+	}
+
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM schema_migrations").Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Errorf("schema_migrations count = %d, want 0 after rollback", count)
+	}
+}
+
+func TestRollbackLast_withoutDownSection_removesRecord(t *testing.T) {
+	migrations := fstest.MapFS{
+		"migrations/001_users.sql": &fstest.MapFile{
+			Data: []byte(`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);`),
+		},
+	}
+
+	db := testDB(t)
+	if err := Apply(db, migrations, "migrations"); err != nil {
+		t.Fatal(err)
+	}
+
+	version, err := RollbackLast(db, migrations, "migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version != "001_users" {
+		t.Errorf("RollbackLast version = %q, want 001_users", version)
+	}
+
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM schema_migrations").Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Errorf("schema_migrations count = %d, want 0 after record-only rollback", count)
+	}
+
+	var name string
+	if err := db.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").Scan(&name); err != nil {
+		t.Fatalf("users table should still exist after record-only rollback: %v", err)
+	}
+}
+
 func TestRollbackLast_errorsWhenNoAppliedMigrations(t *testing.T) {
 	migrations := fstest.MapFS{
 		"migrations/001_users.sql": &fstest.MapFile{

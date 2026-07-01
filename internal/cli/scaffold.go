@@ -209,7 +209,7 @@ func scaffoldMigration(dir, name string) error {
 	}
 	filename := fmt.Sprintf("%03d_%s.sql", next, data.Snake)
 	path := filepath.Join(migrationsDir, filename)
-	content := fmt.Sprintf("-- migration: %s\n", data.Snake)
+	content := fmt.Sprintf("-- migration: %s\n-- up\n\n-- down\n\n", data.Snake)
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return err
 	}

@@ -62,7 +62,8 @@ func Apply(db *sql.DB, migrations fs.FS, dir string) error {
 		if err != nil {
 			return fmt.Errorf("read migration %s: %w", name, err)
 		}
-		if err := applyMigration(db, version, string(sqlBytes)); err != nil {
+		upSQL, _ := parseMigrationSQL(string(sqlBytes))
+		if err := applyMigration(db, version, upSQL); err != nil {
 			return err
 		}
 	}
@@ -93,8 +94,9 @@ func Status(db *sql.DB, migrations fs.FS, dir string) ([]Entry, error) {
 	return entries, nil
 }
 
-// RollbackLast removes the last applied migration record from schema_migrations.
-// It does not execute SQL down migrations.
+// RollbackLast rolls back the last applied migration. When the migration file
+// contains a -- down section, that SQL is executed before removing the
+// schema_migrations record. Without a down section, only the record is removed.
 func RollbackLast(db *sql.DB, migrations fs.FS, dir string) (string, error) {
 	entries, err := Status(db, migrations, dir)
 	if err != nil {
@@ -111,8 +113,31 @@ func RollbackLast(db *sql.DB, migrations fs.FS, dir string) (string, error) {
 		return "", fmt.Errorf("no applied migrations to roll back")
 	}
 
-	if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = ?", lastApplied); err != nil {
+	sqlPath := path.Join(dir, lastApplied+".sql")
+	sqlBytes, err := fs.ReadFile(migrations, sqlPath)
+	if err != nil {
+		return "", fmt.Errorf("read migration %s: %w", lastApplied, err)
+	}
+	_, downSQL := parseMigrationSQL(string(sqlBytes))
+
+	tx, err := db.Begin()
+	if err != nil {
+		return "", fmt.Errorf("begin rollback %s: %w", lastApplied, err)
+	}
+
+	if downSQL != "" {
+		if _, err := tx.Exec(downSQL); err != nil {
+			_ = tx.Rollback()
+			return "", fmt.Errorf("rollback migration %s: %w", lastApplied, err)
+		}
+	}
+
+	if _, err := tx.Exec("DELETE FROM schema_migrations WHERE version = ?", lastApplied); err != nil {
+		_ = tx.Rollback()
 		return "", fmt.Errorf("remove migration %s: %w", lastApplied, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return "", fmt.Errorf("commit rollback %s: %w", lastApplied, err)
 	}
 
 	return lastApplied, nil
@@ -132,6 +157,62 @@ func listSQL(migrations fs.FS, dir string) ([]string, error) {
 	}
 	sort.Strings(files)
 	return files, nil
+}
+
+const (
+	markerUp   = "-- up"
+	markerDown = "-- down"
+)
+
+// parseMigrationSQL splits a migration file into up and down SQL sections.
+// When no -- up or -- down markers are present, the entire file is treated as up SQL.
+func parseMigrationSQL(content string) (up, down string) {
+	lines := strings.Split(content, "\n")
+
+	hasUp, hasDown := false, false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == markerUp {
+			hasUp = true
+		}
+		if trimmed == markerDown {
+			hasDown = true
+		}
+	}
+	if !hasUp && !hasDown {
+		return strings.TrimSpace(content), ""
+	}
+
+	section := 0 // 0=before markers, 1=up, 2=down
+	var upLines, downLines, preUpLines []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		switch trimmed {
+		case markerUp:
+			section = 1
+			continue
+		case markerDown:
+			section = 2
+			continue
+		}
+
+		switch section {
+		case 0:
+			preUpLines = append(preUpLines, line)
+		case 1:
+			upLines = append(upLines, line)
+		case 2:
+			downLines = append(downLines, line)
+		}
+	}
+
+	if hasUp {
+		up = strings.TrimSpace(strings.Join(upLines, "\n"))
+	} else {
+		up = strings.TrimSpace(strings.Join(preUpLines, "\n"))
+	}
+	down = strings.TrimSpace(strings.Join(downLines, "\n"))
+	return up, down
 }
 
 func applyMigration(db *sql.DB, version, sql string) error {
