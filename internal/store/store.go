@@ -66,6 +66,10 @@ func (s *SQLiteStore) FindContact(id int64) (models.Contact, error) {
 	return c, nil
 }
 
+func (s *SQLiteStore) DB() *sql.DB {
+	return s.db.Raw()
+}
+
 func (s *SQLiteStore) Close() error {
 	return s.db.Close()
 }

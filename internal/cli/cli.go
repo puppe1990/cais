@@ -46,6 +46,8 @@ func (c *CLI) Run(args []string) error {
 		return c.cmdTest()
 	case "doctor":
 		return c.cmdDoctor()
+	case "console", "c":
+		return c.cmdConsole()
 	case "help", "-h", "--help":
 		c.printHelp()
 		return nil
@@ -72,6 +74,7 @@ Usage:
   cais server                Run the app (go run ./cmd/server)
   cais test                  Run tests (go test ./...)
   cais doctor                Check app setup (htmx, air, go.mod)
+  cais console               Interactive app console (Go REPL + SQL)
   cais help                  Show this help
 
 Aliases:
@@ -79,10 +82,12 @@ Aliases:
   cais i        → cais install
   cais b        → cais build
   cais s        → cais server
+  cais c        → cais console
 
 Examples:
   cais new myapp && cd myapp && cais install && cais dev
   cais g handler settings
+  cais console
   cais css && cais server`)
 }
 
@@ -137,12 +142,11 @@ func (c *CLI) cmdNew(args []string) error {
 }
 
 func (c *CLI) cmdGenerate(args []string) error {
-	if len(args) < 2 {
-		return fmt.Errorf("usage: cais g <handler|page|migration|resource> <name>")
+	if len(args) < 1 {
+		return fmt.Errorf("usage: cais g <handler|page|migration|resource|console> <name>")
 	}
 
 	kind := args[0]
-	name := args[1]
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -156,21 +160,31 @@ func (c *CLI) cmdGenerate(args []string) error {
 	}
 
 	switch kind {
-	case "handler":
-		return scaffoldHandler(cwd, name)
-	case "page":
-		return scaffoldPage(cwd, name)
-	case "migration":
-		return scaffoldMigration(cwd, name)
-	case "resource":
-		opts, err := parseResourceOpts(args[2:])
-		if err != nil {
-			return err
+	case "console":
+		return scaffoldConsole(cwd)
+	case "handler", "page", "migration", "resource":
+		if len(args) < 2 {
+			return fmt.Errorf("usage: cais g %s <name>", kind)
 		}
-		return scaffoldResource(cwd, name, opts)
+		name := args[1]
+		switch kind {
+		case "handler":
+			return scaffoldHandler(cwd, name)
+		case "page":
+			return scaffoldPage(cwd, name)
+		case "migration":
+			return scaffoldMigration(cwd, name)
+		case "resource":
+			opts, err := parseResourceOpts(args[2:])
+			if err != nil {
+				return err
+			}
+			return scaffoldResource(cwd, name, opts)
+		}
 	default:
-		return fmt.Errorf("unknown generator %q (use handler, page, migration, or resource)", kind)
+		return fmt.Errorf("unknown generator %q (use handler, page, migration, resource, or console)", kind)
 	}
+	return nil
 }
 
 func (c *CLI) cmdServer() error {
