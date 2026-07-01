@@ -16,18 +16,21 @@ const tplAir = `root = "."
 tmp_dir = "tmp"
 
 [build]
+  entrypoint = "./cmd/server"
   cmd = "go build -o ./tmp/main ./cmd/server"
   bin = "./tmp/main"
   delay = 1000
   exclude_dir = ["tmp", "data", "bin", "node_modules"]
   include_ext = ["go", "html"]
   stop_on_error = true
+  log = "build_errors"
 
 [log]
   time = false
 
 [misc]
   clean_on_exit = true
+  log = "main_only"
 `
 
 const tplMain = `package main
@@ -40,6 +43,7 @@ import (
 	"path/filepath"
 
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/boot"
 	"{{.ModulePath}}/internal/app"
 	"{{.ModulePath}}/internal/store"
 	"{{.ModulePath}}/web"
@@ -52,7 +56,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("{{.AppName}} rodando na porta %s...", cfg.Port)
+	boot.Print(os.Stdout, boot.Options{
+		AppName: "{{.AppName}}",
+		Config:  cfg,
+		Version: boot.CaisVersion(),
+	})
 	if err := a.Run(); err != nil {
 		log.Fatal(err)
 	}
@@ -1279,6 +1287,7 @@ import (
 	"path/filepath"
 
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/boot"
 	"{{.ModulePath}}/internal/app"
 	"{{.ModulePath}}/internal/store"
 	"{{.ModulePath}}/web"
@@ -1291,7 +1300,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("{{.AppName}} rodando na porta %s...", cfg.Port)
+	boot.Print(os.Stdout, boot.Options{
+		AppName: "{{.AppName}}",
+		Config:  cfg,
+		Version: boot.CaisVersion(),
+	})
 	if err := a.Run(); err != nil {
 		log.Fatal(err)
 	}

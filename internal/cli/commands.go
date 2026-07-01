@@ -90,11 +90,11 @@ func (c *CLI) cmdDev() error {
 	defer func() { _ = watch.Process.Kill() }()
 
 	if air := findAir(); air != "" {
-		_, _ = fmt.Fprintf(c.Out, "→ air (hot reload) — http://localhost:8080\n")
+		_, _ = fmt.Fprintln(c.Out, "=> Starting dev server (hot reload via air)")
 		return runCmd(dir, air, "-c", ".air.toml")
 	}
 
-	_, _ = fmt.Fprintln(c.Out, "→ go run ./cmd/server (install air for hot reload: go install github.com/air-verse/air@latest)")
+	_, _ = fmt.Fprintln(c.Out, "=> Starting dev server (go run; install air for hot reload)")
 	return runCmd(dir, "go", "run", "./cmd/server")
 }
 

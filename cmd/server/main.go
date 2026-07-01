@@ -10,6 +10,7 @@ import (
 	"github.com/puppe1990/cais/internal/app"
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/boot"
 	"github.com/puppe1990/cais/web"
 )
 
@@ -20,7 +21,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("Servidor rodando na porta %s...", cfg.Port)
+	boot.Print(os.Stdout, boot.Options{
+		AppName: "Cais",
+		Config:  cfg,
+		Version: boot.CaisVersion(),
+	})
 	if err := a.Run(); err != nil {
 		log.Fatal(err)
 	}
