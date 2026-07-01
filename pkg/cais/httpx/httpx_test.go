@@ -52,3 +52,38 @@ func TestRenderPartial_rendersFragment(t *testing.T) {
 		t.Errorf("body = %q", rr.Body.String())
 	}
 }
+
+func TestRenderPageOrPartial_htmxUsesPartial(t *testing.T) {
+	renderer := testRenderer(t)
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/contact", nil)
+	req.Header.Set("HX-Request", "true")
+
+	RenderPageOrPartial(rr, req, renderer, RenderOptions{
+		Layout:  "base",
+		Page:    "home",
+		Partial: "greeting",
+		Data:    map[string]string{"Name": "Ada"},
+	})
+
+	if !strings.Contains(rr.Body.String(), "Ada") {
+		t.Errorf("body = %q, want partial content", rr.Body.String())
+	}
+}
+
+func TestRenderPageOrPartial_fullPageWhenNotHTMX(t *testing.T) {
+	renderer := testRenderer(t)
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/contact", nil)
+
+	RenderPageOrPartial(rr, req, renderer, RenderOptions{
+		Layout:  "base",
+		Page:    "home",
+		Partial: "greeting",
+		Data:    map[string]string{"Name": "Ada"},
+	})
+
+	if !strings.Contains(rr.Body.String(), "Ada") {
+		t.Errorf("body = %q, want page content", rr.Body.String())
+	}
+}
