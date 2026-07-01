@@ -210,6 +210,9 @@ func seedValueForField(f FieldDef) string {
 			}
 			return `"Lorem ipsum dolor sit amet, consectetur adipiscing elit."`
 		}
+		if f.HTMLType == "date" {
+			return `"2024-01-15"`
+		}
 		if strings.Contains(name, "email") {
 			return `"user@example.com"`
 		}
@@ -538,6 +541,41 @@ func (h *Admin%sHandler) parseForm(r *http.Request) (models.%s, error) {
 }
 
 func buildResourcePublicHandler(data scaffoldData) string {
+	boolField := firstBoolField(data.Fields)
+	intField := firstIntField(data.Fields)
+
+	listDataExtra := ""
+	listSum := ""
+	if intField != nil {
+		listDataExtra = "\n\tTotal int64"
+		listSum = fmt.Sprintf(`
+	var total int64
+	for _, item := range items {
+		total += item.%s
+	}
+`, intField.Pascal)
+	}
+
+	toggleMethod := ""
+	if boolField != nil {
+		toggleMethod = fmt.Sprintf(`
+
+func (h *%sHandler) Toggle(w http.ResponseWriter, r *http.Request, id int64) {
+	item, err := h.store.Find%sByID(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	item.%s = !item.%s
+	if err := h.store.Update%s(item); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	httpx.RenderPartial(w, h.renderer, "%s_toggle", item)
+}
+`, data.PluralPascal, data.Pascal, boolField.Pascal, boolField.Pascal, data.Pascal, data.Plural)
+	}
+
 	return fmt.Sprintf(`package handlers
 
 import (
@@ -555,7 +593,7 @@ type %sHandler struct {
 }
 
 type %sListData struct {
-	Items []models.%s
+	Items []models.%s%s
 }
 
 func New%sHandler(renderer *cais.Renderer, s store.Store) *%sHandler {
@@ -567,16 +605,45 @@ func (h *%sHandler) List(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-	httpx.RenderOrError(w, h.renderer, "base", "%s", %sListData{Items: items})
+	}%s
+	httpx.RenderOrError(w, h.renderer, "base", "%s", %sListData{Items: items%s})
 }
-`,
+%s`,
 		frameworkModule, frameworkModule, data.ModulePath, data.ModulePath,
-		data.PluralPascal, data.PluralPascal, data.Pascal,
+		data.PluralPascal,
+		data.PluralPascal, data.Pascal, listDataExtra,
 		data.PluralPascal, data.PluralPascal, data.PluralPascal,
 		data.PluralPascal, data.PluralPascal,
+		listSum,
 		data.Plural, data.PluralPascal,
+		sumArg(intField),
+		toggleMethod,
 	)
+}
+
+func firstBoolField(fields []FieldDef) *FieldDef {
+	for i, f := range fields {
+		if f.GoType == "bool" {
+			return &fields[i]
+		}
+	}
+	return nil
+}
+
+func firstIntField(fields []FieldDef) *FieldDef {
+	for i, f := range fields {
+		if f.GoType == "int64" {
+			return &fields[i]
+		}
+	}
+	return nil
+}
+
+func sumArg(intField *FieldDef) string {
+	if intField == nil {
+		return ""
+	}
+	return ", Total: total"
 }
 
 func buildAdminFormHTML(data scaffoldData) string {
@@ -695,7 +762,7 @@ func buildPublicListItemHTML(data scaffoldData) string {
 		}
 		switch f.GoType {
 		case "bool":
-			meta = append(meta, fmt.Sprintf(`{{ if .%s }}<span class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">%s</span>{{ else }}<span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Pending</span>{{ end }}`, f.Pascal, f.Pascal))
+			meta = append(meta, fmt.Sprintf(`<span hx-post="/%s/{{ .ID }}/toggle" hx-swap="outerHTML" hx-target="this" class="cursor-pointer inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ if .%s }}bg-green-50 text-green-700{{ else }}bg-slate-100 text-slate-600{{ end }}">{{ if .%s }}%s{{ else }}Pending{{ end }}</span>`, data.Plural, f.Pascal, f.Pascal, f.Pascal))
 		case "int64":
 			meta = append(meta, fmt.Sprintf(`<span class="text-sm text-slate-500">%s: {{ .%s }}</span>`, f.Pascal, f.Pascal))
 		}
@@ -719,10 +786,19 @@ func buildPublicListItemHTML(data scaffoldData) string {
 func buildPublicListHTML(data scaffoldData) string {
 	pluralTitle := toTitle(data.Plural)
 	itemBlock := buildPublicListItemHTML(data)
+	intField := firstIntField(data.Fields)
+	totalBlock := ""
+	if intField != nil {
+		totalBlock = fmt.Sprintf(`  <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm mb-6 flex items-center justify-between">
+    <span class="text-sm font-medium text-slate-500">Total %s</span>
+    <span class="text-2xl font-bold text-indigo-600">{{ .Total }}</span>
+  </div>
+`, intField.Pascal)
+	}
 	return fmt.Sprintf(`{{ define "title" }}%s{{ end }} {{ define "content" }}
 <div class="max-w-2xl mx-auto">
   <h1 class="text-3xl font-bold text-slate-900 mb-6">%s</h1>
-  <ul id="%s-list" class="space-y-3">
+%s  <ul id="%s-list" class="space-y-3">
     {{ range .Items }}
     <li class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">%s</li>
     {{ else }}
@@ -731,5 +807,14 @@ func buildPublicListHTML(data scaffoldData) string {
   </ul>
 </div>
 {{ end }}
-`, pluralTitle, pluralTitle, data.Plural, itemBlock)
+`, pluralTitle, pluralTitle, totalBlock, data.Plural, itemBlock)
+}
+
+func buildPublicTogglePartial(data scaffoldData) string {
+	boolField := firstBoolField(data.Fields)
+	if boolField == nil {
+		return ""
+	}
+	return fmt.Sprintf(`{{- define "%s_toggle" -}}<span hx-post="/%s/{{ .ID }}/toggle" hx-swap="outerHTML" hx-target="this" class="cursor-pointer inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ if .%s }}bg-green-50 text-green-700{{ else }}bg-slate-100 text-slate-600{{ end }}">{{ if .%s }}%s{{ else }}Pending{{ end }}</span>{{- end -}}
+`, data.Plural, data.Plural, boolField.Pascal, boolField.Pascal, boolField.Pascal)
 }

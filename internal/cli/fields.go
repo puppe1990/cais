@@ -72,6 +72,8 @@ func fieldFromNameType(name, typ string, required bool) FieldDef {
 		return FieldDef{Name: toSnake(name), Pascal: pascal, SQLType: "INTEGER NOT NULL DEFAULT 0", GoType: "bool", HTMLType: "checkbox", Widget: "checkbox", Required: false}
 	case "int":
 		return FieldDef{Name: toSnake(name), Pascal: pascal, SQLType: "INTEGER NOT NULL DEFAULT 0", GoType: "int64", HTMLType: "number", Widget: "input", Required: required}
+	case "date":
+		return FieldDef{Name: toSnake(name), Pascal: pascal, SQLType: "TEXT NOT NULL DEFAULT ''", GoType: "string", HTMLType: "date", Widget: "input", Required: required}
 	default:
 		return FieldDef{Name: toSnake(name), Pascal: pascal, SQLType: "TEXT NOT NULL", GoType: "string", HTMLType: "text", Widget: "input", Required: required}
 	}

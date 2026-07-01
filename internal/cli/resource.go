@@ -48,6 +48,10 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 		files[filepath.Join("internal/handlers", data.Plural+".go")] = buildResourcePublicHandler(data)
 		files[filepath.Join("internal/handlers", data.Plural+"_test.go")] = buildResourcePublicTest(data)
 		files[filepath.Join("web/templates/pages", data.Plural+".html")] = buildPublicListHTML(data)
+		togglePartial := buildPublicTogglePartial(data)
+		if togglePartial != "" {
+			files[filepath.Join("web/templates/partials", data.Plural+"_toggle.html")] = togglePartial
+		}
 	}
 
 	for path, content := range files {
@@ -349,6 +353,9 @@ func patchRoutesForResource(dir string, data scaffoldData) error {
 		pubVar := lowerFirst(data.PluralPascal)
 		fmt.Fprintf(&insert, "\t%s := handlers.New%sHandler(deps.Renderer, deps.Store)\n", pubVar, data.PluralPascal)
 		fmt.Fprintf(&insert, "\tr.Get(\"/%s\", %s.List)\n", data.Plural, pubVar)
+		if firstBoolField(data.Fields) != nil {
+			fmt.Fprintf(&insert, "\tr.Post(\"/%s/{id}/toggle\", cais.IntParam(\"id\", %s.Toggle))\n", data.Plural, pubVar)
+		}
 	}
 	fmt.Fprintf(&insert, "\t%s := handlers.NewAdmin%sHandler(deps.Renderer, deps.Store)\n", adminVar, data.PluralPascal)
 	fmt.Fprintf(&insert, "\tr.Group(middleware.TokenAuth, func(g *cais.Router) {\n")
