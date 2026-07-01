@@ -346,10 +346,10 @@ func patchRoutesForResource(dir string, data scaffoldData) error {
 	var insert strings.Builder
 	if data.Public {
 		pubVar := lowerFirst(data.PluralPascal)
-		fmt.Fprintf(&insert, "\n\t%s := handlers.New%sHandler(deps.Renderer, deps.Store)\n", pubVar, data.PluralPascal)
+		fmt.Fprintf(&insert, "\t%s := handlers.New%sHandler(deps.Renderer, deps.Store)\n", pubVar, data.PluralPascal)
 		fmt.Fprintf(&insert, "\tr.Get(\"/%s\", %s.List)\n", data.Plural, pubVar)
 	}
-	fmt.Fprintf(&insert, "\n\t%s := handlers.NewAdmin%sHandler(deps.Renderer, deps.Store)\n", adminVar, data.PluralPascal)
+	fmt.Fprintf(&insert, "\t%s := handlers.NewAdmin%sHandler(deps.Renderer, deps.Store)\n", adminVar, data.PluralPascal)
 	fmt.Fprintf(&insert, "\tr.Group(middleware.TokenAuth, func(g *cais.Router) {\n")
 	fmt.Fprintf(&insert, "\t\tg.Get(\"/admin/%s\", %s.Index)\n", data.Plural, adminVar)
 	fmt.Fprintf(&insert, "\t\tg.Get(\"/admin/%s/new\", %s.New)\n", data.Plural, adminVar)

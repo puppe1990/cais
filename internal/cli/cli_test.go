@@ -115,6 +115,9 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 	if !strings.Contains(string(routesBody), "r.Group(middleware.TokenAuth") {
 		t.Error("routes.go missing r.Group(middleware.TokenAuth")
 	}
+	if strings.Contains(string(routesBody), "\n\n\n") {
+		t.Error("routes.go has triple newlines (formatting issue)")
+	}
 }
 
 func TestScaffoldResource_PublicWithFields(t *testing.T) {
