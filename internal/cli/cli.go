@@ -86,8 +86,9 @@ Usage:
   cais console               Interactive app console (Go REPL + SQL)
   cais db migrate            Run pending SQL migrations
   cais db status             List migration status
-  cais db rollback           Remove last applied migration record (no SQL down)
+  cais db rollback           Roll back last migration (runs -- down SQL when present)
   cais db prune-sessions     Delete expired login sessions from SQLite
+  cais db seed               Run internal/db/seeds.go
   cais routes                List HTTP routes from internal/app/routes.go
   cais help                  Show this help
 
