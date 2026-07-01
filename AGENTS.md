@@ -160,6 +160,33 @@ Pass `errs` as `.Errors` in page data when re-rendering forms.
 
 `makeField` returns `forms.FieldData`; `fieldInput` renders input/textarea/checkbox + error. Resource generator admin forms use these by default.
 
+Foreign-key selects:
+
+```html
+{{ fieldSelect (makeSelectField "category_id" "Category" .Item.CategoryID .CategoryOptions true
+.Errors) }}
+```
+
+## Foreign keys in generators
+
+`cais g resource post --fields title:string,category_id:references` (or `category:belongs_to`):
+
+- Migration column: `INTEGER [NOT NULL] REFERENCES categories(id)`
+- Store: `ListCategoryOptions()` — `SELECT id, COALESCE(name, title, id) FROM categories`
+- Admin form: `fieldSelect` / `makeSelectField` populated from options
+
+Generate the parent resource first (`cais g resource category --fields name:string`). Referenced table needs a `name` or `title` column for labels.
+
+## Integration tests (auth + contact)
+
+Multi-step flows belong in `internal/app/app_test.go` (full router + CSRF + session):
+
+1. `GET /login` or `/contact` — read `csrf` cookie
+2. `POST` with matching `csrf_token` field + cookie
+3. Follow session/flash cookies on subsequent requests
+
+See `TestApp_LoginPost_withCSRF_redirects`, `TestApp_AuthFlow_loginDashboardLogout`, `TestApp_ContactPost_validationWithCSRF_returns422`.
+
 ## HTMX UX (app-like feel)
 
 Layout loads `cais.js` after `htmx.min.js` — CSRF header, focus restore, optimistic toggles.
@@ -228,11 +255,12 @@ cais g [--dry-run] migration add_tags
 cais g [--dry-run] auth       # login/logout + protected dashboard
 cais g [--dry-run] console    # scaffold cmd/console/main.go
 cais g [--dry-run] ci         # add CI/pre-commit to existing apps
+cais g [--dry-run] job send_welcome --cron "0 3 * * *"
 cais doctor                   # verify htmx, air, go.mod
 cais routes                   # list routes from internal/app/routes.go
 ```
 
-Field types: `string`, `text`, `url`, `bool`, `int`, `date`. Suffix `?` for optional.
+Field types: `string`, `text`, `url`, `bool`, `int`, `date`, `references` (or `name:belongs_to`). Suffix `?` for optional.
 
 **Resource options:** `--public` (public list page), `--paginate` (admin index pagination, 25/page), `--no-seed` (skip demo data), `--admin-auth session|bearer` (default: session).
 
@@ -262,9 +290,30 @@ cais db rollback       # roll back last migration (runs -- down SQL when present
 cais db prune-sessions # delete expired login sessions from SQLite
 cais db seed           # run internal/db/seeds.go (idempotent)
 cais db seed --list    # list seed helpers referenced in seeds.go
+cais jobs work [--queues default,mail] [--concurrency 2]
+cais jobs status
 cais routes --verbose  # routes with handler names and middleware
 cais version           # print framework version
 ```
+
+## Background jobs
+
+SQLite queue in `pkg/cais/jobs` (same DB file as the app). See [jobs design](docs/superpowers/specs/2026-07-01-jobs-design.md).
+
+```bash
+cais g job prune_sessions --cron "0 3 * * *"  # internal/jobs/*.go + registry + cmd/worker
+cais db migrate                                # jobs + recurring_tasks tables
+cais jobs work --concurrency 2                   # worker + delayed-job dispatcher
+cais jobs status
+```
+
+Enqueue from handlers:
+
+```go
+jobs.Enqueue(ctx, jobStore, jobs.Options{Kind: "SendWelcome", Payload: data})
+```
+
+Register handlers in `internal/jobs/registry.go`. Built-in: `PruneSessions`. Production: run `cais jobs work` as a separate process next to `bin/server`.
 
 **Generator troubleshooting** — if `could not patch routes.go` or `could not patch store`, check that `registerRoutes` and `Close() error` markers exist. Public nav links need `<!-- cais:nav -->` in the layout (or `</nav>`). Run `cais db migrate` after `g resource` / `g model` / `g auth`.
 

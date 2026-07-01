@@ -1,21 +1,148 @@
 # Changelog
 
+All notable changes to the Cais framework are documented here.
+
+Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning follows [Semantic Versioning](https://semver.org/).
+
 ## Unreleased
 
 ### Added
 
+#### Security & sessions
+
+- Session expiry in SQLite (`expires_at`, 7-day TTL, reject expired `Get`)
+- `session.PruneExpired()` and `cais db prune-sessions`
+- Secure cookies in production (`Config.CookieSecure()`, `session.CookieOptionsFromConfig`)
+- Security headers middleware (`middleware.SecurityHeaders`) — CSP, HSTS, X-Frame-Options, Referrer-Policy
+- Per-IP rate limiting (`middleware.NewRateLimiter`) on login and contact POST routes
+- Trusted proxy support (`TRUSTED_PROXIES`, `middleware.ClientIP`)
+- Production error sanitization (`Config.SanitizeErrors()`, `httpx.RenderOrError`)
+- CSRF protection (`middleware.CSRF`, `meta.WithCSRF`, double-submit cookie)
+- Session auth scaffold (`cais g auth`, login/logout, protected dashboard)
+- Flash messages (`pkg/cais/flash`, `middleware.Flash`, one-shot redirect feedback)
+
+#### HTMX & UI
+
+- `httpx.RenderPageOrPartial` for HTMX-aware form responses
+- `cais.js` — CSRF header injection, focus restore, optimistic toggles
+- HTMX swap/loading CSS utilities (`.htmx-swapping`, `.htmx-settling`, `.htmx-request-hide`)
+- `cais.SetTrigger` and `cais.SetRetarget` response helpers
+- Optimistic bool toggles in generated resource admin (`data-cais-optimistic="toggle"`)
+- Contact form HTMX polish (loading indicator, swap transitions)
+
+#### Forms & validation
+
+- `validate.FieldErrors` map with `Add`, `Has`, `First`, `Any`
+- `validate.MinLength` and `validate.MaxLength`
+- `pkg/cais/forms` — `csrfField`, `fieldError`, `makeField`, `fieldInput` template helpers
+- `forms.FieldData` for labeled inputs, textareas, and checkboxes with inline errors
+- `fieldSelect`, `makeSelectField`, `makeSelectFieldPtr` for foreign-key dropdowns
+- Resource generator `category_id:references` and `category:belongs_to` field types (FK migration, `ListCategoryOptions`, admin select)
+
+#### Router & render
+
+- `Router.Put` and `Router.Patch` methods
+- Partials parsed into the page template tree (`{{ template "name" . }}` works in pages and layouts)
+- `pkg/cais/pagination` — offset/limit helpers for list pages
+- `pkg/cais/cache` — in-memory TTL cache (`New`, `Get`, `Set`, `Delete`)
+
+#### i18n
+
+- `pkg/cais/i18n` — key-based locale catalogs (`LOCALE=en` default, `LOCALE=pt` supported)
+- Template funcs `t`, `htmlLang`, `ogLocale` registered on the renderer
+- i18n wired through scaffolds, handlers, and `meta` OG locale defaults
+
+#### Background jobs
+
+- `pkg/cais/jobs` — SQLite-backed queue (enqueue, delay, worker, dispatcher)
+- Recurring cron scheduler (`recurring_tasks`, `jobs.RunScheduler`)
+- `cais jobs work [--queues ...] [--concurrency N]` and `cais jobs status`
+- `cais g job <name> [--cron "0 3 * * *"]` — scaffolds handler, registry, and `cmd/worker`
+- Built-in `PruneSessions` job handler
+- Jobs migration (`003_jobs.sql`, `004_recurring_tasks.sql`)
+
+#### CLI — generators
+
+- `cais g resource` defaults to session auth (`--admin-auth session|bearer`)
+- `cais g resource --paginate` — admin index pagination (25/page, HTMX controls)
+- `cais g resource --force` — overwrite existing generated files
+- Resource admin show page (handler, template, route, tests)
+- `cais g model` — model struct + migration + store methods (no handlers/UI)
+- `cais g --dry-run` on all generators (resource, model, handler, page, migration, auth, console, ci, job)
+- `cais destroy [--dry-run]` — resource, handler, model, auth, migration (unpatch routes, store, seeds, nav)
+- `cais g ci` — add GitHub Actions, pre-commit, golangci-lint, Prettier to existing apps
+- `cais new --module <path>` — override Go module path
+- Nav marker `<!-- cais:nav -->` for reliable public link patching
+- AST-based route patching (`internal/cli/patch`) via `insertBeforeFunctionEnd`
+- `nextMigrationFile` — sequential migration numbering across generators
+- Migration `-- up` / `-- down` sections in generated SQL files
+- Welcome screen and i18n catalogs in `cais new` scaffolds
+
+#### CLI — database & tooling
+
 - Versioned migrations (`pkg/cais/migrate`, `cais db migrate`, `cais db status`)
-- CSRF protection (`middleware.CSRF`, `meta.WithCSRF`)
-- Session auth in scaffold (`cais g auth`, login/logout, protected dashboard)
-- `validate.Email`, SQLite production defaults, DB-aware `/health`
-- `cais g auth`, smoke scaffold CI script
+- `cais db rollback` — roll back last migration (runs `-- down` SQL when present)
+- `cais db seed` and `cais db seed --list`
+- `cais routes` and `cais routes --verbose` (handler names + middleware)
+- `cais version` — print framework version
+- `cais doctor` — production readiness checks (`ADMIN_TOKEN`, `APP_URL`, CI tooling hints)
+- Smoke scaffold test (`scripts/smoke-scaffold.sh`, `generate_smoke_test.go`)
+- App-level integration tests: login → dashboard (flash) → logout; contact validation with CSRF (`internal/app/app_test.go`)
+
+#### Config & health
+
+- `validate.Email`, `validate.URL`, `validate.Required`
+- `APP_URL` required in production (`cfg.Validate()`)
+- DB-aware `/health` endpoint (503 `degraded` when SQLite is down)
+- SQLite production defaults (`PRAGMA foreign_keys=ON`, WAL)
 
 ### Changed
 
-- Admin auth requires `ADMIN_TOKEN` in production; Bearer header only
-- Reference app aligned with `cais new` (routes.go, auth, dashboard)
+- Admin auth requires `ADMIN_TOKEN` in production; Bearer header only (no query params)
+- Generated resource admin routes use `RequireAuth` by default instead of `AdminAuth`
+- Reference app aligned with `cais new` output (routes.go, auth, dashboard, contact validation)
+- Blank app scaffold includes `Recover`, `SecurityHeaders`, server timeouts, and `/health`
+- Contact scaffold uses `validate.FieldErrors` with name validation
+- Auth migration template includes `expires_at` column (7-day default)
+- `pwa.FS()` returns `(fs.FS, error)` instead of panicking on failure
+- README, AGENTS.md, and `.env.example` synced with all new commands and env vars
+- Jobs documentation in README and AGENTS (`cais g job`, `cais jobs work/status`, deploy notes)
+- CSP `'unsafe-inline'` tradeoff documented (required for HTMX and inline service-worker script)
 
 ### Security
 
 - Removed admin token via query string
 - Constant-time admin token comparison
+- Rate limiter bucket cleanup for stale entries
+- Flash cookies use `HttpOnly` and `Secure` in production
+
+### Fixed
+
+- `cais g auth` migration includes session expiry column on fresh installs
+- Local `CAIS_REPLACE` resolves from cwd for remote app directories
+- Generated `dashboard_test` scaffold includes `cais` import
+- AST route patch preserves `cais.IntParam(...)` lines through gofmt
+- CAIS startup banner renders block Unicode logo clearly (no longer reads as "COTS")
+
+### Deprecated
+
+- `middleware.TokenAuth` — use `AdminAuth(cfg)` instead; scheduled for removal in a future release
+
+## [0.4.7] - 2026-07-01
+
+### Added
+
+- Default OG preview and fullscreen PWA (`pkg/cais/meta`, `pkg/cais/pwa`)
+- Go on Cais hero image and harbor PNG icon in scaffold assets
+
+### Fixed
+
+- Startup banner redrawn to spell CAIS clearly with block Unicode art
+
+## [0.4.0] - 2026-07-01
+
+### Added
+
+- Interactive console REPL (`cais console`, `pkg/cais/console`) with SQL, history, reload, and typed bindings
+- `/logs` development log viewer (`pkg/cais/devlog`, HTMX auto-refresh, localhost only)
+- Cais-branded air startup banner (`pkg/cais/boot`)

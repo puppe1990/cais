@@ -50,6 +50,7 @@ export PATH="$HOME/go/bin:$PATH"
 | `cais g [--dry-run] auth`                                                                                                          | Add login/logout + protect dashboard                       |
 | `cais g [--dry-run] console`                                                                                                       | Scaffold `cmd/console/main.go`                             |
 | `cais g [--dry-run] ci`                                                                                                            | Add GitHub Actions CI, pre-commit, lint, Prettier          |
+| `cais g [--dry-run] job <name> [--cron "0 3 * * *"]`                                                                               | Background job handler + registry + `cmd/worker`           |
 | `cais install`                                                                                                                     | `npm install` + `go mod tidy`                              |
 | `cais css`                                                                                                                         | Build Tailwind CSS                                         |
 | `cais dev`                                                                                                                         | Hot reload (`air` + tailwind watch)                        |
@@ -64,10 +65,14 @@ export PATH="$HOME/go/bin:$PATH"
 | `cais db prune-sessions`                                                                                                           | Delete expired login sessions from SQLite                  |
 | `cais db seed`                                                                                                                     | Run `internal/db/seeds.go` (idempotent demo data)          |
 | `cais db seed --list`                                                                                                              | List seed helpers referenced in `seeds.go`                 |
+| `cais jobs work [--queues default,mail] [--concurrency 2]`                                                                         | Run background job worker + dispatcher                     |
+| `cais jobs status`                                                                                                                 | Show job counts by status                                  |
 | `cais version`                                                                                                                     | Print Cais framework version                               |
 | `cais doctor`                                                                                                                      | Check htmx, air, go.mod, CSS                               |
 
-Field types: `string`, `text`, `url`, `bool`, `int`, `date`. Suffix `?` for optional.
+Field types: `string`, `text`, `url`, `bool`, `int`, `date`, `references` (or `name:belongs_to`). Suffix `?` for optional.
+
+`category_id:references` adds a foreign key to `categories` and renders an admin select (referenced table should have `name` or `title`).
 
 ```bash
 cais new dashboard ../dashboard
@@ -221,6 +226,21 @@ r.Get("/dashboard", middleware.RequireAuth("/login")(dashboard.Index))
 session.SignIn(w, store, r, userID, session.CookieOptionsFromConfig(cfg))
 flash.Set(w, "notice", "Welcome!", cfg.CookieSecure())
 ```
+
+**Background jobs** — SQLite-backed queue (`pkg/cais/jobs`), no Redis:
+
+```go
+jobs.Enqueue(ctx, store, jobs.Options{Kind: "SendWelcome", Payload: payload})
+```
+
+```bash
+cais g job prune_sessions --cron "0 3 * * *"   # handler + registry + cmd/worker
+cais db migrate                                 # applies jobs + recurring_tasks tables
+cais jobs work --concurrency 2                  # worker + delayed-job dispatcher
+cais jobs status
+```
+
+Built-in handler: `PruneSessions`. On Lightsail, run `cais jobs work` as a second process alongside `bin/server` (same SQLite file).
 
 **Security** — `middleware.SecurityHeaders(cfg)` and `middleware.NewRateLimiter(n)` on login/contact POST routes. Set `TRUSTED_PROXIES` when behind a reverse proxy so rate limits use the real client IP.
 
