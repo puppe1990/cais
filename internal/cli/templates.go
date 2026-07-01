@@ -91,7 +91,7 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 		return nil, fmt.Errorf("renderer: %w", err)
 	}
 
-	s, err := store.NewSQLiteStore(cfg.DBPath)
+	s, err := store.NewSQLiteStore(cfg.DBPath, cfg.Env)
 	if err != nil {
 		return nil, fmt.Errorf("store: %w", err)
 	}
@@ -599,7 +599,7 @@ func setupTestRenderer(t *testing.T) *cais.Renderer {
 
 func setupTestStore(t *testing.T) store.Store {
 	t.Helper()
-	s, err := store.NewSQLiteStore(":memory:")
+	s, err := store.NewSQLiteStore(":memory:", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -630,6 +630,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	"github.com/puppe1990/cais/pkg/cais/sqllog"
 	"{{.ModulePath}}/internal/models"
 )
 
@@ -641,10 +642,10 @@ type Store interface {
 }
 
 type SQLiteStore struct {
-	db *sql.DB
+	db *sqllog.DB
 }
 
-func NewSQLiteStore(dsn string) (*SQLiteStore, error) {
+func NewSQLiteStore(dsn string, env string) (*SQLiteStore, error) {
 	if dsn != ":memory:" {
 		dir := filepath.Dir(dsn)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -662,7 +663,7 @@ func NewSQLiteStore(dsn string) (*SQLiteStore, error) {
 		return nil, err
 	}
 
-	return &SQLiteStore{db: db}, nil
+	return &SQLiteStore{db: sqllog.Wrap(db, sqllog.Config{Enabled: sqllog.EnabledForEnv(env)})}, nil
 }
 
 func (s *SQLiteStore) InsertContact(contact models.Contact) (int64, error) {
@@ -712,7 +713,7 @@ import (
 
 func newTestStore(t *testing.T) *SQLiteStore {
 	t.Helper()
-	s, err := NewSQLiteStore(":memory:")
+	s, err := NewSQLiteStore(":memory:", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1193,6 +1194,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/puppe1990/cais/pkg/cais/sqllog"
 	_ "modernc.org/sqlite"
 )
 
@@ -1201,10 +1203,10 @@ type Store interface {
 }
 
 type SQLiteStore struct {
-	db *sql.DB
+	db *sqllog.DB
 }
 
-func NewSQLiteStore(dsn string) (*SQLiteStore, error) {
+func NewSQLiteStore(dsn string, env string) (*SQLiteStore, error) {
 	if dsn != ":memory:" {
 		dir := filepath.Dir(dsn)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -1222,7 +1224,7 @@ func NewSQLiteStore(dsn string) (*SQLiteStore, error) {
 		return nil, err
 	}
 
-	return &SQLiteStore{db: db}, nil
+	return &SQLiteStore{db: sqllog.Wrap(db, sqllog.Config{Enabled: sqllog.EnabledForEnv(env)})}, nil
 }
 
 func (s *SQLiteStore) Close() error {
@@ -1236,7 +1238,7 @@ import "testing"
 
 func newTestStore(t *testing.T) *SQLiteStore {
 	t.Helper()
-	s, err := NewSQLiteStore(":memory:")
+	s, err := NewSQLiteStore(":memory:", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1347,7 +1349,7 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 		return nil, fmt.Errorf("renderer: %w", err)
 	}
 
-	s, err := store.NewSQLiteStore(cfg.DBPath)
+	s, err := store.NewSQLiteStore(cfg.DBPath, cfg.Env)
 	if err != nil {
 		return nil, fmt.Errorf("store: %w", err)
 	}

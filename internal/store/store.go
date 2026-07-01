@@ -9,6 +9,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/puppe1990/cais/internal/models"
+	"github.com/puppe1990/cais/pkg/cais/sqllog"
 )
 
 type Store interface {
@@ -18,10 +19,10 @@ type Store interface {
 }
 
 type SQLiteStore struct {
-	db *sql.DB
+	db *sqllog.DB
 }
 
-func NewSQLiteStore(dsn string) (*SQLiteStore, error) {
+func NewSQLiteStore(dsn string, env string) (*SQLiteStore, error) {
 	if dsn != ":memory:" {
 		dir := filepath.Dir(dsn)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -39,7 +40,7 @@ func NewSQLiteStore(dsn string) (*SQLiteStore, error) {
 		return nil, err
 	}
 
-	return &SQLiteStore{db: db}, nil
+	return &SQLiteStore{db: sqllog.Wrap(db, sqllog.Config{Enabled: sqllog.EnabledForEnv(env)})}, nil
 }
 
 func (s *SQLiteStore) InsertContact(contact models.Contact) (int64, error) {

@@ -41,7 +41,7 @@ func setupTestApp(t *testing.T) *App {
 		t.Fatal(err)
 	}
 
-	s, err := store.NewSQLiteStore(":memory:")
+	s, err := store.NewSQLiteStore(":memory:", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
