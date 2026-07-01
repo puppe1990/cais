@@ -45,6 +45,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	r := cais.NewRouter()
 	r.Use(middleware.CSRF)
 	r.Use(middleware.LoadSession(deps.Store.Sessions()))
+	r.Use(middleware.Flash)
 	buf := devlog.Prepare(cfg.Env)
 	if buf != nil {
 		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))

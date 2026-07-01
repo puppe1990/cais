@@ -33,7 +33,7 @@ func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.RenderOrError(w, h.renderer, "base", "dashboard", DashboardData{
-		Site:          meta.WithCSRF(h.site, r),
+		Site:          meta.ForRequest(h.site, r),
 		TotalContacts: count,
 		Env:           cais.Load().Env,
 	})

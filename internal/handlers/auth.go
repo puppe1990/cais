@@ -6,6 +6,7 @@ import (
 
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/flash"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/session"
@@ -33,7 +34,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
-	httpx.RenderOrError(w, h.renderer, "base", "login", loginData{Site: meta.WithCSRF(h.site, r)})
+	httpx.RenderOrError(w, h.renderer, "base", "login", loginData{Site: meta.ForRequest(h.site, r)})
 }
 
 func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +48,7 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 	user, err := h.store.FindUserByEmail(email)
 	if err != nil || !session.VerifyPassword(user.PasswordHash, password) {
 		httpx.RenderOrError(w, h.renderer, "base", "login", loginData{
-			Site:  meta.WithCSRF(h.site, r),
+			Site:  meta.ForRequest(h.site, r),
 			Error: "Email ou senha inválidos.",
 		})
 		return
@@ -57,6 +58,7 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	flash.Set(w, "notice", "Bem-vindo!")
 	httpx.SeeOther(w, r, "/dashboard")
 }
 
