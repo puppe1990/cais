@@ -51,6 +51,9 @@ import (
 
 func main() {
 	cfg := cais.Load()
+	if err := cfg.Validate(); err != nil {
+		log.Fatal(err)
+	}
 	preferredPort := cfg.Port
 	port, shifted, err := cais.ResolvePort(cfg.Port, cfg.Env)
 	if err != nil {
@@ -220,6 +223,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 
 	r := cais.NewRouter()
 	r.Use(middleware.CSRF)
+	r.Use(middleware.LoadSession(deps.Store.Sessions()))
 	buf := devlog.Prepare(cfg.Env)
 	if buf != nil {
 		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))
@@ -229,7 +233,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	r.Use(middleware.Recover)
 	r.Static("/static", deps.StaticDir)
 
-	registerRoutes(r, deps)
+	registerRoutes(r, deps, cfg)
 	devlog.Register(r, cfg.Env, buf)
 	r.Get("/health", healthHandler)
 
@@ -284,18 +288,23 @@ const tplRoutes = `package app
 
 import (
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/middleware"
 	"{{.ModulePath}}/internal/handlers"
 )
 
-func registerRoutes(r *cais.Router, deps Deps) {
+func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
 	home := handlers.NewHomeHandler(deps.Renderer, deps.Site)
 	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, deps.Site)
 	dashboard := handlers.NewDashboardHandler(deps.Renderer, deps.Store, deps.Site)
+	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions())
 
 	r.Get("/", home.ServeHTTP)
 	r.Get("/contact", contact.Get)
 	r.Post("/contact", contact.Post)
-	r.Get("/dashboard", dashboard.ServeHTTP)
+	r.Get("/login", auth.Login)
+	r.Post("/login", auth.LoginPost)
+	r.Post("/logout", auth.LogoutPost)
+	r.Get("/dashboard", middleware.RequireAuthFunc("/login", dashboard.ServeHTTP))
 }
 `
 
@@ -708,6 +717,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/puppe1990/cais/pkg/cais/devlog"
+	"github.com/puppe1990/cais/pkg/cais/session"
 	"github.com/puppe1990/cais/pkg/cais/sqllog"
 	"{{.ModulePath}}/internal/models"
 )
@@ -716,6 +726,8 @@ type Store interface {
 	InsertContact(contact models.Contact) (int64, error)
 	FindContact(id int64) (models.Contact, error)
 	CountContacts() (int64, error)
+	FindUserByEmail(email string) (models.User, error)
+	Sessions() session.Store
 	Close() error
 }
 
@@ -745,7 +757,27 @@ func NewSQLiteStore(dsn string, env string) (*SQLiteStore, error) {
 	if cfg.Enabled {
 		cfg.Writer = devlog.MirrorDefault(os.Stdout)
 	}
-	return &SQLiteStore{db: sqllog.Wrap(db, cfg)}, nil
+	wrapped := sqllog.Wrap(db, cfg)
+	if err := seedAuthData(wrapped.Raw(), env); err != nil {
+		_ = wrapped.Close()
+		return nil, err
+	}
+	return &SQLiteStore{db: wrapped}, nil
+}
+
+func seedAuthData(db *sql.DB, env string) error {
+	if env != "development" {
+		return nil
+	}
+	if err := session.EnsureSQLiteSchema(db); err != nil {
+		return err
+	}
+	hash, err := session.HashPassword("password")
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("INSERT OR IGNORE INTO users (email, password_hash) VALUES (?, ?)", "demo@example.com", hash)
+	return err
 }
 
 func (s *SQLiteStore) InsertContact(contact models.Contact) (int64, error) {
@@ -778,6 +810,22 @@ func (s *SQLiteStore) CountContacts() (int64, error) {
 		return 0, fmt.Errorf("count contacts: %w", err)
 	}
 	return count, nil
+}
+
+func (s *SQLiteStore) FindUserByEmail(email string) (models.User, error) {
+	var u models.User
+	err := s.db.QueryRow(
+		"SELECT id, email, password_hash, created_at FROM users WHERE email = ?",
+		email,
+	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.CreatedAt)
+	if err != nil {
+		return models.User{}, fmt.Errorf("find user: %w", err)
+	}
+	return u, nil
+}
+
+func (s *SQLiteStore) Sessions() session.Store {
+	return session.NewSQLiteStore(s.db.Raw())
 }
 
 func (s *SQLiteStore) DB() *sql.DB {
@@ -1265,7 +1313,7 @@ import (
 	"{{.ModulePath}}/internal/handlers"
 )
 
-func registerRoutes(r *cais.Router, deps Deps) {
+func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
 	home := handlers.NewHomeHandler(deps.Renderer, deps.Site)
 	r.Get("/", home.ServeHTTP)
 }
@@ -1424,6 +1472,9 @@ import (
 
 func main() {
 	cfg := cais.Load()
+	if err := cfg.Validate(); err != nil {
+		log.Fatal(err)
+	}
 	preferredPort := cfg.Port
 	port, shifted, err := cais.ResolvePort(cfg.Port, cfg.Env)
 	if err != nil {
@@ -1549,7 +1600,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))
 	}
 	devlog.Register(r, cfg.Env, buf)
-	registerRoutes(r, deps)
+	registerRoutes(r, deps, cfg)
 	r.Get("/health", healthHandler)
 
 	return &App{
@@ -1606,7 +1657,7 @@ import (
 	"{{.ModulePath}}/internal/handlers"
 )
 
-func registerRoutes(r *cais.Router, deps Deps) {
+func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
 }
 `
 

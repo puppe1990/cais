@@ -16,6 +16,9 @@ import (
 
 func main() {
 	cfg := cais.Load()
+	if err := cfg.Validate(); err != nil {
+		log.Fatal(err)
+	}
 	preferredPort := cfg.Port
 	port, shifted, err := cais.ResolvePort(cfg.Port, cfg.Env)
 	if err != nil {

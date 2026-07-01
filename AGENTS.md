@@ -45,21 +45,19 @@ r.Group(middleware.Protect, func(g *cais.Router) {
 
 ## Admin protection
 
-Set `ADMIN_TOKEN` in production. Use `middleware.Protect` on admin routes — no-op when env is empty.
+Set `ADMIN_TOKEN` in production (`cfg.Validate()` fails on boot if missing). Use `middleware.AdminAuth(cfg)` on admin route groups — Bearer header only, no query params. No-op in development when unset.
 
 ## Session auth
 
-For user-facing apps (not token-based admin):
+`cais new` includes login/logout and protects `/dashboard`. Add to existing apps with `cais g auth`.
 
 ```go
-store := session.NewMemoryStore()
-r.Use(middleware.LoadSession(store))
-r.Get("/dashboard", middleware.RequireAuth("/login")(dashboard.Index))
-session.SignIn(w, store, userID, session.CookieOptions{})
-session.SignOut(w, store, r)
+r.Use(middleware.LoadSession(deps.Store.Sessions()))
+r.Get("/dashboard", middleware.RequireAuthFunc("/login", dashboard.ServeHTTP))
+session.SignIn(w, sessions, userID, session.CookieOptions{})
 ```
 
-`RequireAuth` sends `HX-Redirect` for HTMX requests; others get 303 to `loginURL`.
+Dev seed user: `demo@example.com` / `password`. Sessions persist in SQLite via `session.NewSQLiteStore`.
 
 ## New page
 
@@ -113,6 +111,7 @@ cais g resource bookmark --fields title:string,url:url,notes:text? --public
 cais doctor                    # verify htmx, air, go.mod
 cais g handler settings
 cais g console              # scaffold cmd/console/main.go
+cais g auth                 # login/logout + protected dashboard
 ```
 
 Field types: `string`, `text`, `url`, `bool`, `int`, `date`. Suffix `?` for optional.

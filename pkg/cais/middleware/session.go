@@ -21,6 +21,14 @@ func LoadSession(store session.Store) func(http.Handler) http.Handler {
 	}
 }
 
+// RequireAuthFunc wraps a handler with RequireAuth.
+func RequireAuthFunc(loginURL string, h http.HandlerFunc) http.HandlerFunc {
+	auth := RequireAuth(loginURL)
+	return func(w http.ResponseWriter, r *http.Request) {
+		auth(http.HandlerFunc(h)).ServeHTTP(w, r)
+	}
+}
+
 // RequireAuth blocks unauthenticated requests. HTMX requests get HX-Redirect; others get 303 to loginURL.
 func RequireAuth(loginURL string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

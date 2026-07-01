@@ -1,12 +1,16 @@
 package cais
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 type Config struct {
-	Port   string
-	DBPath string
-	Env    string
-	AppURL string
+	Port       string
+	DBPath     string
+	Env        string
+	AppURL     string
+	AdminToken string
 }
 
 func Load() Config {
@@ -28,6 +32,17 @@ func Load() Config {
 	if v := os.Getenv("APP_URL"); v != "" {
 		cfg.AppURL = v
 	}
+	if v := os.Getenv("ADMIN_TOKEN"); v != "" {
+		cfg.AdminToken = v
+	}
 
 	return cfg
+}
+
+// Validate checks required settings for the active environment.
+func (c Config) Validate() error {
+	if c.Env == "production" && c.AdminToken == "" {
+		return fmt.Errorf("ADMIN_TOKEN is required when ENV=production")
+	}
+	return nil
 }

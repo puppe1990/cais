@@ -358,7 +358,7 @@ func patchRoutesForResource(dir string, data scaffoldData) error {
 		}
 	}
 	fmt.Fprintf(&insert, "\t%s := handlers.NewAdmin%sHandler(deps.Renderer, deps.Store)\n", adminVar, data.PluralPascal)
-	fmt.Fprintf(&insert, "\tr.Group(middleware.TokenAuth, func(g *cais.Router) {\n")
+	fmt.Fprintf(&insert, "\tr.Group(middleware.AdminAuth(cfg), func(g *cais.Router) {\n")
 	fmt.Fprintf(&insert, "\t\tg.Get(\"/admin/%s\", %s.Index)\n", data.Plural, adminVar)
 	fmt.Fprintf(&insert, "\t\tg.Get(\"/admin/%s/new\", %s.New)\n", data.Plural, adminVar)
 	fmt.Fprintf(&insert, "\t\tg.Post(\"/admin/%s\", %s.Create)\n", data.Plural, adminVar)

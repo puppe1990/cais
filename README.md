@@ -41,6 +41,7 @@ export PATH="$HOME/go/bin:$PATH"
 | `cais g page <name>`                                                            | Page template only                            |
 | `cais g migration <name>`                                                       | SQL migration file                            |
 | `cais g console`                                                                | Scaffold `cmd/console/main.go`                |
+| `cais g auth`                                                                   | Add login/logout + protect dashboard          |
 | `cais install`                                                                  | `npm install` + `go mod tidy`                 |
 | `cais css`                                                                      | Build Tailwind CSS                            |
 | `cais dev`                                                                      | Hot reload (`air` + tailwind watch)           |
@@ -135,10 +136,12 @@ renderer := testutil.NewRenderer(t)
 req := testutil.NewRequest(http.MethodGet, "/items/1", testutil.PathValue("id", "1"))
 ```
 
-**Admin auth** — opt-in via `ADMIN_TOKEN` env (no-op when unset):
+**Admin auth** — Bearer token via `ADMIN_TOKEN` (required when `ENV=production`):
 
 ```go
-r.Get("/admin/products", middleware.Protect(admin.Index))
+r.Group(middleware.AdminAuth(cfg), func(g *cais.Router) {
+  g.Get("/admin/products", admin.Index)
+})
 ```
 
 **CSRF** — double-submit cookie on all mutations (enabled by default):

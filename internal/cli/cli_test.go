@@ -112,8 +112,8 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 	if !strings.Contains(string(routesBody), "/admin/products") {
 		t.Error("routes.go missing /admin/products")
 	}
-	if !strings.Contains(string(routesBody), "r.Group(middleware.TokenAuth") {
-		t.Error("routes.go missing r.Group(middleware.TokenAuth")
+	if !strings.Contains(string(routesBody), "r.Group(middleware.AdminAuth(cfg)") {
+		t.Error("routes.go missing r.Group(middleware.AdminAuth(cfg)")
 	}
 	if strings.Contains(string(routesBody), "\n\n\n") {
 		t.Error("routes.go has triple newlines (formatting issue)")
