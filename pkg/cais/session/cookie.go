@@ -31,7 +31,7 @@ func SetCookie(w http.ResponseWriter, token string, opts CookieOptions) {
 	})
 }
 
-func ClearCookie(w http.ResponseWriter) {
+func ClearCookie(w http.ResponseWriter, opts CookieOptions) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     DefaultCookieName,
 		Value:    "",
@@ -40,6 +40,7 @@ func ClearCookie(w http.ResponseWriter) {
 		Expires:  time.Unix(0, 0),
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
+		Secure:   opts.Secure,
 	})
 }
 

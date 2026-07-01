@@ -42,6 +42,9 @@ func (rl *RateLimiter) allow(key string) bool {
 
 	now := time.Now()
 	cutoff := now.Add(-rl.window)
+	if len(rl.buckets) > 1000 {
+		rl.cleanupBuckets(cutoff)
+	}
 	times := rl.buckets[key]
 	filtered := times[:0]
 	for _, ts := range times {
@@ -63,4 +66,19 @@ func (rl *RateLimiter) setBucket(key string, times []time.Time) {
 		return
 	}
 	rl.buckets[key] = times
+}
+
+func (rl *RateLimiter) cleanupBuckets(cutoff time.Time) {
+	for key, times := range rl.buckets {
+		inWindow := false
+		for _, ts := range times {
+			if ts.After(cutoff) {
+				inWindow = true
+				break
+			}
+		}
+		if !inWindow {
+			delete(rl.buckets, key)
+		}
+	}
 }

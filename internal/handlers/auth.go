@@ -65,6 +65,6 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) LogoutPost(w http.ResponseWriter, r *http.Request) {
-	session.SignOut(w, h.sessions, r)
+	session.SignOut(w, h.sessions, r, session.CookieOptionsFromConfig(h.cfg))
 	httpx.SeeOther(w, r, "/login")
 }
