@@ -14,7 +14,7 @@ func TestCLI_Help_IncludesAppCommands(t *testing.T) {
 	if err := c.Run([]string{"help"}); err != nil {
 		t.Fatal(err)
 	}
-	for _, cmd := range []string{"cais install", "cais css", "cais dev", "cais build", "cais server", "cais db migrate", "cais db status", "cais db rollback", "cais db prune-sessions"} {
+	for _, cmd := range []string{"cais install", "cais css", "cais dev", "cais build", "cais server", "cais db migrate", "cais db status", "cais db rollback", "cais db prune-sessions", "cais routes"} {
 		if !strings.Contains(buf.String(), cmd) {
 			t.Errorf("help missing %q", cmd)
 		}
