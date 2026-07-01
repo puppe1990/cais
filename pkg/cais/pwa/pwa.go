@@ -3,7 +3,6 @@ package pwa
 import (
 	"bytes"
 	"embed"
-	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -48,8 +47,8 @@ func HeadHTML() string {
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Cais" />
-    <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
-    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />`
+    <link rel="apple-touch-icon" href="/static/icons/icon.png" />
+    <link rel="icon" href="/static/icons/icon.png" type="image/png" />`
 }
 
 // RegisterScript returns inline JS to register the service worker.
@@ -82,20 +81,19 @@ func WriteStatic(appDir string, cfg Config) error {
 		return err
 	}
 
+	if err := os.MkdirAll(filepath.Join(staticDir, "img"), 0o755); err != nil {
+		return err
+	}
+
 	for _, pair := range []struct{ src, dst string }{
 		{"assets/sw.js", "js/sw.js"},
 		{"assets/htmx.min.js", "js/htmx.min.js"},
 		{"assets/cais.js", "js/cais.js"},
 		{"assets/offline.html", "offline.html"},
-		{"assets/icon.svg", "icons/icon.svg"},
+		{"assets/icon.png", "icons/icon.png"},
+		{"assets/go-on-cais.jpg", "img/go-on-cais.jpg"},
 	} {
 		if err := copyAsset(pair.src, filepath.Join(staticDir, pair.dst)); err != nil {
-			return err
-		}
-	}
-
-	for _, size := range []int{192, 512} {
-		if err := writePNGIcon(filepath.Join(staticDir, "icons", fmt.Sprintf("icon-%d.png", size)), size); err != nil {
 			return err
 		}
 	}
@@ -124,20 +122,8 @@ func writeManifest(path string, cfg Config) error {
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/static/icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/static/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/static/icons/icon-512.png",
-      "sizes": "512x512",
+      "src": "/static/icons/icon.png",
+      "sizes": "500x500",
       "type": "image/png",
       "purpose": "any maskable"
     }
@@ -161,12 +147,6 @@ func copyAsset(src, dst string) error {
 		return err
 	}
 	return os.WriteFile(dst, data, 0o644)
-}
-
-func writePNGIcon(path string, size int) error {
-	img := image.NewRGBA(image.Rect(0, 0, size, size))
-	fill(img, color.RGBA{R: 79, G: 70, B: 229, A: 255})
-	return encodePNG(path, img)
 }
 
 func writeOGImage(path string) error {
