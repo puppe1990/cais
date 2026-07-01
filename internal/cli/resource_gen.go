@@ -62,6 +62,46 @@ func buildResourceModel(data scaffoldData) string {
 	return b.String()
 }
 
+const tplSelectOptionModel = `package models
+
+// SelectOption is a label/value pair for foreign-key select fields.
+type SelectOption struct {
+	ID    int64
+	Label string
+}
+`
+
+func buildReferenceStoreMethods(fields []FieldDef, existing string) string {
+	var b strings.Builder
+	for _, f := range uniqueReferenceFields(fields) {
+		if strings.Contains(existing, "List"+f.RefPascal+"Options()") {
+			continue
+		}
+		fmt.Fprintf(&b, `
+func (s *SQLiteStore) List%sOptions() ([]models.SelectOption, error) {
+	rows, err := s.db.Query(
+		"SELECT id, COALESCE(NULLIF(name, ''), NULLIF(title, ''), CAST(id AS TEXT)) FROM %s ORDER BY 2",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list %s options: %%w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var items []models.SelectOption
+	for rows.Next() {
+		var opt models.SelectOption
+		if err := rows.Scan(&opt.ID, &opt.Label); err != nil {
+			return nil, fmt.Errorf("scan %s option: %%w", err)
+		}
+		items = append(items, opt)
+	}
+	return items, rows.Err()
+}
+`, f.RefPascal, f.RefTable, f.RefTable, f.RefTable)
+	}
+	return b.String()
+}
+
 func buildResourceMigration(data scaffoldData) string {
 	var cols []string
 	for _, f := range data.Fields {
@@ -603,24 +643,53 @@ func buildAdminIndexMethod(data scaffoldData) string {
 }`, data.PluralPascal, data.PluralPascal, data.Plural, data.PluralPascal)
 }
 
+func adminFormRender(data scaffoldData, itemExpr, isNewExpr, errsExpr string) string {
+	if hasReferenceFields(data.Fields) {
+		return fmt.Sprintf("h.formData(r, %s, %s, %s)", itemExpr, isNewExpr, errsExpr)
+	}
+	if errsExpr == "nil" {
+		return fmt.Sprintf("Admin%sFormData{CSRFToken: csrf.TokenFromRequest(r), Item: %s, IsNew: %s}", data.PluralPascal, itemExpr, isNewExpr)
+	}
+	return fmt.Sprintf(`Admin%sFormData{
+			CSRFToken: csrf.TokenFromRequest(r),
+			Item:      %s,
+			IsNew:     %s,
+			Errors:    %s,
+		}`, data.PluralPascal, itemExpr, isNewExpr, errsExpr)
+}
+
 func buildResourceAdminHandler(data scaffoldData) string {
 	parse := buildAdminParseForm(data)
-	hasStrconv := needsStrconv(data.Fields) || data.Paginate
+	hasStrconv := needsStrconv(data.Fields) || data.Paginate || hasReferenceFields(data.Fields)
+	hasRefs := hasReferenceFields(data.Fields)
 	indexDataStruct := buildAdminIndexDataStruct(data)
 	showDataStruct := buildAdminShowDataStruct(data)
+	formDataStruct := buildAdminFormDataStruct(data)
 	indexMethod := buildAdminIndexMethod(data)
 	showMethod := buildAdminShowMethod(data)
+	formDataMethod := ""
+	if hasReferenceFields(data.Fields) {
+		formDataMethod = buildAdminFormDataMethod(data) + "\n\n"
+	}
 	paginationImport := ""
 	if data.Paginate {
 		paginationImport = "\t\"" + frameworkModule + "/pkg/cais/pagination\"\n"
 	}
+	formsImport := ""
+	if hasRefs {
+		formsImport = "\t\"" + frameworkModule + "/pkg/cais/forms\"\n"
+	}
+	newRender := adminFormRender(data, "models."+data.Pascal+"{}", "true", "nil")
+	editRender := adminFormRender(data, "item", "false", "nil")
+	createErrRender := adminFormRender(data, "item", "true", "errs")
+	updateErrRender := adminFormRender(data, "item", "false", "errs")
 	return fmt.Sprintf(`package handlers
 
 import (
 	"net/http"
 %s	"strings"
 	"%s/pkg/cais/validate"
-%s
+%s%s
 	"%s/pkg/cais"
 	"%s/pkg/cais/csrf"
 	"%s/pkg/cais/httpx"
@@ -638,12 +707,7 @@ type Admin%sHandler struct {
 
 %s
 
-type Admin%sFormData struct {
-	CSRFToken string
-	Item      models.%s
-	IsNew     bool
-	Errors    validate.FieldErrors
-}
+%s
 
 func NewAdmin%sHandler(renderer *cais.Renderer, s store.Store, cfg cais.Config) *Admin%sHandler {
 	return &Admin%sHandler{renderer: renderer, store: s, cfg: cfg}
@@ -653,8 +717,8 @@ func NewAdmin%sHandler(renderer *cais.Renderer, s store.Store, cfg cais.Config) 
 
 %s
 
-func (h *Admin%sHandler) New(w http.ResponseWriter, r *http.Request) {
-	httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", Admin%sFormData{CSRFToken: csrf.TokenFromRequest(r), IsNew: true}, h.cfg)
+%sfunc (h *Admin%sHandler) New(w http.ResponseWriter, r *http.Request) {
+	httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", %s, h.cfg)
 }
 
 func (h *Admin%sHandler) Edit(w http.ResponseWriter, r *http.Request, id int64) {
@@ -663,19 +727,14 @@ func (h *Admin%sHandler) Edit(w http.ResponseWriter, r *http.Request, id int64) 
 		http.NotFound(w, r)
 		return
 	}
-	httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", Admin%sFormData{CSRFToken: csrf.TokenFromRequest(r), Item: item}, h.cfg)
+	httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", %s, h.cfg)
 }
 
 func (h *Admin%sHandler) Create(w http.ResponseWriter, r *http.Request) {
 	item, errs := h.parseForm(r)
 	if errs.Any() {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", Admin%sFormData{
-			CSRFToken: csrf.TokenFromRequest(r),
-			Item:      item,
-			IsNew:     true,
-			Errors:    errs,
-		}, h.cfg)
+		httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", %s, h.cfg)
 		return
 	}
 	if _, err := h.store.Insert%s(item); err != nil {
@@ -690,11 +749,7 @@ func (h *Admin%sHandler) Update(w http.ResponseWriter, r *http.Request, id int64
 	item.ID = id
 	if errs.Any() {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", Admin%sFormData{
-			CSRFToken: csrf.TokenFromRequest(r),
-			Item:      item,
-			Errors:    errs,
-		}, h.cfg)
+		httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", %s, h.cfg)
 		return
 	}
 	if err := h.store.Update%s(item); err != nil {
@@ -719,18 +774,22 @@ func (h *Admin%sHandler) parseForm(r *http.Request) (models.%s, validate.FieldEr
 		boolImport(hasStrconv, "\t\"strconv\"\n"),
 		frameworkModule,
 		paginationImport,
+		formsImport,
 		frameworkModule, frameworkModule, frameworkModule, data.ModulePath, data.ModulePath,
 		data.PluralPascal,
 		indexDataStruct,
 		showDataStruct,
-		data.Pascal, data.Pascal,
+		formDataStruct,
 		data.PluralPascal, data.PluralPascal, data.PluralPascal,
 		indexMethod,
 		showMethod,
-		data.PluralPascal, data.Snake, data.Pascal,
-		data.PluralPascal, data.Pascal, data.Snake, data.Pascal,
-		data.PluralPascal, data.Snake, data.Pascal, data.Pascal, data.Plural,
-		data.PluralPascal, data.Snake, data.Pascal, data.Pascal, data.Plural,
+		formDataMethod,
+		data.PluralPascal, data.Snake, newRender,
+		data.PluralPascal, data.Pascal, data.Snake, editRender,
+		data.PluralPascal, data.Snake, createErrRender,
+		data.Pascal, data.Plural,
+		data.PluralPascal, data.Snake, updateErrRender,
+		data.Pascal, data.Plural,
 		data.PluralPascal, data.Pascal, data.Plural,
 		data.PluralPascal, data.Pascal, parse,
 	)
@@ -831,6 +890,9 @@ func firstBoolField(fields []FieldDef) *FieldDef {
 
 func firstIntField(fields []FieldDef) *FieldDef {
 	for i, f := range fields {
+		if f.Widget == "select" {
+			continue
+		}
 		if f.GoType == "int64" || f.GoType == "*int64" {
 			return &fields[i]
 		}
@@ -845,10 +907,72 @@ func sumArg(intField *FieldDef) string {
 	return ", Total: total"
 }
 
+func buildAdminFormDataStruct(data scaffoldData) string {
+	var extra []string
+	for _, f := range data.Fields {
+		if f.RefTable != "" {
+			extra = append(extra, fmt.Sprintf("\t%sOptions []forms.SelectOption", f.RefPascal))
+		}
+	}
+	extraBlock := ""
+	if len(extra) > 0 {
+		extraBlock = "\n" + strings.Join(extra, "\n")
+	}
+	return fmt.Sprintf(`type Admin%sFormData struct {
+	CSRFToken string
+	Item      models.%s
+	IsNew     bool
+	Errors    validate.FieldErrors%s
+}`, data.PluralPascal, data.Pascal, extraBlock)
+}
+
+func buildAdminFormDataLoader(data scaffoldData) string {
+	var lines []string
+	for _, f := range data.Fields {
+		if f.RefTable == "" {
+			continue
+		}
+		rawVar := "raw" + f.RefPascal + "Opts"
+		lines = append(lines, fmt.Sprintf(`	if %s, err := h.store.List%sOptions(); err == nil {
+		for _, opt := range %s {
+			data.%sOptions = append(data.%sOptions, forms.SelectOption{
+				Value: strconv.FormatInt(opt.ID, 10),
+				Label: opt.Label,
+			})
+		}
+	}`, rawVar, f.RefPascal, rawVar, f.RefPascal, f.RefPascal))
+	}
+	if len(lines) == 0 {
+		return ""
+	}
+	return strings.Join(lines, "\n") + "\n"
+}
+
+func buildAdminFormDataMethod(data scaffoldData) string {
+	loader := buildAdminFormDataLoader(data)
+	return fmt.Sprintf(`func (h *Admin%sHandler) formData(r *http.Request, item models.%s, isNew bool, errs validate.FieldErrors) Admin%sFormData {
+	data := Admin%sFormData{
+		CSRFToken: csrf.TokenFromRequest(r),
+		Item:      item,
+		IsNew:     isNew,
+		Errors:    errs,
+	}
+%s	return data
+}`, data.PluralPascal, data.Pascal, data.PluralPascal, data.PluralPascal, loader)
+}
+
 func buildAdminFormHTML(data scaffoldData) string {
 	var fields strings.Builder
 	for _, f := range data.Fields {
 		switch f.Widget {
+		case "select":
+			if f.GoType == "*int64" {
+				fmt.Fprintf(&fields, `    {{ fieldSelect (makeSelectFieldPtr "%s" "%s" .Item.%s .%sOptions %t .Errors) }}
+`, f.Name, f.RefPascal, f.Pascal, f.RefPascal, f.Required)
+			} else {
+				fmt.Fprintf(&fields, `    {{ fieldSelect (makeSelectField "%s" "%s" .Item.%s .%sOptions %t .Errors) }}
+`, f.Name, f.RefPascal, f.Pascal, f.RefPascal, f.Required)
+			}
 		case "textarea":
 			fmt.Fprintf(&fields, `    {{ fieldInput (makeField "%s" "%s" .Item.%s "textarea" %t .Errors) }}
 `, f.Name, f.Pascal, f.Pascal, f.Required)
