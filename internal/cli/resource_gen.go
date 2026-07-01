@@ -287,19 +287,19 @@ func buildAdminParseForm(data scaffoldData) string {
 	if raw%s == "" {
 		return models.%s{}, fmt.Errorf(%q)
 	}
-	%s, err := strconv.ParseInt(raw%s, 10, 64)
+	%sVal, err := strconv.ParseInt(raw%s, 10, 64)
 	if err != nil {
 		return models.%s{}, fmt.Errorf(%q)
 	}
-	item.%s = %s`, f.Pascal, f.Name, f.Pascal, data.Pascal, f.Name+" is required", f.Pascal, f.Pascal, data.Pascal, f.Name+" must be a number", f.Pascal, f.Pascal))
+	item.%s = %sVal`, f.Pascal, f.Name, f.Pascal, data.Pascal, f.Name+" is required", f.Name, f.Pascal, data.Pascal, f.Name+" must be a number", f.Pascal, f.Name))
 			} else {
 				after = append(after, fmt.Sprintf(`if raw%s := strings.TrimSpace(r.FormValue(%q)); raw%s != "" {
-		%s, err := strconv.ParseInt(raw%s, 10, 64)
+		%sVal, err := strconv.ParseInt(raw%s, 10, 64)
 		if err != nil {
 			return models.%s{}, fmt.Errorf(%q)
 		}
-		item.%s = %s
-	}`, f.Pascal, f.Name, f.Pascal, f.Pascal, f.Pascal, data.Pascal, f.Name+" must be a number", f.Pascal, f.Pascal))
+		item.%s = %sVal
+	}`, f.Pascal, f.Name, f.Pascal, f.Name, f.Pascal, data.Pascal, f.Name+" must be a number", f.Pascal, f.Name))
 			}
 		default:
 			literal = append(literal, fmt.Sprintf("%s: strings.TrimSpace(r.FormValue(%q))", f.Pascal, f.Name))
@@ -341,26 +341,28 @@ func needsValidate(fields []FieldDef) bool {
 	return false
 }
 
+func boolImport(cond bool, s string) string {
+	if cond {
+		return s
+	}
+	return ""
+}
+
 func buildResourceAdminHandler(data scaffoldData) string {
 	parse := buildAdminParseForm(data)
-	extraImports := ""
-	if needsValidate(data.Fields) {
-		extraImports += "\n\t\"" + frameworkModule + "/pkg/cais/validate\""
-	}
-	if needsStrconv(data.Fields) {
-		extraImports += "\n\t\"strconv\""
-	}
+	hasValidate := needsValidate(data.Fields)
+	hasStrconv := needsStrconv(data.Fields)
 	return fmt.Sprintf(`package handlers
 
 import (
 	"fmt"
 	"net/http"
-	"strings"
-
+%s	"strings"
+%s
 	"%s/internal/models"
 	"%s/internal/store"
 	"%s/pkg/cais"
-	"%s/pkg/cais/httpx"%s
+	"%s/pkg/cais/httpx"
 )
 
 type Admin%sHandler struct {
@@ -444,8 +446,10 @@ func (h *Admin%sHandler) parseForm(r *http.Request) (models.%s, error) {
 	}
 	%s
 }
-`,
-		data.ModulePath, data.ModulePath, frameworkModule, frameworkModule, extraImports,
+	`,
+		boolImport(hasStrconv, "\t\"strconv\"\n"),
+		boolImport(hasValidate, "\t\""+frameworkModule+"/pkg/cais/validate\"\n"),
+		data.ModulePath, data.ModulePath, frameworkModule, frameworkModule,
 		data.PluralPascal,
 		data.PluralPascal, data.Pascal,
 		data.Pascal, data.Pascal,

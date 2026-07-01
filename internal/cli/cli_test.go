@@ -228,6 +228,38 @@ func TestScaffoldResource_IntFields(t *testing.T) {
 	if strings.Contains(adminBody, `PrepMinutes: strings.TrimSpace`) {
 		t.Error("admin handler should not assign int field from string TrimSpace")
 	}
+	if strings.Contains(adminBody, "PrepMinutes, err := strconv.ParseInt") {
+		t.Error("admin handler should use lowercase variable name for strconv result, not PascalCase")
+	}
+	if !strings.Contains(adminBody, "prep_minutesVal") {
+		t.Error("admin handler should use camelCase variable name for strconv result")
+	}
+	if !strings.Contains(adminBody, `"strconv"`) {
+		t.Error("admin handler missing strconv import")
+	}
+	lines := strings.Split(adminBody, "\n")
+	var stdlibImports []string
+	inImport := false
+	for _, line := range lines {
+		if strings.HasPrefix(line, "import (") {
+			inImport = true
+			continue
+		}
+		if inImport {
+			if strings.HasPrefix(line, ")") {
+				break
+			}
+			trimmed := strings.TrimSpace(line)
+			if trimmed != "" && !strings.HasPrefix(trimmed, `"github.com`) && !strings.HasPrefix(trimmed, `"modernc.org`) {
+				stdlibImports = append(stdlibImports, trimmed)
+			}
+		}
+	}
+	for i := 0; i < len(stdlibImports)-1; i++ {
+		if stdlibImports[i] > stdlibImports[i+1] {
+			t.Errorf("stdlib imports not sorted: %q > %q", stdlibImports[i], stdlibImports[i+1])
+		}
+	}
 
 	store, err := os.ReadFile(filepath.Join(appDir, "internal/store/store.go"))
 	if err != nil {
