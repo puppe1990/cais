@@ -47,3 +47,10 @@ func (c *Cache[V]) Set(key string, val V) {
 	}
 	c.mu.Unlock()
 }
+
+// Delete removes key from the cache.
+func (c *Cache[V]) Delete(key string) {
+	c.mu.Lock()
+	delete(c.data, key)
+	c.mu.Unlock()
+}

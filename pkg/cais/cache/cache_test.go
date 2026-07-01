@@ -43,6 +43,20 @@ func TestExpiryAfterTTL(t *testing.T) {
 	}
 }
 
+func TestDelete(t *testing.T) {
+	c := New[string](time.Minute)
+
+	c.Set("temp", "value")
+	c.Delete("temp")
+
+	_, ok := c.Get("temp")
+	if ok {
+		t.Error("Get returned true after Delete")
+	}
+
+	c.Delete("missing") // should not panic
+}
+
 func TestConcurrentAccess(t *testing.T) {
 	c := New[int](time.Minute)
 

@@ -1,0 +1,14 @@
+-- up
+CREATE TABLE IF NOT EXISTS recurring_tasks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  queue TEXT NOT NULL DEFAULT 'default',
+  kind TEXT NOT NULL UNIQUE,
+  payload TEXT NOT NULL DEFAULT '{}',
+  cron TEXT NOT NULL,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  last_run DATETIME,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- down
+DROP TABLE IF EXISTS recurring_tasks;

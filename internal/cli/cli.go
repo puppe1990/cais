@@ -50,6 +50,8 @@ func (c *CLI) Run(args []string) error {
 		return c.cmdConsole()
 	case "db":
 		return c.cmdDB(args[1:])
+	case "jobs":
+		return c.cmdJobs(args[1:])
 	case "routes":
 		return c.cmdRoutes(args[1:])
 	case "destroy", "d":
@@ -78,6 +80,8 @@ Usage:
   cais g [--dry-run] model <name> [--fields title:string,url:url]
   cais g [--dry-run] page <name>         Generate page template only
   cais g [--dry-run] migration <name>    Generate SQL migration file
+  cais g [--dry-run] job <name> [--cron "0 3 * * *"]
+                             Generate job handler + cmd/worker + registry
   cais g [--dry-run] auth                Add login/logout and protect dashboard
   cais g [--dry-run] console             Scaffold cmd/console/main.go
   cais g [--dry-run] ci                  Add GitHub Actions CI, pre-commit, lint, Prettier
@@ -94,6 +98,9 @@ Usage:
   cais db rollback           Roll back last migration (runs -- down SQL when present)
   cais db prune-sessions     Delete expired login sessions from SQLite
   cais db seed               Run internal/db/seeds.go
+  cais jobs work [--queues default,mail] [--concurrency 2]
+                             Run background job worker + dispatcher
+  cais jobs status           Show job counts by status
   cais routes [--verbose]    List HTTP routes from internal/app/routes.go
   cais destroy [--dry-run] resource|handler|model <name>
                              Remove generated resource, handler, or model files
@@ -203,7 +210,7 @@ func (c *CLI) cmdGenerate(args []string) error {
 	setScaffoldOut(c.Out)
 
 	if len(args) < 1 {
-		return fmt.Errorf("usage: cais g [--dry-run] <handler|page|migration|resource|model|console|auth|ci> [name]")
+		return fmt.Errorf("usage: cais g [--dry-run] <handler|page|migration|resource|model|job|console|auth|ci> [name]")
 	}
 
 	kind := args[0]
@@ -227,6 +234,16 @@ func (c *CLI) cmdGenerate(args []string) error {
 		genErr = scaffoldAuth(cwd, scaffoldData{AppName: filepath.Base(cwd), ModulePath: moduleFromDir(cwd)}, dryRun)
 	case "ci":
 		genErr = scaffoldCI(cwd, scaffoldData{AppName: filepath.Base(cwd), ModulePath: moduleFromDir(cwd)}, dryRun)
+	case "job":
+		if len(args) < 2 {
+			return fmt.Errorf("usage: cais g job <name> [--cron \"0 3 * * *\"]")
+		}
+		opts, parseErr := parseJobOpts(args[2:])
+		if parseErr != nil {
+			return parseErr
+		}
+		opts.dryRun = dryRun
+		genErr = scaffoldJob(cwd, args[1], opts)
 	case "handler", "page", "migration", "resource", "model":
 		if len(args) < 2 {
 			return fmt.Errorf("usage: cais g %s <name>", kind)

@@ -168,6 +168,7 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 		"internal/handlers/admin_products.go",
 		"internal/handlers/admin_products_test.go",
 		"web/templates/pages/admin_products.html",
+		"web/templates/pages/admin_product_show.html",
 		"web/templates/pages/admin_product_form.html",
 	} {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
@@ -189,6 +190,9 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 	}
 	if !strings.Contains(string(routesBody), "/admin/products") {
 		t.Error("routes.go missing /admin/products")
+	}
+	if !strings.Contains(string(routesBody), `cais.IntParam("id", adminProducts.Show)`) {
+		t.Error("routes.go missing admin show route")
 	}
 	if !strings.Contains(string(routesBody), `middleware.RequireAuth("/login")`) {
 		t.Error("routes.go missing middleware.RequireAuth(\"/login\")")

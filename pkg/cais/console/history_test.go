@@ -32,3 +32,27 @@ func TestHistory_At(t *testing.T) {
 		t.Fatalf("At(99) should be empty")
 	}
 }
+
+func TestHistory_Last(t *testing.T) {
+	h := NewHistory()
+	if h.Last() != "" {
+		t.Fatalf("Last() on empty = %q, want empty", h.Last())
+	}
+
+	h.Add("first")
+	h.Add("second")
+	if h.Last() != "second" {
+		t.Fatalf("Last() = %q, want second", h.Last())
+	}
+}
+
+func TestHistory_Lines(t *testing.T) {
+	h := NewHistory()
+	h.Add("one")
+	h.Add("two")
+
+	lines := h.Lines()
+	if len(lines) != 2 || lines[0] != "one" || lines[1] != "two" {
+		t.Fatalf("Lines() = %#v", lines)
+	}
+}
