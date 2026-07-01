@@ -253,6 +253,123 @@ func TestApp_Dashboard_requiresAuth(t *testing.T) {
 	}
 }
 
+func csrfTokenFromResponse(t *testing.T, res *http.Response) string {
+	t.Helper()
+	for _, c := range res.Cookies() {
+		if c.Name == csrf.CookieName {
+			return c.Value
+		}
+	}
+	t.Fatal("missing csrf cookie")
+	return ""
+}
+
+func sessionCookieFromResponse(t *testing.T, res *http.Response) *http.Cookie {
+	t.Helper()
+	for _, c := range res.Cookies() {
+		if c.Name == "cais_session" {
+			return c
+		}
+	}
+	return nil
+}
+
+func TestApp_AuthFlow_loginDashboardLogout(t *testing.T) {
+	a := setupTestAppDev(t)
+	h := a.Handler()
+
+	getLogin := httptest.NewRequest(http.MethodGet, "/login", nil)
+	loginRR := httptest.NewRecorder()
+	h.ServeHTTP(loginRR, getLogin)
+	if loginRR.Code != http.StatusOK {
+		t.Fatalf("GET /login status = %d", loginRR.Code)
+	}
+	csrfToken := csrfTokenFromResponse(t, loginRR.Result())
+
+	form := url.Values{}
+	form.Set("email", "demo@example.com")
+	form.Set("password", "password")
+	form.Set("csrf_token", csrfToken)
+
+	postLogin := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+	postLogin.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	postLogin.AddCookie(&http.Cookie{Name: csrf.CookieName, Value: csrfToken})
+	loginPostRR := httptest.NewRecorder()
+	h.ServeHTTP(loginPostRR, postLogin)
+	if loginPostRR.Code != http.StatusSeeOther {
+		t.Fatalf("POST /login status = %d, want 303", loginPostRR.Code)
+	}
+	sessionCookie := sessionCookieFromResponse(t, loginPostRR.Result())
+	if sessionCookie == nil {
+		t.Fatal("missing session cookie after login")
+	}
+
+	dashReq := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
+	for _, c := range loginPostRR.Result().Cookies() {
+		dashReq.AddCookie(c)
+	}
+	dashRR := httptest.NewRecorder()
+	h.ServeHTTP(dashRR, dashReq)
+	if dashRR.Code != http.StatusOK {
+		t.Fatalf("GET /dashboard status = %d, want 200", dashRR.Code)
+	}
+	if !strings.Contains(dashRR.Body.String(), "Welcome!") {
+		t.Errorf("dashboard missing login flash, body: %s", dashRR.Body.String())
+	}
+
+	logoutForm := url.Values{}
+	logoutForm.Set("csrf_token", csrfToken)
+	logoutReq := httptest.NewRequest(http.MethodPost, "/logout", strings.NewReader(logoutForm.Encode()))
+	logoutReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	logoutReq.AddCookie(&http.Cookie{Name: csrf.CookieName, Value: csrfToken})
+	logoutReq.AddCookie(sessionCookie)
+	logoutRR := httptest.NewRecorder()
+	h.ServeHTTP(logoutRR, logoutReq)
+	if logoutRR.Code != http.StatusSeeOther {
+		t.Fatalf("POST /logout status = %d, want 303", logoutRR.Code)
+	}
+	if logoutRR.Header().Get("Location") != "/login" {
+		t.Errorf("logout Location = %q, want /login", logoutRR.Header().Get("Location"))
+	}
+
+	dashAfterLogout := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
+	dashAfterLogout.AddCookie(sessionCookie)
+	dashAfterRR := httptest.NewRecorder()
+	h.ServeHTTP(dashAfterRR, dashAfterLogout)
+	if dashAfterRR.Code != http.StatusSeeOther {
+		t.Errorf("GET /dashboard after logout status = %d, want 303", dashAfterRR.Code)
+	}
+}
+
+func TestApp_ContactPost_validationWithCSRF_returns422(t *testing.T) {
+	a := setupTestApp(t)
+	h := a.Handler()
+
+	getReq := httptest.NewRequest(http.MethodGet, "/contact", nil)
+	getRR := httptest.NewRecorder()
+	h.ServeHTTP(getRR, getReq)
+	csrfToken := csrfTokenFromResponse(t, getRR.Result())
+
+	form := url.Values{}
+	form.Set("name", "")
+	form.Set("email", "alice@example.com")
+	form.Set("csrf_token", csrfToken)
+
+	postReq := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader(form.Encode()))
+	postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	postReq.AddCookie(&http.Cookie{Name: csrf.CookieName, Value: csrfToken})
+	postReq.Header.Set("HX-Request", "true")
+	postRR := httptest.NewRecorder()
+	h.ServeHTTP(postRR, postReq)
+
+	if postRR.Code != http.StatusUnprocessableEntity {
+		t.Errorf("POST status = %d, want 422, body: %s", postRR.Code, postRR.Body.String())
+	}
+	if !strings.Contains(postRR.Body.String(), "Name is required") {
+		t.Errorf("body missing validation error: %s", postRR.Body.String())
+	}
+}
+
 func setupTestAppDev(t *testing.T) *App {
 	t.Helper()
 
