@@ -332,6 +332,7 @@ func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
 	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions(), cfg, deps.Catalog)
 
 	loginLimit := middleware.NewRateLimiter(10, cfg)
+	resetLimit := middleware.NewRateLimiter(10, cfg)
 	contactLimit := middleware.NewRateLimiter(20, cfg)
 
 	r.Get("/", home.ServeHTTP)
@@ -339,6 +340,10 @@ func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
 	r.Post("/contact", contactLimit.Middleware(http.HandlerFunc(contact.Post)).ServeHTTP)
 	r.Get("/login", auth.Login)
 	r.Post("/login", loginLimit.Middleware(http.HandlerFunc(auth.LoginPost)).ServeHTTP)
+	r.Get("/forgot-password", auth.ForgotPassword)
+	r.Post("/forgot-password", resetLimit.Middleware(http.HandlerFunc(auth.ForgotPasswordPost)).ServeHTTP)
+	r.Get("/reset-password", auth.ResetPassword)
+	r.Post("/reset-password", resetLimit.Middleware(http.HandlerFunc(auth.ResetPasswordPost)).ServeHTTP)
 	r.Post("/logout", auth.LogoutPost)
 	r.Get("/dashboard", middleware.RequireAuthFunc("/login", dashboard.ServeHTTP))
 }
@@ -800,6 +805,9 @@ type Store interface {
 	FindContact(id int64) (models.Contact, error)
 	CountContacts() (int64, error)
 	FindUserByEmail(email string) (models.User, error)
+	CreatePasswordResetToken(userID int64) (string, error)
+	FindPasswordResetUserID(token string) (int64, bool)
+	ResetPasswordWithToken(token, passwordHash string) error
 	Sessions() session.Store
 	Ping() error
 	Close() error
@@ -2211,8 +2219,20 @@ var enMessages = map[string]string{
 	"auth.welcome":             "Welcome!",
 	"auth.login_title":         "Sign in",
 	"auth.login_submit":        "Sign in",
-	"auth.password_label":      "Password",
-	"auth.logout":              "Sign out",
+	"auth.password_label":              "Password",
+	"auth.password_confirmation_label": "Confirm password",
+	"auth.logout":                      "Sign out",
+	"auth.forgot_password":             "Forgot password?",
+	"auth.forgot_password_title":       "Reset your password",
+	"auth.forgot_password_help":        "Enter your email and we'll send reset instructions.",
+	"auth.forgot_password_submit":      "Send reset link",
+	"auth.reset_password_title":        "Choose a new password",
+	"auth.reset_password_submit":       "Update password",
+	"auth.reset_email_sent":            "If that email is registered, you will receive reset instructions shortly.",
+	"auth.reset_success":               "Your password was updated. Sign in with your new password.",
+	"auth.reset_invalid_token":         "This reset link is invalid or has expired.",
+	"auth.password_too_short":          "Password must be at least 8 characters.",
+	"auth.password_mismatch":           "Passwords do not match.",
 
 	"contact.title":          "Contact",
 	"contact.heading":        "Get in touch",
@@ -2256,8 +2276,20 @@ var ptMessages = map[string]string{
 	"auth.welcome":             "Bem-vindo!",
 	"auth.login_title":         "Entrar",
 	"auth.login_submit":        "Entrar",
-	"auth.password_label":      "Senha",
-	"auth.logout":              "Sair",
+	"auth.password_label":              "Senha",
+	"auth.password_confirmation_label": "Confirmar senha",
+	"auth.logout":                      "Sair",
+	"auth.forgot_password":             "Esqueceu a senha?",
+	"auth.forgot_password_title":       "Redefinir senha",
+	"auth.forgot_password_help":        "Informe seu email para receber as instruções.",
+	"auth.forgot_password_submit":      "Enviar link",
+	"auth.reset_password_title":        "Escolha uma nova senha",
+	"auth.reset_password_submit":       "Atualizar senha",
+	"auth.reset_email_sent":            "Se esse email estiver cadastrado, você receberá as instruções em breve.",
+	"auth.reset_success":               "Senha atualizada. Entre com a nova senha.",
+	"auth.reset_invalid_token":         "Este link é inválido ou expirou.",
+	"auth.password_too_short":          "A senha deve ter pelo menos 8 caracteres.",
+	"auth.password_mismatch":           "As senhas não coincidem.",
 
 	"contact.title":          "Contato",
 	"contact.heading":        "Fale conosco",

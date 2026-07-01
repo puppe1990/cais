@@ -370,6 +370,93 @@ func TestApp_ContactPost_validationWithCSRF_returns422(t *testing.T) {
 	}
 }
 
+func TestApp_PasswordResetFlow(t *testing.T) {
+	root := projectRoot(t)
+	catalog := i18n.DefaultCatalog()
+	renderer, err := cais.NewRendererFromDir(filepath.Join(root, "web", "templates"), catalog)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s, err := store.NewSQLiteStore(":memory:", "development")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+
+	cfg := cais.Config{Port: ":0", DBPath: ":memory:", Env: "development", AppURL: "http://localhost:8080"}
+	a, err := New(cfg, Deps{
+		Renderer:  renderer,
+		Store:     s,
+		StaticDir: filepath.Join(root, "web", "static"),
+		Site:      meta.SiteFrom("Cais", ""),
+		Catalog:   catalog,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := a.Handler()
+
+	getForgot := httptest.NewRequest(http.MethodGet, "/forgot-password", nil)
+	forgotRR := httptest.NewRecorder()
+	h.ServeHTTP(forgotRR, getForgot)
+	csrfToken := csrfTokenFromResponse(t, forgotRR.Result())
+
+	forgotForm := url.Values{}
+	forgotForm.Set("email", "demo@example.com")
+	forgotForm.Set("csrf_token", csrfToken)
+	postForgot := httptest.NewRequest(http.MethodPost, "/forgot-password", strings.NewReader(forgotForm.Encode()))
+	postForgot.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	postForgot.AddCookie(&http.Cookie{Name: csrf.CookieName, Value: csrfToken})
+	forgotPostRR := httptest.NewRecorder()
+	h.ServeHTTP(forgotPostRR, postForgot)
+	if forgotPostRR.Code != http.StatusSeeOther {
+		t.Fatalf("POST /forgot-password status = %d, want 303", forgotPostRR.Code)
+	}
+
+	var resetToken string
+	if err := s.DB().QueryRow("SELECT token FROM password_reset_tokens LIMIT 1").Scan(&resetToken); err != nil {
+		t.Fatalf("reset token missing: %v", err)
+	}
+
+	getReset := httptest.NewRequest(http.MethodGet, "/reset-password?token="+resetToken, nil)
+	resetRR := httptest.NewRecorder()
+	h.ServeHTTP(resetRR, getReset)
+	csrfToken = csrfTokenFromResponse(t, resetRR.Result())
+
+	resetForm := url.Values{}
+	resetForm.Set("token", resetToken)
+	resetForm.Set("password", "new-password-123")
+	resetForm.Set("password_confirmation", "new-password-123")
+	resetForm.Set("csrf_token", csrfToken)
+	postReset := httptest.NewRequest(http.MethodPost, "/reset-password", strings.NewReader(resetForm.Encode()))
+	postReset.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	postReset.AddCookie(&http.Cookie{Name: csrf.CookieName, Value: csrfToken})
+	resetPostRR := httptest.NewRecorder()
+	h.ServeHTTP(resetPostRR, postReset)
+	if resetPostRR.Code != http.StatusSeeOther {
+		t.Fatalf("POST /reset-password status = %d, want 303, body: %s", resetPostRR.Code, resetPostRR.Body.String())
+	}
+
+	getLogin := httptest.NewRequest(http.MethodGet, "/login", nil)
+	loginRR := httptest.NewRecorder()
+	h.ServeHTTP(loginRR, getLogin)
+	csrfToken = csrfTokenFromResponse(t, loginRR.Result())
+
+	loginForm := url.Values{}
+	loginForm.Set("email", "demo@example.com")
+	loginForm.Set("password", "new-password-123")
+	loginForm.Set("csrf_token", csrfToken)
+	postLogin := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(loginForm.Encode()))
+	postLogin.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	postLogin.AddCookie(&http.Cookie{Name: csrf.CookieName, Value: csrfToken})
+	loginPostRR := httptest.NewRecorder()
+	h.ServeHTTP(loginPostRR, postLogin)
+	if loginPostRR.Code != http.StatusSeeOther {
+		t.Fatalf("POST /login with new password status = %d, want 303", loginPostRR.Code)
+	}
+}
+
 func setupTestAppDev(t *testing.T) *App {
 	t.Helper()
 

@@ -20,6 +20,9 @@ type Store interface {
 	FindContact(id int64) (models.Contact, error)
 	CountContacts() (int64, error)
 	FindUserByEmail(email string) (models.User, error)
+	CreatePasswordResetToken(userID int64) (string, error)
+	FindPasswordResetUserID(token string) (int64, bool)
+	ResetPasswordWithToken(token, passwordHash string) error
 	Sessions() session.Store
 	Ping() error
 	Close() error
