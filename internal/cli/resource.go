@@ -73,10 +73,16 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 	if err := patchRoutesForResource(dir, data); err != nil {
 		return err
 	}
+	var finalErr error
 	if data.Seed {
-		return patchMainForSeed(dir, data)
+		finalErr = patchMainForSeed(dir, data)
+	} else {
+		finalErr = patchLayoutNav(dir, data)
 	}
-	return patchLayoutNav(dir, data)
+	if finalErr != nil {
+		return finalErr
+	}
+	return gofmtGoFiles(dir)
 }
 
 func buildResourceAdminTest(data scaffoldData) string {
@@ -90,8 +96,8 @@ import (
 	"strings"
 	"testing"
 
-	"%s/internal/models"
 	"%s/pkg/cais/testutil"
+	"%s/internal/models"
 )
 
 func TestAdmin%sHandler_Index(t *testing.T) {
@@ -133,7 +139,7 @@ func TestAdmin%sHandler_Delete(t *testing.T) {
 	}
 }
 `,
-		data.ModulePath, frameworkModule,
+		frameworkModule, data.ModulePath,
 		data.PluralPascal, data.PluralPascal, data.Plural, data.Plural,
 		data.PluralPascal, data.PluralPascal, data.Plural, formBody,
 		data.PluralPascal, data.Pascal, data.Pascal, first.Pascal, urlFieldTestExtra(data),
@@ -179,10 +185,10 @@ func urlFieldTestExtra(data scaffoldData) string {
 func buildResourcePublicTest(data scaffoldData) string {
 	seedCall := ""
 	if data.Seed {
-		seedCall = `
-	if err := s.SeedDemo` + data.PluralPascal + `(); err != nil {
+		seedCall = `	if err := s.SeedDemo` + data.PluralPascal + `(); err != nil {
 		t.Fatal(err)
-	}`
+	}
+`
 	}
 	return fmt.Sprintf(`package handlers
 
@@ -195,7 +201,7 @@ import (
 
 func Test%sHandler_List(t *testing.T) {
 	s := setupTestStore(t)
-	%s
+%s
 	h := New%sHandler(setupTestRenderer(t), s)
 	rr := httptest.NewRecorder()
 	h.List(rr, httptest.NewRequest(http.MethodGet, "/%s", nil))
@@ -249,10 +255,9 @@ func patchStoreForResource(dir string, data scaffoldData) error {
 
 	if !strings.Contains(content, data.ModulePath+"/internal/models") {
 		content = strings.Replace(content,
-			`"database/sql"`,
-			`"database/sql"
-
-	"`+data.ModulePath+`/internal/models"`,
+			`_ "modernc.org/sqlite"`,
+			`"`+data.ModulePath+`/internal/models"
+	_ "modernc.org/sqlite"`,
 			1,
 		)
 	}

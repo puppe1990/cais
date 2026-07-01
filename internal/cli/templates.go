@@ -39,9 +39,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/puppe1990/cais/pkg/cais"
 	"{{.ModulePath}}/internal/app"
 	"{{.ModulePath}}/internal/store"
-	"github.com/puppe1990/cais/pkg/cais"
 	"{{.ModulePath}}/web"
 )
 
@@ -119,9 +119,9 @@ import (
 	"net/http"
 	"time"
 
-	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/middleware"
+	"{{.ModulePath}}/internal/store"
 )
 
 type Deps struct {
@@ -202,8 +202,8 @@ func (a *App) RunContext(ctx context.Context) error {
 const tplRoutes = `package app
 
 import (
-	"{{.ModulePath}}/internal/handlers"
 	"github.com/puppe1990/cais/pkg/cais"
+	"{{.ModulePath}}/internal/handlers"
 )
 
 func registerRoutes(r *cais.Router, deps Deps) {
@@ -1153,8 +1153,8 @@ const tplPageHomeMinimal = `{{"{{"}} define "title" {{"}}"}}Início{{"{{"}} end 
 const tplRoutesMinimal = `package app
 
 import (
-	"{{.ModulePath}}/internal/handlers"
 	"github.com/puppe1990/cais/pkg/cais"
+	"{{.ModulePath}}/internal/handlers"
 )
 
 func registerRoutes(r *cais.Router, deps Deps) {
@@ -1274,9 +1274,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/puppe1990/cais/pkg/cais"
 	"{{.ModulePath}}/internal/app"
 	"{{.ModulePath}}/internal/store"
-	"github.com/puppe1990/cais/pkg/cais"
 	"{{.ModulePath}}/web"
 )
 
@@ -1354,8 +1354,8 @@ import (
 	"net/http"
 	"time"
 
-	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
+	"{{.ModulePath}}/internal/store"
 )
 
 type Deps struct {
@@ -1432,8 +1432,8 @@ func (a *App) RunContext(ctx context.Context) error {
 const tplRoutesBlank = `package app
 
 import (
-	"{{.ModulePath}}/internal/handlers"
 	"github.com/puppe1990/cais/pkg/cais"
+	"{{.ModulePath}}/internal/handlers"
 )
 
 func registerRoutes(r *cais.Router, deps Deps) {
