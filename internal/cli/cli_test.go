@@ -246,6 +246,66 @@ func TestScaffoldResource_IntFields(t *testing.T) {
 	}
 }
 
+func TestScaffoldResource_PublicListRichFields(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "tasks")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "tasks",
+		ModulePath: "github.com/puppe1990/tasks",
+	}, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "task", resourceOpts{
+		Fields: "title:string,done:bool,priority:int?,notes:text?",
+		Public: true,
+		Seed:   true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	html, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages/tasks.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(html)
+	if !strings.Contains(body, `{{ define "title" }}Tasks{{ end }}`) {
+		t.Error("public page title should use plural resource name Tasks")
+	}
+	if !strings.Contains(body, `<h1 class="text-3xl font-bold text-slate-900 mb-6">Tasks</h1>`) {
+		t.Error("public page h1 should use plural resource name")
+	}
+	if !strings.Contains(body, ".Done") {
+		t.Error("public list should render done bool field")
+	}
+	if !strings.Contains(body, ".Priority") {
+		t.Error("public list should render priority int field")
+	}
+	if !strings.Contains(body, ".Notes") {
+		t.Error("public list should render notes text field")
+	}
+}
+
+func TestScaffoldResource_DishPluralization(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "menu")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "menu",
+		ModulePath: "github.com/puppe1990/menu",
+	}, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "dish", resourceOpts{Public: true}); err != nil {
+		t.Fatal(err)
+	}
+	admin, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/admin_dishes.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(admin), "ListAllDishes()") {
+		t.Error("dish resource should pluralize to dishes, not dishs")
+	}
+}
+
 func TestScaffoldResource_BoolFields(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "tasks")
