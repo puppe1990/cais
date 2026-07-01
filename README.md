@@ -20,6 +20,29 @@ make ci                   # test + lint + format-check locally
 
 Pre-commit hooks run: trailing whitespace, Prettier, `go fmt`, `go test`, and `golangci-lint`.
 
+## CLI (Rails-style)
+
+Install the `cais` command:
+
+```bash
+make install-cli
+export PATH="$HOME/go/bin:$PATH"
+```
+
+| Command                   | Description                   |
+| ------------------------- | ----------------------------- |
+| `cais new <app> [dir]`    | Scaffold a new app            |
+| `cais g handler <name>`   | Handler + test + page + route |
+| `cais g page <name>`      | Page template only            |
+| `cais g migration <name>` | SQL migration file            |
+| `cais server`             | Run `go run ./cmd/server`     |
+| `cais test`               | Run `go test ./...`           |
+
+```bash
+cais new dashboard ../dashboard
+cd ../dashboard && npm install && make dev
+```
+
 ## Quick start
 
 Requires Go on your PATH and `~/go/bin` for hot reload (`air`):
