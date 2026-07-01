@@ -10,10 +10,11 @@ import (
 )
 
 type doctorCheck struct {
-	Name    string
-	OK      bool
-	Detail  string
-	FixHint string
+	Name     string
+	OK       bool
+	Optional bool
+	Detail   string
+	FixHint  string
 }
 
 func runDoctor(w io.Writer, dir string) error {
@@ -29,8 +30,12 @@ func runDoctor(w io.Writer, dir string) error {
 	for _, c := range checks {
 		mark := "ok"
 		if !c.OK {
-			mark = "FAIL"
-			failed++
+			if c.Optional {
+				mark = "warn"
+			} else {
+				mark = "FAIL"
+				failed++
+			}
 		}
 		_, _ = fmt.Fprintf(w, "[%s] %s", mark, c.Name)
 		if c.Detail != "" {
@@ -108,9 +113,10 @@ func checkAir() doctorCheck {
 		return doctorCheck{Name: "air", OK: true, Detail: candidate}
 	}
 	return doctorCheck{
-		Name:    "air",
-		Detail:  "not found",
-		FixHint: "go install github.com/air-verse/air@latest",
+		Name:     "air",
+		Optional: true,
+		Detail:   "not found",
+		FixHint:  "go install github.com/air-verse/air@latest",
 	}
 }
 

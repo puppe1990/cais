@@ -112,8 +112,8 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 	if !strings.Contains(string(routesBody), "/admin/products") {
 		t.Error("routes.go missing /admin/products")
 	}
-	if !strings.Contains(string(routesBody), "r.Group(middleware.Protect") {
-		t.Error("routes.go missing r.Group(middleware.Protect")
+	if !strings.Contains(string(routesBody), "r.Group(middleware.TokenAuth") {
+		t.Error("routes.go missing r.Group(middleware.TokenAuth")
 	}
 }
 
@@ -147,6 +147,38 @@ func TestScaffoldResource_PublicWithFields(t *testing.T) {
 	routes, _ := os.ReadFile(filepath.Join(appDir, "internal/app/routes.go"))
 	if !strings.Contains(string(routes), `r.Get("/bookmarks"`) {
 		t.Error("routes missing public list")
+	}
+}
+
+func TestScaffoldResource_PluralPascal_ListAllMethod(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "recipes")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "recipes",
+		ModulePath: "github.com/puppe1990/recipes",
+	}, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "recipe", resourceOpts{Public: true}); err != nil {
+		t.Fatal(err)
+	}
+	admin, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/admin_recipes.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(admin), "ListAllRecipes()") {
+		t.Errorf("admin handler wrong ListAll method: %s", admin)
+	}
+
+	publicHTML, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages/recipes.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(publicHTML), `{{"{{"}}`) {
+		t.Error("recipes.html has escaped template syntax")
+	}
+	if !strings.Contains(string(publicHTML), `{{ range .Items }}`) {
+		t.Error("recipes.html missing valid template range")
 	}
 }
 
