@@ -37,6 +37,13 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 		migrationPath: buildResourceMigration(data),
 	}
 
+	if hasReferenceFields(data.Fields) {
+		selectPath := filepath.Join(dir, "internal/models/select_option.go")
+		if _, err := os.Stat(selectPath); os.IsNotExist(err) {
+			files["internal/models/select_option.go"] = tplSelectOptionModel
+		}
+	}
+
 	if data.Public {
 		files[filepath.Join("internal/handlers", data.Plural+".go")] = buildResourcePublicHandler(data)
 		files[filepath.Join("internal/handlers", data.Plural+"_test.go")] = buildResourcePublicTest(data)
@@ -278,10 +285,17 @@ func patchStoreForResource(dir string, data scaffoldData, dryRun bool, force boo
 	if data.Seed {
 		ifaceInsert += fmt.Sprintf("\n\tSeedDemo%s() error", data.PluralPascal)
 	}
+	for _, f := range uniqueReferenceFields(data.Fields) {
+		method := fmt.Sprintf("\n\tList%sOptions() ([]models.SelectOption, error)", f.RefPascal)
+		if !strings.Contains(content, "List"+f.RefPascal+"Options()") {
+			ifaceInsert += method
+		}
+	}
 	content = strings.Replace(content, ifaceMarker, ifaceInsert+ifaceMarker, 1)
 
 	implMarker := "\nfunc (s *SQLiteStore) Close()"
 	implInsert := buildResourceStoreMethods(data)
+	implInsert += buildReferenceStoreMethods(data.Fields, content)
 	if data.Paginate {
 		implInsert += buildResourcePaginatedStoreMethod(data)
 	}

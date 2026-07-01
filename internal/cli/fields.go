@@ -6,13 +6,15 @@ import (
 )
 
 type FieldDef struct {
-	Name     string
-	Pascal   string
-	SQLType  string
-	GoType   string
-	HTMLType string
-	Widget   string
-	Required bool
+	Name      string
+	Pascal    string
+	SQLType   string
+	GoType    string
+	HTMLType  string
+	Widget    string
+	Required  bool
+	RefTable  string
+	RefPascal string
 }
 
 func parseFields(spec string) ([]FieldDef, error) {
@@ -26,6 +28,7 @@ func parseFields(spec string) ([]FieldDef, error) {
 		if part == "" {
 			continue
 		}
+		part = normalizeFieldPart(part)
 		name, typ, req, err := parseFieldPart(part)
 		if err != nil {
 			return nil, err
@@ -86,9 +89,81 @@ func fieldFromNameType(name, typ string, required bool) (FieldDef, error) {
 		return intField(name, pascal, required), nil
 	case "date":
 		return stringField(name, pascal, required, "date", "input"), nil
+	case "references":
+		return refFieldFromName(toSnake(name), required)
 	default:
-		return FieldDef{}, fmt.Errorf("unknown field type %q (use string, text, url, bool, int, date)", typ)
+		return FieldDef{}, fmt.Errorf("unknown field type %q (use string, text, url, bool, int, date, references)", typ)
 	}
+}
+
+func normalizeFieldPart(part string) string {
+	idx := strings.Index(part, ":")
+	if idx < 0 {
+		return part
+	}
+	name := strings.TrimSpace(part[:idx])
+	typ := strings.TrimSpace(part[idx+1:])
+	switch typ {
+	case "belongs_to":
+		return toSnake(name) + "_id:references"
+	case "belongs_to?":
+		return toSnake(name) + "_id:references?"
+	default:
+		return part
+	}
+}
+
+func refFieldFromName(name string, required bool) (FieldDef, error) {
+	if !strings.HasSuffix(name, "_id") {
+		return FieldDef{}, fmt.Errorf("references field %q must end with _id (or use name:belongs_to)", name)
+	}
+	singular := strings.TrimSuffix(name, "_id")
+	if singular == "" {
+		return FieldDef{}, fmt.Errorf("invalid references field %q", name)
+	}
+	refTable := toPlural(singular)
+	refPascal := toPascal(singular)
+	pascal := toPascal(name)
+
+	f := FieldDef{
+		Name:      name,
+		Pascal:    pascal,
+		HTMLType:  "select",
+		Widget:    "select",
+		Required:  required,
+		RefTable:  refTable,
+		RefPascal: refPascal,
+	}
+	if required {
+		f.SQLType = fmt.Sprintf("INTEGER NOT NULL REFERENCES %s(id)", refTable)
+		f.GoType = "int64"
+	} else {
+		f.SQLType = fmt.Sprintf("INTEGER REFERENCES %s(id)", refTable)
+		f.GoType = "*int64"
+	}
+	return f, nil
+}
+
+func hasReferenceFields(fields []FieldDef) bool {
+	for _, f := range fields {
+		if f.RefTable != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func uniqueReferenceFields(fields []FieldDef) []FieldDef {
+	seen := make(map[string]bool)
+	var out []FieldDef
+	for _, f := range fields {
+		if f.RefTable == "" || seen[f.RefTable] {
+			continue
+		}
+		seen[f.RefTable] = true
+		out = append(out, f)
+	}
+	return out
 }
 
 func stringField(name, pascal string, required bool, htmlType, widget string) FieldDef {

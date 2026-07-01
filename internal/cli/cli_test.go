@@ -579,6 +579,62 @@ func TestScaffoldResource_IntFields(t *testing.T) {
 	}
 }
 
+func TestScaffoldResource_ReferencesField(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "library")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "library",
+		ModulePath: "github.com/puppe1990/library",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "bookmark", resourceOpts{
+		Fields: "title:string,category_id:references",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	migrations, err := filepath.Glob(filepath.Join(appDir, "internal/store/migrations", "*_bookmarks.sql"))
+	if err != nil || len(migrations) == 0 {
+		t.Fatal("missing bookmarks migration")
+	}
+	migration, err := os.ReadFile(migrations[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(migration), "REFERENCES categories(id)") {
+		t.Errorf("migration missing FK:\n%s", migration)
+	}
+
+	store, err := os.ReadFile(filepath.Join(appDir, "internal/store/store.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(store), "ListCategoryOptions()") {
+		t.Error("store missing ListCategoryOptions for references field")
+	}
+
+	admin, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/admin_bookmarks.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	adminBody := string(admin)
+	if !strings.Contains(adminBody, "CategoryOptions []forms.SelectOption") {
+		t.Error("admin form data missing CategoryOptions")
+	}
+	if !strings.Contains(adminBody, "ListCategoryOptions()") {
+		t.Error("admin handler missing ListCategoryOptions call")
+	}
+
+	form, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages/admin_bookmark_form.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(form), "fieldSelect") {
+		t.Error("admin form template missing fieldSelect for references field")
+	}
+}
+
 func TestScaffoldResource_BlankAppLogoLinksToPublicList(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "library")
