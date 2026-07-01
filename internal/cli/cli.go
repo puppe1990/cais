@@ -137,7 +137,10 @@ func (c *CLI) cmdGenerate(args []string) error {
 	}
 
 	if !isCaisApp(cwd) {
-		return fmt.Errorf("not a Cais app (missing go.mod with github.com/puppe1990/cais)")
+		if isCaisFramework(cwd) {
+			return fmt.Errorf("you are inside the Cais framework directory — cd into your app first")
+		}
+		return fmt.Errorf("not a Cais app (missing go.mod with github.com/puppe1990/cais as a dependency)")
 	}
 
 	switch kind {
@@ -207,5 +210,17 @@ func isCaisApp(dir string) bool {
 	if err != nil {
 		return false
 	}
-	return strings.Contains(string(data), "github.com/puppe1990/cais")
+	content := string(data)
+	if strings.HasPrefix(content, "module github.com/puppe1990/cais") {
+		return false
+	}
+	return strings.Contains(content, "github.com/puppe1990/cais")
+}
+
+func isCaisFramework(dir string) bool {
+	data, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+	if err != nil {
+		return false
+	}
+	return strings.HasPrefix(string(data), "module github.com/puppe1990/cais")
 }
