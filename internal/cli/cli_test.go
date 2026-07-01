@@ -727,6 +727,28 @@ func TestScaffold_IncludesQualityTooling(t *testing.T) {
 	}
 }
 
+func TestScaffoldNewApp_ContactHandlerValidatesName(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "contactapp")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "contactapp",
+		ModulePath: "github.com/puppe1990/contactapp",
+	}, false, false); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/contact.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(body)
+	if !strings.Contains(s, `errs.Add("name"`) {
+		t.Errorf("contact handler missing name validation: %s", s)
+	}
+	if !strings.Contains(s, `contact.name_required`) {
+		t.Errorf("contact handler missing name_required i18n key: %s", s)
+	}
+}
+
 func TestCLI_NewBlankCreatesEmptyApp(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "empty")

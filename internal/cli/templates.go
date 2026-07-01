@@ -516,12 +516,19 @@ func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.FormValue("name"))
 	email := strings.TrimSpace(r.FormValue("email"))
 
+	var errs validate.FieldErrors
+	if name == "" {
+		errs.Add("name", h.catalog.T("contact.name_required"))
+	}
 	if err := validate.Email(email); err != nil {
 		msg := h.catalog.T("contact.email_required")
 		if email != "" {
 			msg = h.catalog.T("contact.email_invalid")
 		}
-		h.renderContactResponse(w, r, http.StatusUnprocessableEntity, "contact_errors", contactErrorData{Message: msg})
+		errs.Add("email", msg)
+	}
+	if errs.Any() {
+		h.renderContactResponse(w, r, http.StatusUnprocessableEntity, "contact_errors", contactErrorData{Message: errs.First()})
 		return
 	}
 
@@ -567,6 +574,23 @@ func TestContactHandler_Get_ReturnsForm(t *testing.T) {
 	}
 	if !strings.Contains(rr.Body.String(), "contact-form") {
 		t.Errorf("body missing form, got: %s", rr.Body.String())
+	}
+}
+
+func TestContactHandler_Post_MissingName_Returns422(t *testing.T) {
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog())
+
+	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=&email=alice@example.com"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	rr := httptest.NewRecorder()
+	h.Post(rr, req)
+
+	if rr.Code != http.StatusUnprocessableEntity {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusUnprocessableEntity)
+	}
+	if !strings.Contains(rr.Body.String(), "Name is required") {
+		t.Errorf("body missing name validation: %s", rr.Body.String())
 	}
 }
 
