@@ -7,24 +7,31 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
+	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 )
 
-func NewRendererFromDir(dir string) (*Renderer, error) {
-	return NewRenderer(os.DirFS(dir))
+func NewRendererFromDir(dir string, catalog *i18n.Catalog) (*Renderer, error) {
+	return NewRenderer(os.DirFS(dir), catalog)
 }
 
 type Renderer struct {
 	pages    map[string]*template.Template
 	partials map[string]*template.Template
+	catalog  *i18n.Catalog
 }
 
-func NewRenderer(fsys fs.FS) (*Renderer, error) {
+func NewRenderer(fsys fs.FS, catalog *i18n.Catalog) (*Renderer, error) {
+	if catalog == nil {
+		catalog = i18n.DefaultCatalog()
+	}
 	r := &Renderer{
 		pages:    make(map[string]*template.Template),
 		partials: make(map[string]*template.Template),
+		catalog:  catalog,
 	}
 
 	layouts, err := fs.Glob(fsys, "layouts/*.html")
@@ -34,7 +41,7 @@ func NewRenderer(fsys fs.FS) (*Renderer, error) {
 	if len(layouts) == 0 {
 		return nil, fmt.Errorf("no layout templates found")
 	}
-	layoutPath := layouts[0]
+	sort.Strings(layouts)
 
 	partials, err := fs.Glob(fsys, "partials/*.html")
 	if err != nil {
@@ -47,7 +54,7 @@ func NewRenderer(fsys fs.FS) (*Renderer, error) {
 	}
 	for _, pagePath := range pages {
 		name := strings.TrimSuffix(filepath.Base(pagePath), ".html")
-		tmpl, err := parsePage(fsys, layoutPath, pagePath, partials)
+		tmpl, err := parsePage(fsys, layouts, pagePath, partials, catalog)
 		if err != nil {
 			return nil, fmt.Errorf("parse page %s: %w", name, err)
 		}
@@ -56,7 +63,7 @@ func NewRenderer(fsys fs.FS) (*Renderer, error) {
 
 	for _, partialPath := range partials {
 		name := strings.TrimSuffix(filepath.Base(partialPath), ".html")
-		tmpl, err := template.ParseFS(fsys, partialPath)
+		tmpl, err := template.New("").Funcs(i18n.MergeFuncs(catalog, meta.TemplateFuncs())).ParseFS(fsys, partialPath)
 		if err != nil {
 			return nil, fmt.Errorf("parse partial %s: %w", name, err)
 		}
@@ -74,9 +81,10 @@ func (r *Renderer) Render(w io.Writer, layout, page string, data any) error {
 	return tmpl.ExecuteTemplate(w, layout, data)
 }
 
-func parsePage(fsys fs.FS, layoutPath, pagePath string, partialPaths []string) (*template.Template, error) {
-	files := append([]string{layoutPath, pagePath}, partialPaths...)
-	return template.New("").Funcs(meta.TemplateFuncs()).ParseFS(fsys, files...)
+func parsePage(fsys fs.FS, layoutPaths []string, pagePath string, partialPaths []string, catalog *i18n.Catalog) (*template.Template, error) {
+	files := append(append([]string{}, layoutPaths...), pagePath)
+	files = append(files, partialPaths...)
+	return template.New("").Funcs(i18n.MergeFuncs(catalog, meta.TemplateFuncs())).ParseFS(fsys, files...)
 }
 
 func (r *Renderer) RenderPartial(w io.Writer, partial string, data any) error {

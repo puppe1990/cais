@@ -9,6 +9,8 @@ import (
 
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/i18n"
+	"github.com/puppe1990/cais/pkg/cais/meta"
 )
 
 func TestApp_LogsRoute_AvailableInDevelopment(t *testing.T) {
@@ -43,7 +45,8 @@ func TestApp_LogsRoute_HiddenInProduction(t *testing.T) {
 func setupTestAppWithEnv(t *testing.T, env string) *App {
 	t.Helper()
 	root := projectRoot(t)
-	renderer, err := cais.NewRendererFromDir(filepath.Join(root, "web", "templates"))
+	catalog := i18n.DefaultCatalog()
+	renderer, err := cais.NewRendererFromDir(filepath.Join(root, "web", "templates"), catalog)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,6 +61,8 @@ func setupTestAppWithEnv(t *testing.T, env string) *App {
 		Renderer:  renderer,
 		Store:     s,
 		StaticDir: filepath.Join(root, "web", "static"),
+		Site:      meta.SiteFrom("Cais", ""),
+		Catalog:   catalog,
 	})
 	if err != nil {
 		t.Fatal(err)

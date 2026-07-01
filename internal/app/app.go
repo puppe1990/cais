@@ -11,6 +11,7 @@ import (
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/devlog"
+	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/middleware"
 )
@@ -20,6 +21,7 @@ type Deps struct {
 	Store     store.Store
 	StaticDir string
 	Site      meta.Site
+	Catalog   *i18n.Catalog
 }
 
 type App struct {

@@ -11,6 +11,7 @@ type Config struct {
 	Env        string
 	AppURL     string
 	AdminToken string
+	Locale     string
 }
 
 func Load() Config {
@@ -18,6 +19,7 @@ func Load() Config {
 		Port:   ":8080",
 		DBPath: "./data/app.db",
 		Env:    "development",
+		Locale: "en",
 	}
 
 	if v := os.Getenv("PORT"); v != "" {
@@ -34,6 +36,9 @@ func Load() Config {
 	}
 	if v := os.Getenv("ADMIN_TOKEN"); v != "" {
 		cfg.AdminToken = v
+	}
+	if v := os.Getenv("LOCALE"); v != "" {
+		cfg.Locale = v
 	}
 
 	return cfg

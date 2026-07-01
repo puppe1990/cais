@@ -29,7 +29,7 @@ func TestDefaultPreview(t *testing.T) {
 	if p.Image != DefaultImagePath {
 		t.Errorf("Image = %q", p.Image)
 	}
-	if p.Locale != "pt_BR" {
+	if p.Locale != "en_US" {
 		t.Errorf("Locale = %q", p.Locale)
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 )
 
@@ -37,7 +38,7 @@ func projectRoot(t *testing.T) string {
 func setupTestRenderer(t *testing.T) *cais.Renderer {
 	t.Helper()
 	templatesDir := filepath.Join(projectRoot(t), "web", "templates")
-	r, err := cais.NewRendererFromDir(templatesDir)
+	r, err := cais.NewRendererFromDir(templatesDir, i18n.DefaultCatalog())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +46,7 @@ func setupTestRenderer(t *testing.T) *cais.Renderer {
 }
 
 func TestHomeHandler_Returns200(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), i18n.DefaultCatalog())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -57,19 +58,22 @@ func TestHomeHandler_Returns200(t *testing.T) {
 }
 
 func TestHomeHandler_ContainsWelcome(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), i18n.DefaultCatalog())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
-	if !strings.Contains(rr.Body.String(), "Bem-vindo, Desenvolvedor!") {
+	if !strings.Contains(rr.Body.String(), "on Cais!") {
 		t.Errorf("body missing welcome message, got: %s", rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "go-on-cais.jpg") {
+		t.Errorf("body missing welcome hero image, got: %s", rr.Body.String())
 	}
 }
 
 func TestHomeHandler_ContentType(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), i18n.DefaultCatalog())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -82,7 +86,7 @@ func TestHomeHandler_ContentType(t *testing.T) {
 }
 
 func TestHomeHandler_IncludesPWA(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), i18n.DefaultCatalog())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()

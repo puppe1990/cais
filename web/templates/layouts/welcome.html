@@ -1,0 +1,45 @@
+{{ define "title" }}{{ if .AppName }}{{ .AppName }}{{ else }}Cais{{ end }}{{ end }}
+{{ define "description" }}{{ if .AppName }}{{ .AppName }}{{ else }}Cais{{ end }} — powered by Cais{{ end }}
+{{ define "welcome" }}
+<!doctype html>
+<html lang="{{ htmlLang }}">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    {{ if .CSRFToken }}<meta name="csrf-token" content="{{ .CSRFToken }}" />{{ end }}
+    <title>{{ template "title" . }}</title>
+    <meta name="description" content="{{ template "description" . }}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="{{ if .AppName }}{{ .AppName }}{{ else }}Cais{{ end }}" />
+    <meta property="og:title" content="{{ template "title" . }}" />
+    <meta property="og:description" content="{{ template "description" . }}" />
+    <meta property="og:image" content="{{ absURL .AppURL "/static/og.png" }}" />
+    <meta property="og:locale" content="{{ ogLocale }}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{ template "title" . }}" />
+    <meta name="twitter:description" content="{{ template "description" . }}" />
+    <meta name="twitter:image" content="{{ absURL .AppURL "/static/og.png" }}" />
+    <link rel="stylesheet" href="/static/css/styles.css" />
+    <link rel="manifest" href="/static/manifest.webmanifest" />
+    <meta name="theme-color" content="#D4A574" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="{{ if .AppName }}{{ .AppName }}{{ else }}Cais{{ end }}" />
+    <link rel="apple-touch-icon" href="/static/icons/icon.png" />
+    <link rel="icon" href="/static/icons/icon.png" type="image/png" />
+    <script src="/static/js/htmx.min.js" defer></script>
+    <script src="/static/js/cais.js" defer></script>
+  </head>
+  <body
+    class="min-h-screen bg-gradient-to-b from-[#FAF3E8] via-[#EDCFA8] to-[#C9895E] text-stone-800 antialiased"
+  >
+    <main>{{ template "content" . }}</main>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/static/js/sw.js");
+      }
+    </script>
+  </body>
+</html>
+{{ end }}

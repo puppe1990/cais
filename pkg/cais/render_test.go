@@ -16,7 +16,7 @@ func testRenderer(t *testing.T) *Renderer {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, err := NewRenderer(tmplFS)
+	r, err := NewRenderer(tmplFS, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestRender_EmbedFS(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = NewRenderer(tmplFS)
+	_, err = NewRenderer(tmplFS, nil)
 	if err != nil {
 		t.Fatalf("NewRenderer with embed.FS failed: %v", err)
 	}

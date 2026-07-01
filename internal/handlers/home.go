@@ -5,6 +5,7 @@ import (
 
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
+	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 )
 
@@ -16,15 +17,15 @@ type PageData struct {
 type HomeHandler struct {
 	renderer *cais.Renderer
 	site     meta.Site
+	catalog  *i18n.Catalog
 }
 
-func NewHomeHandler(renderer *cais.Renderer, site meta.Site) *HomeHandler {
-	return &HomeHandler{renderer: renderer, site: site}
+func NewHomeHandler(renderer *cais.Renderer, site meta.Site, catalog *i18n.Catalog) *HomeHandler {
+	return &HomeHandler{renderer: renderer, site: site, catalog: catalog}
 }
 
 func (h *HomeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	httpx.RenderOrError(w, h.renderer, "base", "home", PageData{
+	httpx.RenderOrError(w, h.renderer, "welcome", "home", PageData{
 		Site: meta.ForRequest(h.site, r),
-		Nome: "Desenvolvedor",
 	})
 }

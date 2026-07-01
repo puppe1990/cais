@@ -1,6 +1,6 @@
-{{ define "title" }}Contato{{ end }} {{ define "content" }}
+{{ define "title" }}{{ t "contact.title" }}{{ end }} {{ define "content" }}
 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto mt-10">
-  <h2 class="text-2xl font-bold text-slate-800 mb-4">Fale conosco</h2>
+  <h2 class="text-2xl font-bold text-slate-800 mb-4">{{ t "contact.heading" }}</h2>
   <form
     id="contact-form"
     hx-post="/contact"
@@ -10,7 +10,7 @@
     hx-disabled-elt="button[type='submit']"
   >
     <div id="form-errors"></div>
-    <label class="block mb-2 text-sm font-medium text-slate-700" for="name">Nome</label>
+    <label class="block mb-2 text-sm font-medium text-slate-700" for="name">{{ t "contact.name_label" }}</label>
     <input
       class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
       type="text"
@@ -18,7 +18,7 @@
       name="name"
       required
     />
-    <label class="block mb-2 text-sm font-medium text-slate-700" for="email">Email</label>
+    <label class="block mb-2 text-sm font-medium text-slate-700" for="email">{{ t "contact.email_label" }}</label>
     <input
       class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
       type="email"
@@ -30,8 +30,8 @@
       class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition"
       type="submit"
     >
-      <span class="htmx-indicator" id="contact-spinner">Enviando…</span>
-      <span class="htmx-request-hide">Enviar</span>
+      <span class="htmx-indicator" id="contact-spinner">{{ t "contact.sending" }}</span>
+      <span class="htmx-request-hide">{{ t "contact.submit" }}</span>
     </button>
   </form>
 </div>

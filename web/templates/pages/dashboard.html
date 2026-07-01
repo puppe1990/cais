@@ -1,11 +1,11 @@
-{{ define "title" }}Dashboard{{ end }} {{ define "content" }}
+{{ define "title" }}{{ t "dashboard.title" }}{{ end }} {{ define "content" }}
 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto mt-10">
-  <h2 class="text-2xl font-bold text-slate-800 mb-2">Dashboard</h2>
-  <p class="text-slate-600 mb-2">Contatos: <strong>{{ .TotalContacts }}</strong></p>
-  <p class="text-sm text-slate-500">Ambiente: {{ .Env }}</p>
+  <h2 class="text-2xl font-bold text-slate-800 mb-2">{{ t "dashboard.title" }}</h2>
+  <p class="text-slate-600 mb-2">{{ t "dashboard.contacts" }} <strong>{{ .TotalContacts }}</strong></p>
+  <p class="text-sm text-slate-500">{{ t "dashboard.env" }} {{ .Env }}</p>
   <form method="post" action="/logout" class="mt-6">
     <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}" />
-    <button class="text-sm text-red-600 hover:underline" type="submit">Sair</button>
+    <button class="text-sm text-red-600 hover:underline" type="submit">{{ t "auth.logout" }}</button>
   </form>
 </div>
 {{ end }}

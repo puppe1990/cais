@@ -107,3 +107,23 @@ func TestConfig_CookieSecure_falseInDevelopment(t *testing.T) {
 		t.Error("CookieSecure() = true, want false in development")
 	}
 }
+
+func TestConfig_DefaultLocale(t *testing.T) {
+	t.Setenv("LOCALE", "")
+
+	cfg := Load()
+
+	if cfg.Locale != "en" {
+		t.Errorf("Locale = %q, want en", cfg.Locale)
+	}
+}
+
+func TestConfig_LoadLocaleFromEnv(t *testing.T) {
+	t.Setenv("LOCALE", "pt_BR")
+
+	cfg := Load()
+
+	if cfg.Locale != "pt_BR" {
+		t.Errorf("Locale = %q, want pt_BR", cfg.Locale)
+	}
+}

@@ -33,7 +33,7 @@ func ProjectRoot(t *testing.T) string {
 func NewRenderer(t *testing.T) *cais.Renderer {
 	t.Helper()
 	root := ProjectRoot(t)
-	r, err := cais.NewRendererFromDir(filepath.Join(root, "web", "templates"))
+	r, err := cais.NewRendererFromDir(filepath.Join(root, "web", "templates"), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
