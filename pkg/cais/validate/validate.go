@@ -2,6 +2,7 @@ package validate
 
 import (
 	"fmt"
+	"net/mail"
 	"net/url"
 	"strings"
 )
@@ -12,6 +13,18 @@ func Required(values map[string]string, keys ...string) error {
 		if strings.TrimSpace(values[key]) == "" {
 			return fmt.Errorf("%s is required", key)
 		}
+	}
+	return nil
+}
+
+// Email checks that s is a valid email address.
+func Email(s string) error {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return fmt.Errorf("email is required")
+	}
+	if _, err := mail.ParseAddress(s); err != nil {
+		return fmt.Errorf("email is invalid")
 	}
 	return nil
 }

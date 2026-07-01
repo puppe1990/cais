@@ -55,3 +55,17 @@ jobs:
 
       - name: Check formatting
         run: npx prettier --check .
+
+  smoke:
+    name: Smoke scaffold
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Smoke cais new
+        run: bash scripts/smoke-scaffold.sh

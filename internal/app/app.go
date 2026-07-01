@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/puppe1990/cais/internal/handlers"
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/devlog"
@@ -20,10 +19,12 @@ type Deps struct {
 	Renderer  *cais.Renderer
 	Store     store.Store
 	StaticDir string
+	Site      meta.Site
 }
 
 type App struct {
 	config cais.Config
+	store  store.Store
 	router *cais.Router
 	server *http.Server
 }
@@ -36,40 +37,54 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 		return nil, fmt.Errorf("store is required")
 	}
 
+	site := deps.Site
+	if site.AppName == "" {
+		site = meta.SiteFrom("Cais", cfg.AppURL)
+	}
+
 	r := cais.NewRouter()
 	r.Use(middleware.CSRF)
+	r.Use(middleware.LoadSession(deps.Store.Sessions()))
 	buf := devlog.Prepare(cfg.Env)
 	if buf != nil {
 		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))
 	} else {
 		r.Use(middleware.Logger)
 	}
-	devlog.Register(r, cfg.Env, buf)
 	r.Use(middleware.Recover)
 	r.Static("/static", deps.StaticDir)
 
-	site := meta.SiteFrom("Cais", cfg.AppURL)
-	home := handlers.NewHomeHandler(deps.Renderer, site)
-	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, site)
-
-	r.Get("/", home.ServeHTTP)
-	r.Get("/contact", contact.Get)
-	r.Post("/contact", contact.Post)
-	r.Get("/health", healthHandler)
+	registerRoutes(r, deps, cfg, site)
+	devlog.Register(r, cfg.Env, buf)
+	r.Get("/health", healthHandler(deps.Store))
 
 	return &App{
 		config: cfg,
+		store:  deps.Store,
 		router: r,
 		server: &http.Server{
-			Addr:    cfg.Port,
-			Handler: r,
+			Addr:              cfg.Port,
+			Handler:           r,
+			ReadHeaderTimeout: 10 * time.Second,
+			ReadTimeout:       30 * time.Second,
+			WriteTimeout:      30 * time.Second,
+			IdleTimeout:       60 * time.Second,
 		},
 	}, nil
 }
 
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+func healthHandler(s store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		status := "ok"
+		code := http.StatusOK
+		if err := s.Ping(); err != nil {
+			status = "degraded"
+			code = http.StatusServiceUnavailable
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(code)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": status})
+	}
 }
 
 func (a *App) Handler() http.Handler {
@@ -91,11 +106,14 @@ func (a *App) RunContext(ctx context.Context) error {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := a.server.Shutdown(shutdownCtx); err != nil {
+			_ = a.store.Close()
 			return err
 		}
 		<-errCh
+		_ = a.store.Close()
 		return nil
 	case err := <-errCh:
+		_ = a.store.Close()
 		if err == http.ErrServerClosed {
 			return nil
 		}

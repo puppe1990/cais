@@ -177,7 +177,9 @@ make docker
 docker run -p 8080:8080 -v cais-data:/app/data cais:latest
 ```
 
-Health check: `GET /health` → `{"status":"ok"}`
+Health check: `GET /health` → `{"status":"ok"}` (503 `degraded` if DB is down)
+
+Copy `.env.example` to `.env` for local configuration.
 
 ## AI-assisted development
 

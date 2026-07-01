@@ -14,6 +14,7 @@ import (
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/csrf"
+	"github.com/puppe1990/cais/pkg/cais/meta"
 )
 
 func projectRoot(t *testing.T) string {
@@ -54,6 +55,7 @@ func setupTestApp(t *testing.T) *App {
 		Renderer:  renderer,
 		Store:     s,
 		StaticDir: filepath.Join(root, "web", "static"),
+		Site:      meta.SiteFrom("Cais", ""),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -73,6 +75,22 @@ func TestApp_HealthCheck(t *testing.T) {
 	}
 	if !strings.Contains(rr.Body.String(), `"status":"ok"`) {
 		t.Errorf("body = %q, want status ok", rr.Body.String())
+	}
+}
+
+func TestApp_HealthCheck_degradedWhenDBClosed(t *testing.T) {
+	a := setupTestApp(t)
+	_ = a.store.Close()
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rr := httptest.NewRecorder()
+	a.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want 503", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), `"status":"degraded"`) {
+		t.Errorf("body = %q, want degraded", rr.Body.String())
 	}
 }
 
