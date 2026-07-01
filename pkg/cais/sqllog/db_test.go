@@ -3,6 +3,7 @@ package sqllog
 import (
 	"bytes"
 	"database/sql"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -38,6 +39,9 @@ func TestDB_LogsQueryInDevelopment(t *testing.T) {
 	}
 	if !strings.Contains(out, "User Create (") {
 		t.Errorf("missing duration wrapper, got:\n%s", out)
+	}
+	if !regexp.MustCompile(` at \d{4}-\d{2}-\d{2} `).MatchString(out) {
+		t.Errorf("missing timestamp, got:\n%s", out)
 	}
 }
 
