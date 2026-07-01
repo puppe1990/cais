@@ -50,6 +50,8 @@ func (c *CLI) Run(args []string) error {
 		return c.cmdConsole()
 	case "db":
 		return c.cmdDB(args[1:])
+	case "routes":
+		return c.cmdRoutes()
 	case "help", "-h", "--help":
 		c.printHelp()
 		return nil
@@ -62,14 +64,17 @@ func (c *CLI) printHelp() {
 	_, _ = fmt.Fprintln(c.Out, `Cais — Rails-style CLI for Go full-stack apps
 
 Usage:
-  cais new <app> [dir]       Create a new app (default dir: ./<app>)
+  cais new <app> [dir] [--minimal] [--blank] [--module <path>]
+                               Create a new app (default dir: ./<app>)
   cais new <app> [dir] --minimal   Slim app (home only)
   cais new <app> [dir] --blank     Empty app (no starter content)
-  cais g handler <name>      Generate handler + test + page template
-  cais g resource <name> [--fields title:string,url:url] [--public] [--no-seed]
-  cais g page <name>         Generate page template only
-  cais g migration <name>    Generate SQL migration file
-  cais g auth                Add login/logout and protect dashboard
+  cais new <app> [dir] --module <path>   Override go module path
+  cais g [--dry-run] handler <name>      Generate handler + test + page template
+  cais g [--dry-run] resource <name> [--fields title:string,url:url] [--public] [--paginate] [--no-seed] [--admin-auth session|bearer]
+  cais g [--dry-run] model <name> [--fields title:string,url:url]
+  cais g [--dry-run] page <name>         Generate page template only
+  cais g [--dry-run] migration <name>    Generate SQL migration file
+  cais g [--dry-run] auth                Add login/logout and protect dashboard
   cais g ci                  Add GitHub Actions CI, pre-commit, lint, Prettier
   cais install               npm install + go mod tidy
   cais css                   Build Tailwind CSS
@@ -81,8 +86,10 @@ Usage:
   cais console               Interactive app console (Go REPL + SQL)
   cais db migrate            Run pending SQL migrations
   cais db status             List migration status
-  cais db rollback           Remove last applied migration record (no SQL down)
+  cais db rollback           Roll back last migration (runs -- down SQL when present)
   cais db prune-sessions     Delete expired login sessions from SQLite
+  cais db seed               Run internal/db/seeds.go
+  cais routes                List HTTP routes from internal/app/routes.go
   cais help                  Show this help
 
 Aliases:
@@ -101,34 +108,15 @@ Examples:
 
 func (c *CLI) cmdNew(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: cais new <app> [dir] [--minimal|--blank]")
+		return fmt.Errorf("usage: cais new <app> [dir] [--minimal] [--blank] [--module <path>]")
 	}
 
-	minimal := false
-	blank := false
-	positional := make([]string, 0, len(args))
-	for _, arg := range args {
-		if arg == "--minimal" {
-			minimal = true
-			continue
-		}
-		if arg == "--blank" {
-			blank = true
-			continue
-		}
-		positional = append(positional, arg)
-	}
-	if len(positional) == 0 {
-		return fmt.Errorf("usage: cais new <app> [dir] [--minimal|--blank]")
+	opts, err := parseNewArgs(args)
+	if err != nil {
+		return err
 	}
 
-	name := positional[0]
-	dir := name
-	if len(positional) > 1 {
-		dir = positional[1]
-	}
-
-	abs, err := filepath.Abs(dir)
+	abs, err := filepath.Abs(opts.dir)
 	if err != nil {
 		return err
 	}
@@ -137,21 +125,74 @@ func (c *CLI) cmdNew(args []string) error {
 		return fmt.Errorf("directory %s already exists", abs)
 	}
 
-	module := moduleName(name)
+	module := opts.module
+	if module == "" {
+		module = moduleName(opts.name)
+	}
 	if err := scaffoldNewApp(abs, scaffoldData{
-		AppName:    name,
+		AppName:    opts.name,
 		ModulePath: module,
-	}, minimal, blank); err != nil {
+	}, opts.minimal, opts.blank); err != nil {
 		return err
 	}
 
-	_, _ = fmt.Fprintf(c.Out, "Created app %q at %s\n\nNext steps:\n  cd %s\n  cais install\n  cais dev\n", name, abs, abs)
+	_, _ = fmt.Fprintf(c.Out, "Created app %q at %s\n\nNext steps:\n  cd %s\n  cais install\n  cais dev\n", opts.name, abs, abs)
 	return nil
 }
 
+type newOpts struct {
+	name    string
+	dir     string
+	minimal bool
+	blank   bool
+	module  string
+}
+
+func parseNewArgs(args []string) (newOpts, error) {
+	opts := newOpts{}
+	positional := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--minimal":
+			opts.minimal = true
+		case "--blank":
+			opts.blank = true
+		case "--module":
+			if i+1 >= len(args) {
+				return opts, fmt.Errorf("--module requires a value")
+			}
+			i++
+			opts.module = args[i]
+		default:
+			positional = append(positional, args[i])
+		}
+	}
+	if len(positional) == 0 {
+		return opts, fmt.Errorf("usage: cais new <app> [dir] [--minimal] [--blank] [--module <path>]")
+	}
+
+	opts.name = positional[0]
+	opts.dir = opts.name
+	if len(positional) > 1 {
+		opts.dir = positional[1]
+	}
+	return opts, nil
+}
+
 func (c *CLI) cmdGenerate(args []string) error {
+	dryRun := false
+	filtered := make([]string, 0, len(args))
+	for _, arg := range args {
+		if arg == "--dry-run" {
+			dryRun = true
+			continue
+		}
+		filtered = append(filtered, arg)
+	}
+	args = filtered
+
 	if len(args) < 1 {
-		return fmt.Errorf("usage: cais g <handler|page|migration|resource|console|auth|ci> [name]")
+		return fmt.Errorf("usage: cais g [--dry-run] <handler|page|migration|resource|model|console|auth|ci> [name]")
 	}
 
 	kind := args[0]
@@ -171,30 +212,38 @@ func (c *CLI) cmdGenerate(args []string) error {
 	case "console":
 		return scaffoldConsole(cwd)
 	case "auth":
-		return scaffoldAuth(cwd, scaffoldData{AppName: filepath.Base(cwd), ModulePath: moduleFromDir(cwd)})
+		return scaffoldAuth(cwd, scaffoldData{AppName: filepath.Base(cwd), ModulePath: moduleFromDir(cwd)}, dryRun)
 	case "ci":
 		return scaffoldCI(cwd, scaffoldData{AppName: filepath.Base(cwd), ModulePath: moduleFromDir(cwd)})
-	case "handler", "page", "migration", "resource":
+	case "handler", "page", "migration", "resource", "model":
 		if len(args) < 2 {
 			return fmt.Errorf("usage: cais g %s <name>", kind)
 		}
 		name := args[1]
 		switch kind {
 		case "handler":
-			return scaffoldHandler(cwd, name)
+			return scaffoldHandler(cwd, name, dryRun)
 		case "page":
-			return scaffoldPage(cwd, name)
+			return scaffoldPage(cwd, name, dryRun)
 		case "migration":
-			return scaffoldMigration(cwd, name)
+			return scaffoldMigration(cwd, name, dryRun)
 		case "resource":
 			opts, err := parseResourceOpts(args[2:])
 			if err != nil {
 				return err
 			}
+			opts.dryRun = dryRun
 			return scaffoldResource(cwd, name, opts)
+		case "model":
+			opts, err := parseModelOpts(args[2:])
+			if err != nil {
+				return err
+			}
+			opts.dryRun = dryRun
+			return scaffoldModel(cwd, name, opts)
 		}
 	default:
-		return fmt.Errorf("unknown generator %q (use handler, page, migration, resource, auth, ci, or console)", kind)
+		return fmt.Errorf("unknown generator %q (use handler, page, migration, resource, model, auth, ci, or console)", kind)
 	}
 	return nil
 }

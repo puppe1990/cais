@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/puppe1990/cais/internal/store"
+	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/i18n"
 )
 
@@ -21,7 +22,7 @@ func setupTestStore(t *testing.T) store.Store {
 }
 
 func TestContactHandler_Get_ReturnsForm(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), i18n.DefaultCatalog())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), i18n.DefaultCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/contact", nil)
 	rr := httptest.NewRecorder()
@@ -47,7 +48,7 @@ func TestContactHandler_Get_ReturnsForm(t *testing.T) {
 }
 
 func TestContactHandler_Post_MalformedEmail_Returns422(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), i18n.DefaultCatalog())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), i18n.DefaultCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email=not-an-email"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -64,7 +65,7 @@ func TestContactHandler_Post_MalformedEmail_Returns422(t *testing.T) {
 }
 
 func TestContactHandler_Post_MissingName_Returns422(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), i18n.DefaultCatalog())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), i18n.DefaultCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=&email=alice@example.com"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -81,7 +82,7 @@ func TestContactHandler_Post_MissingName_Returns422(t *testing.T) {
 }
 
 func TestContactHandler_Post_InvalidEmail_Returns422(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), i18n.DefaultCatalog())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), i18n.DefaultCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -95,7 +96,7 @@ func TestContactHandler_Post_InvalidEmail_Returns422(t *testing.T) {
 }
 
 func TestContactHandler_Post_InvalidEmail_ReturnsPartial(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), i18n.DefaultCatalog())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), i18n.DefaultCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -114,7 +115,7 @@ func TestContactHandler_Post_InvalidEmail_ReturnsPartial(t *testing.T) {
 
 func TestContactHandler_Post_Valid_SavesAndReturnsSuccess(t *testing.T) {
 	s := setupTestStore(t)
-	h := NewContactHandler(setupTestRenderer(t), s, testSite(), i18n.DefaultCatalog())
+	h := NewContactHandler(setupTestRenderer(t), s, testSite(), i18n.DefaultCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email=alice@example.com"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")

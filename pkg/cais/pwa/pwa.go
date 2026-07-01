@@ -182,10 +182,6 @@ func encodePNG(path string, img image.Image) error {
 }
 
 // FS returns embedded PWA assets (for tests).
-func FS() fs.FS {
-	sub, err := fs.Sub(assets, "assets")
-	if err != nil {
-		panic(err)
-	}
-	return sub
+func FS() (fs.FS, error) {
+	return fs.Sub(assets, "assets")
 }

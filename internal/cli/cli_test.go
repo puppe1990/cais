@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,7 +36,7 @@ func TestCLI_Help_IncludesResource(t *testing.T) {
 	if err := c.Run([]string{"help"}); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(buf.String(), "g resource") {
+	if !strings.Contains(buf.String(), "[--dry-run] resource") {
 		t.Error("help missing g resource")
 	}
 }
@@ -68,6 +69,83 @@ func TestCLI_NewMinimalCreatesSlimApp(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err == nil {
 			t.Errorf("minimal app should not have %s", path)
 		}
+	}
+}
+
+func TestScaffoldModel_CreatesModelAndStore(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "links")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "links",
+		ModulePath: "github.com/puppe1990/links",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+
+	opts := modelOpts{Fields: "title:string,url:url"}
+	if err := scaffoldModel(appDir, "bookmark", opts); err != nil {
+		t.Fatal(err)
+	}
+
+	model, err := os.ReadFile(filepath.Join(appDir, "internal/models/bookmark.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(model)
+	if !strings.Contains(body, "Title") || !strings.Contains(body, "URL") {
+		t.Error("model missing title or url fields")
+	}
+
+	migFiles, err := filepath.Glob(filepath.Join(appDir, "internal/store/migrations/*_bookmarks.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(migFiles) != 1 {
+		t.Fatalf("expected 1 bookmarks migration, got %d", len(migFiles))
+	}
+	migBody, err := os.ReadFile(migFiles[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	mig := string(migBody)
+	if !strings.Contains(mig, "CREATE TABLE") || !strings.Contains(mig, "url") {
+		t.Error("migration missing expected SQL")
+	}
+
+	storeBody, err := os.ReadFile(filepath.Join(appDir, "internal/store/store.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := string(storeBody)
+	for _, method := range []string{
+		"InsertBookmark",
+		"UpdateBookmark",
+		"DeleteBookmark",
+		"FindBookmarkByID",
+		"ListAllBookmarks",
+	} {
+		if !strings.Contains(store, method) {
+			t.Errorf("store.go missing %s", method)
+		}
+	}
+
+	for _, path := range []string{
+		"internal/handlers/admin_bookmarks.go",
+		"internal/handlers/bookmarks.go",
+		"web/templates/pages/admin_bookmarks.html",
+		"web/templates/pages/bookmarks.html",
+	} {
+		if _, err := os.Stat(filepath.Join(appDir, path)); !os.IsNotExist(err) {
+			t.Errorf("should not create %s", path)
+		}
+	}
+
+	routesBody, err := os.ReadFile(filepath.Join(appDir, "internal/app/routes.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(routesBody), "/admin/bookmarks") {
+		t.Error("routes should not be patched for model generator")
 	}
 }
 
@@ -112,11 +190,122 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 	if !strings.Contains(string(routesBody), "/admin/products") {
 		t.Error("routes.go missing /admin/products")
 	}
-	if !strings.Contains(string(routesBody), "r.Group(middleware.AdminAuth(cfg)") {
-		t.Error("routes.go missing r.Group(middleware.AdminAuth(cfg)")
+	if !strings.Contains(string(routesBody), `middleware.RequireAuth("/login")`) {
+		t.Error("routes.go missing middleware.RequireAuth(\"/login\")")
 	}
 	if strings.Contains(string(routesBody), "\n\n\n") {
 		t.Error("routes.go has triple newlines (formatting issue)")
+	}
+}
+
+func TestCLI_GenerateResourceDryRun(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "clidryrun")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "clidryrun",
+		ModulePath: "github.com/puppe1990/clidryrun",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(appDir)
+	t.Cleanup(func() { _ = os.Chdir(cwd) })
+
+	c := &CLI{Out: io.Discard}
+	if err := c.Run([]string{"g", "--dry-run", "resource", "post", "--fields", "title:string"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(appDir, "internal/models/post.go")); !os.IsNotExist(err) {
+		t.Error("CLI --dry-run should not create post.go")
+	}
+}
+
+func TestScaffoldResource_DryRunWritesNothing(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "dryrun")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "dryrun",
+		ModulePath: "github.com/puppe1990/dryrun",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+
+	storeBefore, err := os.ReadFile(filepath.Join(appDir, "internal/store/store.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	routesBefore, err := os.ReadFile(filepath.Join(appDir, "internal/app/routes.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	opts := resourceOpts{Fields: "name:string", dryRun: true}
+	if err := scaffoldResource(appDir, "item", opts); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(filepath.Join(appDir, "internal/models/item.go")); !os.IsNotExist(err) {
+		t.Error("dry-run should not create item.go")
+	}
+
+	storeAfter, err := os.ReadFile(filepath.Join(appDir, "internal/store/store.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(storeAfter) != string(storeBefore) {
+		t.Error("dry-run should not modify store.go")
+	}
+
+	routesAfter, err := os.ReadFile(filepath.Join(appDir, "internal/app/routes.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(routesAfter) != string(routesBefore) {
+		t.Error("dry-run should not modify routes.go")
+	}
+}
+
+func TestScaffoldResource_DefaultAdminAuthUsesRequireAuth(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "items")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName: "items", ModulePath: "github.com/puppe1990/items",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "item", resourceOpts{Fields: "name:string"}); err != nil {
+		t.Fatal(err)
+	}
+	body, _ := os.ReadFile(filepath.Join(appDir, "internal/app/routes.go"))
+	s := string(body)
+	if !strings.Contains(s, `middleware.RequireAuth("/login")`) {
+		t.Errorf("routes should use RequireAuth for session admin: %s", s)
+	}
+	if strings.Contains(s, "middleware.AdminAuth(cfg)") {
+		t.Error("default should not use AdminAuth")
+	}
+}
+
+func TestScaffoldResource_AdminAuthBearerFlag(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "apiitems")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName: "apiitems", ModulePath: "github.com/puppe1990/apiitems",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "item", resourceOpts{
+		Fields: "name:string", AdminAuth: "bearer",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	body, _ := os.ReadFile(filepath.Join(appDir, "internal/app/routes.go"))
+	if !strings.Contains(string(body), "middleware.AdminAuth(cfg)") {
+		t.Error("bearer flag should use AdminAuth")
 	}
 }
 
@@ -150,6 +339,37 @@ func TestScaffoldResource_PublicWithFields(t *testing.T) {
 	routes, _ := os.ReadFile(filepath.Join(appDir, "internal/app/routes.go"))
 	if !strings.Contains(string(routes), `r.Get("/bookmarks"`) {
 		t.Error("routes missing public list")
+	}
+}
+
+func TestScaffoldResource_PublicInsertsNavAfterMarker(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "shop")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "shop",
+		ModulePath: "github.com/puppe1990/shop",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "product", resourceOpts{Public: true}); err != nil {
+		t.Fatal(err)
+	}
+
+	layout, err := os.ReadFile(filepath.Join(appDir, "web/templates/layouts/base.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(layout)
+	if !strings.Contains(body, "<!-- cais:nav -->") {
+		t.Fatal("layout missing <!-- cais:nav --> marker")
+	}
+	markerIdx := strings.Index(body, "<!-- cais:nav -->")
+	linkIdx := strings.Index(body, `href="/products"`)
+	if linkIdx == -1 {
+		t.Fatal("layout missing public products nav link")
+	}
+	if linkIdx < markerIdx {
+		t.Error("nav link should appear after <!-- cais:nav --> marker")
 	}
 }
 
@@ -326,7 +546,7 @@ func TestScaffoldHandler_AfterResourceRoutesCompile(t *testing.T) {
 	if err := scaffoldResource(appDir, "dish", resourceOpts{Public: true}); err != nil {
 		t.Fatal(err)
 	}
-	if err := scaffoldHandler(appDir, "about"); err != nil {
+	if err := scaffoldHandler(appDir, "about", false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -384,6 +604,130 @@ func TestScaffoldResource_PublicListRichFields(t *testing.T) {
 		if !strings.Contains(body, needle) {
 			t.Errorf("public list missing HTMX UX attribute %q", needle)
 		}
+	}
+}
+
+func TestParseResourceOpts_Paginate(t *testing.T) {
+	opts, err := parseResourceOpts([]string{"--paginate", "--fields", "title:string"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !opts.Paginate {
+		t.Error("Paginate should be true with --paginate flag")
+	}
+	if opts.Fields != "title:string" {
+		t.Errorf("Fields = %q", opts.Fields)
+	}
+
+	opts, err = parseResourceOpts([]string{"--fields", "title:string"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.Paginate {
+		t.Error("Paginate should default to false")
+	}
+}
+
+func TestScaffoldResource_Paginate(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "pages")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "pages",
+		ModulePath: "github.com/puppe1990/pages",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "article", resourceOpts{
+		Fields:   "title:string",
+		Paginate: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	store, err := os.ReadFile(filepath.Join(appDir, "internal/store/store.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	storeBody := string(store)
+	if !strings.Contains(storeBody, "ListArticles(page, perPage int) ([]models.Article, int, error)") {
+		t.Error("store.go missing paginated ListArticles method")
+	}
+	if !strings.Contains(storeBody, "SELECT COUNT(*) FROM articles") {
+		t.Error("store.go missing count query for pagination")
+	}
+	if !strings.Contains(storeBody, "LIMIT ? OFFSET ?") {
+		t.Error("store.go missing LIMIT/OFFSET for pagination")
+	}
+	if !strings.Contains(storeBody, "ListAllArticles()") {
+		t.Error("paginated resource should still include ListAllArticles for public handlers")
+	}
+
+	admin, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/admin_articles.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	adminBody := string(admin)
+	if strings.Contains(adminBody, "ListAllArticles()") {
+		t.Error("paginated admin handler should not call ListAllArticles")
+	}
+	if !strings.Contains(adminBody, "ListArticles(page, perPage)") {
+		t.Error("admin handler should call ListArticles with page and perPage")
+	}
+	if !strings.Contains(adminBody, `r.URL.Query().Get("page")`) {
+		t.Error("admin handler should read page query param")
+	}
+	if !strings.Contains(adminBody, "perPage := 25") {
+		t.Error("admin handler should default perPage to 25")
+	}
+	for _, needle := range []string{"Page", "Total", "PerPage", "HasPrev", "HasNext"} {
+		if !strings.Contains(adminBody, needle) {
+			t.Errorf("admin index data missing field %s", needle)
+		}
+	}
+
+	html, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages/admin_articles.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	htmlBody := string(html)
+	for _, needle := range []string{`{{ if .HasPrev }}`, `{{ if .HasNext }}`, `?page={{ .PrevPage }}`, `?page={{ .NextPage }}`} {
+		if !strings.Contains(htmlBody, needle) {
+			t.Errorf("admin template missing pagination control %q", needle)
+		}
+	}
+}
+
+func TestScaffoldResource_NoPaginate_UsesListAll(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "nopage")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "nopage",
+		ModulePath: "github.com/puppe1990/nopage",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "note", resourceOpts{Fields: "title:string"}); err != nil {
+		t.Fatal(err)
+	}
+
+	store, err := os.ReadFile(filepath.Join(appDir, "internal/store/store.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	storeBody := string(store)
+	if strings.Contains(storeBody, "ListNotes(page, perPage int)") {
+		t.Error("non-paginated store should not have ListNotes(page, perPage)")
+	}
+	if !strings.Contains(storeBody, "ListAllNotes()") {
+		t.Error("non-paginated store should have ListAllNotes")
+	}
+
+	admin, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/admin_notes.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(admin), "ListAllNotes()") {
+		t.Error("non-paginated admin handler should call ListAllNotes")
 	}
 }
 
@@ -687,6 +1031,49 @@ func TestScaffold_IncludesQualityTooling(t *testing.T) {
 	}
 }
 
+func TestScaffoldNewApp_ContactHandlerValidatesName(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "contactapp")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "contactapp",
+		ModulePath: "github.com/puppe1990/contactapp",
+	}, false, false); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/contact.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(body)
+	if !strings.Contains(s, `errs.Add("name"`) {
+		t.Errorf("contact handler missing name validation: %s", s)
+	}
+	if !strings.Contains(s, `contact.name_required`) {
+		t.Errorf("contact handler missing name_required i18n key: %s", s)
+	}
+}
+
+func TestScaffoldBlankApp_IncludesSecurityMiddleware(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "blankapp")
+	if err := scaffoldNewApp(appDir, scaffoldData{AppName: "blankapp", ModulePath: "github.com/puppe1990/blankapp"}, false, true); err != nil {
+		t.Fatal(err)
+	}
+	body, _ := os.ReadFile(filepath.Join(appDir, "internal/app/app.go"))
+	s := string(body)
+	for _, want := range []string{
+		"middleware.Recover",
+		"middleware.SecurityHeaders(cfg)",
+		"ReadHeaderTimeout",
+		"ReadTimeout",
+		"r.Static",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("blank app missing %q in app.go", want)
+		}
+	}
+}
+
 func TestCLI_NewBlankCreatesEmptyApp(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "empty")
@@ -742,6 +1129,82 @@ func TestCLI_NewBlankCreatesEmptyApp(t *testing.T) {
 	}
 }
 
+func TestScaffoldNewApp_CustomModule(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "myapp")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "myapp",
+		ModulePath: "github.com/acme/myapp",
+	}, false, false); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(appDir, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "module github.com/acme/myapp") {
+		t.Errorf("go.mod missing custom module path: %s", body)
+	}
+}
+
+func TestCLI_New_CustomModule(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	root := t.TempDir()
+	appDir := filepath.Join(root, "myapp")
+
+	var buf bytes.Buffer
+	c := &CLI{Out: &buf}
+	if err := c.Run([]string{"new", "myapp", appDir, "--module", "github.com/acme/myapp"}); err != nil {
+		t.Fatal(err)
+	}
+
+	body, err := os.ReadFile(filepath.Join(appDir, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "module github.com/acme/myapp") {
+		t.Errorf("go.mod missing custom module path: %s", body)
+	}
+}
+
+func TestCLI_New_CustomModule_DefaultWhenOmitted(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	root := t.TempDir()
+	appDir := filepath.Join(root, "cool-app")
+
+	var buf bytes.Buffer
+	c := &CLI{Out: &buf}
+	if err := c.Run([]string{"new", "cool-app", appDir}); err != nil {
+		t.Fatal(err)
+	}
+
+	body, err := os.ReadFile(filepath.Join(appDir, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "module github.com/puppe1990/coolapp") {
+		t.Errorf("go.mod missing default module path: %s", body)
+	}
+}
+
+func TestCLI_New_ModuleRequiresValue(t *testing.T) {
+	c := &CLI{Out: os.Stdout}
+	if err := c.Run([]string{"new", "myapp", "--module"}); err == nil {
+		t.Fatal("expected error for --module without value")
+	}
+}
+
+func TestCLI_Help_IncludesModuleFlag(t *testing.T) {
+	var buf bytes.Buffer
+	c := &CLI{Out: &buf}
+	if err := c.Run([]string{"help"}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "--module") {
+		t.Error("help missing --module flag")
+	}
+}
+
 func TestScaffoldMigration_numbersAfterSQLOnly(t *testing.T) {
 	dir := t.TempDir()
 	migrationsDir := filepath.Join(dir, "internal", "store", "migrations")
@@ -755,7 +1218,7 @@ func TestScaffoldMigration_numbersAfterSQLOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := scaffoldMigration(dir, "posts"); err != nil {
+	if err := scaffoldMigration(dir, "posts", false); err != nil {
 		t.Fatal(err)
 	}
 

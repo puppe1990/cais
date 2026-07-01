@@ -30,3 +30,24 @@ func TestDevBannerArt_usesBlockCAISLogo(t *testing.T) {
 		t.Fatal("banner should use block CAIS logo")
 	}
 }
+
+func TestWriteDevSeedWarning_development(t *testing.T) {
+	var buf bytes.Buffer
+	WriteDevSeedWarning(&buf, "development")
+
+	out := buf.String()
+	if !strings.Contains(out, "demo@example.com") {
+		t.Fatalf("warning missing demo user:\n%s", out)
+	}
+	if !strings.Contains(out, "development only") {
+		t.Fatalf("warning missing development qualifier:\n%s", out)
+	}
+}
+
+func TestWriteDevSeedWarning_production(t *testing.T) {
+	var buf bytes.Buffer
+	WriteDevSeedWarning(&buf, "production")
+	if buf.Len() != 0 {
+		t.Fatalf("production should not print seed warning, got:\n%s", buf.String())
+	}
+}

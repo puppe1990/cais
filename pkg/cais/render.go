@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/puppe1990/cais/pkg/cais/forms"
 	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 )
@@ -63,7 +64,7 @@ func NewRenderer(fsys fs.FS, catalog *i18n.Catalog) (*Renderer, error) {
 
 	for _, partialPath := range partials {
 		name := strings.TrimSuffix(filepath.Base(partialPath), ".html")
-		tmpl, err := template.New("").Funcs(i18n.MergeFuncs(catalog, meta.TemplateFuncs())).ParseFS(fsys, partialPath)
+		tmpl, err := template.New("").Funcs(templateFuncs(catalog)).ParseFS(fsys, partialPath)
 		if err != nil {
 			return nil, fmt.Errorf("parse partial %s: %w", name, err)
 		}
@@ -84,7 +85,15 @@ func (r *Renderer) Render(w io.Writer, layout, page string, data any) error {
 func parsePage(fsys fs.FS, layoutPaths []string, pagePath string, partialPaths []string, catalog *i18n.Catalog) (*template.Template, error) {
 	files := append(append([]string{}, layoutPaths...), pagePath)
 	files = append(files, partialPaths...)
-	return template.New("").Funcs(i18n.MergeFuncs(catalog, meta.TemplateFuncs())).ParseFS(fsys, files...)
+	return template.New("").Funcs(templateFuncs(catalog)).ParseFS(fsys, files...)
+}
+
+func templateFuncs(catalog *i18n.Catalog) template.FuncMap {
+	extra := meta.TemplateFuncs()
+	for k, v := range forms.Funcs() {
+		extra[k] = v
+	}
+	return i18n.MergeFuncs(catalog, extra)
 }
 
 func (r *Renderer) RenderPartial(w io.Writer, partial string, data any) error {

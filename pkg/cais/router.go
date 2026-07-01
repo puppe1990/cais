@@ -42,6 +42,14 @@ func (r *Router) Post(pattern string, handler http.HandlerFunc) {
 	r.register("POST", pattern, handler)
 }
 
+func (r *Router) Put(pattern string, handler http.HandlerFunc) {
+	r.register("PUT", pattern, handler)
+}
+
+func (r *Router) Patch(pattern string, handler http.HandlerFunc) {
+	r.register("PATCH", pattern, handler)
+}
+
 func (r *Router) Delete(pattern string, handler http.HandlerFunc) {
 	r.register("DELETE", pattern, handler)
 }

@@ -18,10 +18,14 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 	data.Fields = fields
 	data.Public = opts.Public
 	data.Seed = opts.Seed
+	data.Paginate = opts.Paginate
+	data.AdminAuth = opts.AdminAuth
 
 	migrationsDir := filepath.Join(dir, "internal/store/migrations")
-	if err := os.MkdirAll(migrationsDir, 0o755); err != nil {
-		return err
+	if !opts.dryRun {
+		if err := os.MkdirAll(migrationsDir, 0o755); err != nil {
+			return err
+		}
 	}
 	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {
@@ -59,32 +63,31 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 		if _, err := os.Stat(full); err == nil {
 			return fmt.Errorf("%s already exists", path)
 		}
-		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		if err := writeScaffoldFile(full, []byte(content), 0o644, path, opts.dryRun); err != nil {
 			return err
 		}
-		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
-			return err
-		}
-		_, _ = fmt.Printf("  create %s\n", path)
 	}
 
-	if err := patchStoreForResource(dir, data); err != nil {
+	if err := patchStoreForResource(dir, data, opts.dryRun); err != nil {
 		return err
 	}
-	if err := patchStoreTestForResource(dir, data); err != nil {
+	if err := patchStoreTestForResource(dir, data, opts.dryRun); err != nil {
 		return err
 	}
-	if err := patchRoutesForResource(dir, data); err != nil {
+	if err := patchRoutesForResource(dir, data, opts.dryRun); err != nil {
 		return err
 	}
 	var finalErr error
 	if data.Seed {
-		finalErr = patchMainForSeed(dir, data)
+		finalErr = patchMainForSeed(dir, data, opts.dryRun)
 	} else {
-		finalErr = patchLayoutNav(dir, data)
+		finalErr = patchLayoutNav(dir, data, opts.dryRun)
 	}
 	if finalErr != nil {
 		return finalErr
+	}
+	if opts.dryRun {
+		return nil
 	}
 	return gofmtGoFiles(dir)
 }
@@ -100,13 +103,14 @@ import (
 	"strings"
 	"testing"
 
+	"%s/pkg/cais"
 	"%s/pkg/cais/testutil"
 	"%s/internal/models"
 )
 
 func TestAdmin%sHandler_Index(t *testing.T) {
 	s := setupTestStore(t)
-	h := NewAdmin%sHandler(setupTestRenderer(t), s)
+	h := NewAdmin%sHandler(setupTestRenderer(t), s, cais.Config{})
 	rr := httptest.NewRecorder()
 	h.Index(rr, httptest.NewRequest(http.MethodGet, "/admin/%s", nil))
 	if rr.Code != http.StatusOK {
@@ -119,7 +123,7 @@ func TestAdmin%sHandler_Index(t *testing.T) {
 
 func TestAdmin%sHandler_Create(t *testing.T) {
 	s := setupTestStore(t)
-	h := NewAdmin%sHandler(setupTestRenderer(t), s)
+	h := NewAdmin%sHandler(setupTestRenderer(t), s, cais.Config{})
 	req := httptest.NewRequest(http.MethodPost, "/admin/%s", strings.NewReader(%q))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr := httptest.NewRecorder()
@@ -135,7 +139,7 @@ func TestAdmin%sHandler_Delete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := NewAdmin%sHandler(setupTestRenderer(t), s)
+	h := NewAdmin%sHandler(setupTestRenderer(t), s, cais.Config{})
 	rr := httptest.NewRecorder()
 	h.Delete(rr, testutil.NewRequest(http.MethodPost, "/admin/%s/1/delete", testutil.PathValue("id", "1")), id)
 	if rr.Code != http.StatusSeeOther {
@@ -143,7 +147,7 @@ func TestAdmin%sHandler_Delete(t *testing.T) {
 	}
 }
 `,
-		frameworkModule, data.ModulePath,
+		frameworkModule, frameworkModule, data.ModulePath,
 		data.PluralPascal, data.PluralPascal, data.Plural, data.Plural,
 		data.PluralPascal, data.PluralPascal, data.Plural, formBody,
 		data.PluralPascal, data.Pascal, data.Pascal, first.Pascal, urlFieldTestExtra(data),
@@ -201,12 +205,14 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"%s/pkg/cais"
 )
 
 func Test%sHandler_List(t *testing.T) {
 	s := setupTestStore(t)
 %s
-	h := New%sHandler(setupTestRenderer(t), s)
+	h := New%sHandler(setupTestRenderer(t), s, cais.Config{})
 	rr := httptest.NewRecorder()
 	h.List(rr, httptest.NewRequest(http.MethodGet, "/%s", nil))
 	if rr.Code != http.StatusOK {
@@ -216,10 +222,10 @@ func Test%sHandler_List(t *testing.T) {
 		t.Error("missing public list")
 	}
 }
-`, data.PluralPascal, seedCall, data.PluralPascal, data.Plural, data.Plural)
+`, frameworkModule, data.PluralPascal, seedCall, data.PluralPascal, data.Plural, data.Plural)
 }
 
-func patchStoreForResource(dir string, data scaffoldData) error {
+func patchStoreForResource(dir string, data scaffoldData, dryRun bool) error {
 	path := filepath.Join(dir, "internal/store/store.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -234,13 +240,20 @@ func patchStoreForResource(dir string, data scaffoldData) error {
 	if !strings.Contains(content, ifaceMarker) {
 		return fmt.Errorf("could not patch store interface")
 	}
+	listMethod := fmt.Sprintf("\n\tListAll%s() ([]models.%s, error)", data.PluralPascal, data.Pascal)
+	if data.Paginate {
+		listMethod = fmt.Sprintf(
+			"\n\tList%s(page, perPage int) ([]models.%s, int, error)%s",
+			data.PluralPascal, data.Pascal, listMethod,
+		)
+	}
 	ifaceInsert := fmt.Sprintf(
-		"\n\tInsert%s(models.%s) (int64, error)\n\tUpdate%s(models.%s) error\n\tDelete%s(id int64) error\n\tFind%sByID(id int64) (models.%s, error)\n\tListAll%s() ([]models.%s, error)",
+		"\n\tInsert%s(models.%s) (int64, error)\n\tUpdate%s(models.%s) error\n\tDelete%s(id int64) error\n\tFind%sByID(id int64) (models.%s, error)%s",
 		data.Pascal, data.Pascal,
 		data.Pascal, data.Pascal,
 		data.Pascal,
 		data.Pascal, data.Pascal,
-		data.PluralPascal, data.Pascal,
+		listMethod,
 	)
 	if data.Seed {
 		ifaceInsert += fmt.Sprintf("\n\tSeedDemo%s() error", data.PluralPascal)
@@ -249,6 +262,9 @@ func patchStoreForResource(dir string, data scaffoldData) error {
 
 	implMarker := "\nfunc (s *SQLiteStore) Close()"
 	implInsert := buildResourceStoreMethods(data)
+	if data.Paginate {
+		implInsert += buildResourcePaginatedStoreMethod(data)
+	}
 	if data.Seed {
 		implInsert += buildResourceSeed(data)
 	}
@@ -266,14 +282,10 @@ func patchStoreForResource(dir string, data scaffoldData) error {
 		)
 	}
 
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		return err
-	}
-	_, _ = fmt.Println("  update internal/store/store.go")
-	return nil
+	return updateScaffoldFile(path, []byte(content), "internal/store/store.go", dryRun)
 }
 
-func patchStoreTestForResource(dir string, data scaffoldData) error {
+func patchStoreTestForResource(dir string, data scaffoldData, dryRun bool) error {
 	path := filepath.Join(dir, "internal/store/store_test.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -310,6 +322,9 @@ func TestStore_Insert%s(t *testing.T) {
 		)
 	}
 	content = strings.TrimRight(content, "\n") + "\n" + insert
+	if dryRun {
+		return nil
+	}
 	return os.WriteFile(path, []byte(content), 0o644)
 }
 
@@ -327,7 +342,7 @@ func buildInsertTestLiteral(fields []FieldDef) string {
 	return strings.Join(parts, ", ")
 }
 
-func patchRoutesForResource(dir string, data scaffoldData) error {
+func patchRoutesForResource(dir string, data scaffoldData, dryRun bool) error {
 	path := filepath.Join(dir, "internal/app/routes.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -351,14 +366,18 @@ func patchRoutesForResource(dir string, data scaffoldData) error {
 	var insert strings.Builder
 	if data.Public {
 		pubVar := lowerFirst(data.PluralPascal)
-		fmt.Fprintf(&insert, "\t%s := handlers.New%sHandler(deps.Renderer, deps.Store)\n", pubVar, data.PluralPascal)
+		fmt.Fprintf(&insert, "\t%s := handlers.New%sHandler(deps.Renderer, deps.Store, cfg)\n", pubVar, data.PluralPascal)
 		fmt.Fprintf(&insert, "\tr.Get(\"/%s\", %s.List)\n", data.Plural, pubVar)
 		if firstBoolField(data.Fields) != nil {
 			fmt.Fprintf(&insert, "\tr.Post(\"/%s/{id}/toggle\", cais.IntParam(\"id\", %s.Toggle))\n", data.Plural, pubVar)
 		}
 	}
-	fmt.Fprintf(&insert, "\t%s := handlers.NewAdmin%sHandler(deps.Renderer, deps.Store)\n", adminVar, data.PluralPascal)
-	fmt.Fprintf(&insert, "\tr.Group(middleware.AdminAuth(cfg), func(g *cais.Router) {\n")
+	fmt.Fprintf(&insert, "\t%s := handlers.NewAdmin%sHandler(deps.Renderer, deps.Store, cfg)\n", adminVar, data.PluralPascal)
+	if data.AdminAuth == "bearer" {
+		fmt.Fprintf(&insert, "\tr.Group(middleware.AdminAuth(cfg), func(g *cais.Router) {\n")
+	} else {
+		fmt.Fprintf(&insert, "\tr.Group(middleware.RequireAuth(\"/login\"), func(g *cais.Router) {\n")
+	}
 	fmt.Fprintf(&insert, "\t\tg.Get(\"/admin/%s\", %s.Index)\n", data.Plural, adminVar)
 	fmt.Fprintf(&insert, "\t\tg.Get(\"/admin/%s/new\", %s.New)\n", data.Plural, adminVar)
 	fmt.Fprintf(&insert, "\t\tg.Post(\"/admin/%s\", %s.Create)\n", data.Plural, adminVar)
@@ -367,20 +386,20 @@ func patchRoutesForResource(dir string, data scaffoldData) error {
 	fmt.Fprintf(&insert, "\t\tg.Post(\"/admin/%s/{id}/delete\", cais.IntParam(\"id\", %s.Delete))\n", data.Plural, adminVar)
 	fmt.Fprintf(&insert, "\t})\n")
 
-	marker := "\n}\n"
-	idx := strings.LastIndex(content, marker)
-	if idx == -1 {
-		return fmt.Errorf("could not patch routes.go")
+	var err2 error
+	content, err2 = insertBeforeFunctionEnd(content, "registerRoutes", insert.String())
+	if err2 != nil {
+		return fmt.Errorf("could not patch routes.go: %w", err2)
 	}
-	content = content[:idx+1] + insert.String() + content[idx+1:]
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+	if err := updateScaffoldFile(path, []byte(content), "internal/app/routes.go", dryRun); err != nil {
 		return err
 	}
-	_, _ = fmt.Println("  update internal/app/routes.go")
-	return patchLayoutNav(dir, data)
+	return patchLayoutNav(dir, data, dryRun)
 }
 
-func patchLayoutNav(dir string, data scaffoldData) error {
+const layoutNavMarker = "<!-- cais:nav -->"
+
+func patchLayoutNav(dir string, data scaffoldData, dryRun bool) error {
 	if !data.Public {
 		return nil
 	}
@@ -390,22 +409,24 @@ func patchLayoutNav(dir string, data scaffoldData) error {
 		return err
 	}
 	content := string(body)
-	if strings.Contains(content, "/"+data.Plural+`"`) {
+	linkHref := `href="/` + data.Plural + `"`
+	if strings.Contains(content, linkHref) {
 		return nil
 	}
-	nav := fmt.Sprintf(`        <nav class="flex items-center gap-6 text-sm font-medium">
-          <a href="/%s" class="text-slate-600 hover:text-indigo-600 transition">%s</a>
-          <a href="/admin/%s" class="text-slate-600 hover:text-indigo-600 transition">Admin</a>
-        </nav>
-`, data.Plural, toTitle(data.Plural), data.Plural)
-	content = strings.Replace(content,
-		`</div>
-    </header>`,
-		nav+`      </div>
-    </header>`,
-		1,
-	)
+	link := fmt.Sprintf(`          <a href="/%s" class="text-slate-600 hover:text-indigo-600 transition">%s</a>
+`, data.Plural, toTitle(data.Plural))
+	switch {
+	case strings.Contains(content, layoutNavMarker):
+		content = strings.Replace(content, layoutNavMarker, layoutNavMarker+"\n"+link, 1)
+	case strings.Contains(content, "</nav>"):
+		content = strings.Replace(content, "</nav>", link+"        </nav>", 1)
+	default:
+		return fmt.Errorf("%s: missing %s marker and </nav> element", path, layoutNavMarker)
+	}
 	content = patchLayoutLogoHref(dir, content, data)
+	if dryRun {
+		return nil
+	}
 	return os.WriteFile(path, []byte(content), 0o644)
 }
 
@@ -424,7 +445,7 @@ func patchLayoutLogoHref(dir, content string, data scaffoldData) string {
 	)
 }
 
-func patchMainForSeed(dir string, data scaffoldData) error {
+func patchMainForSeed(dir string, data scaffoldData, dryRun bool) error {
 	path := filepath.Join(dir, "cmd/server/main.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -432,7 +453,7 @@ func patchMainForSeed(dir string, data scaffoldData) error {
 	}
 	content := string(body)
 	if strings.Contains(content, "SeedDemo"+data.PluralPascal) {
-		return patchLayoutNav(dir, data)
+		return patchLayoutNav(dir, data, dryRun)
 	}
 	marker := "\n\tstaticDir, err := findWebDir(\"static\")"
 	seed := fmt.Sprintf(`
@@ -445,9 +466,8 @@ func patchMainForSeed(dir string, data scaffoldData) error {
 		return fmt.Errorf("could not patch main.go for seed")
 	}
 	content = strings.Replace(content, marker, seed+marker, 1)
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+	if err := updateScaffoldFile(path, []byte(content), "cmd/server/main.go", dryRun); err != nil {
 		return err
 	}
-	_, _ = fmt.Println("  update cmd/server/main.go")
-	return patchLayoutNav(dir, data)
+	return patchLayoutNav(dir, data, dryRun)
 }

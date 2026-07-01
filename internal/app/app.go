@@ -50,9 +50,9 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	r.Use(middleware.Flash)
 	buf := devlog.Prepare(cfg.Env)
 	if buf != nil {
-		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))
+		r.Use(middleware.LoggerTo(cfg, devlog.MirrorDefault(log.Writer())))
 	} else {
-		r.Use(middleware.Logger)
+		r.Use(middleware.Logger(cfg))
 	}
 	r.Use(middleware.Recover)
 	r.Use(middleware.SecurityHeaders(cfg))

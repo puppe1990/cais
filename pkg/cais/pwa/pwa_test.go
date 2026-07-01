@@ -1,6 +1,7 @@
 package pwa
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,5 +57,15 @@ func TestHeadHTML(t *testing.T) {
 	}
 	if !strings.Contains(html, `apple-mobile-web-app-status-bar-style" content="black-translucent"`) {
 		t.Error("HeadHTML should use black-translucent status bar for fullscreen PWA")
+	}
+}
+
+func TestFS(t *testing.T) {
+	fsys, err := FS()
+	if err != nil {
+		t.Fatalf("FS() error = %v", err)
+	}
+	if _, err := fs.Stat(fsys, "sw.js"); err != nil {
+		t.Fatalf("FS() missing sw.js: %v", err)
 	}
 }

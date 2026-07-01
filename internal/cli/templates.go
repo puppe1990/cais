@@ -239,9 +239,9 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	r.Use(middleware.Flash)
 	buf := devlog.Prepare(cfg.Env)
 	if buf != nil {
-		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))
+		r.Use(middleware.LoggerTo(cfg, devlog.MirrorDefault(log.Writer())))
 	} else {
-		r.Use(middleware.Logger)
+		r.Use(middleware.Logger(cfg))
 	}
 	r.Use(middleware.Recover)
 	r.Use(middleware.SecurityHeaders(cfg))
@@ -326,13 +326,13 @@ import (
 )
 
 func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
-	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog)
-	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, deps.Site, deps.Catalog)
+	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog, cfg)
+	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, deps.Site, deps.Catalog, cfg)
 	dashboard := handlers.NewDashboardHandler(deps.Renderer, deps.Store, deps.Site, cfg)
 	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions(), cfg, deps.Catalog)
 
-	loginLimit := middleware.NewRateLimiter(10)
-	contactLimit := middleware.NewRateLimiter(20)
+	loginLimit := middleware.NewRateLimiter(10, cfg)
+	contactLimit := middleware.NewRateLimiter(20, cfg)
 
 	r.Get("/", home.ServeHTTP)
 	r.Get("/contact", contact.Get)
@@ -364,16 +364,17 @@ type HomeHandler struct {
 	renderer *cais.Renderer
 	site     meta.Site
 	catalog  *i18n.Catalog
+	cfg      cais.Config
 }
 
-func NewHomeHandler(renderer *cais.Renderer, site meta.Site, catalog *i18n.Catalog) *HomeHandler {
-	return &HomeHandler{renderer: renderer, site: site, catalog: catalog}
+func NewHomeHandler(renderer *cais.Renderer, site meta.Site, catalog *i18n.Catalog, cfg cais.Config) *HomeHandler {
+	return &HomeHandler{renderer: renderer, site: site, catalog: catalog, cfg: cfg}
 }
 
 func (h *HomeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	httpx.RenderOrError(w, h.renderer, "welcome", "home", PageData{
 		Site: meta.ForRequest(h.site, r),
-	})
+	}, h.cfg)
 }
 `
 
@@ -385,10 +386,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 func TestHomeHandler_Returns200(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -400,7 +402,7 @@ func TestHomeHandler_Returns200(t *testing.T) {
 }
 
 func TestHomeHandler_ContainsWelcome(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -412,7 +414,7 @@ func TestHomeHandler_ContainsWelcome(t *testing.T) {
 }
 
 func TestHomeHandler_ContentType(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -433,10 +435,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 func TestHomeHandler_Returns200(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -448,7 +451,7 @@ func TestHomeHandler_Returns200(t *testing.T) {
 }
 
 func TestHomeHandler_ContainsWelcome(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -460,7 +463,7 @@ func TestHomeHandler_ContainsWelcome(t *testing.T) {
 }
 
 func TestHomeHandler_ContentType(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -493,18 +496,19 @@ type ContactHandler struct {
 	store    store.Store
 	site     meta.Site
 	catalog  *i18n.Catalog
+	cfg      cais.Config
 }
 
 type contactErrorData struct {
 	Message string
 }
 
-func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site, catalog *i18n.Catalog) *ContactHandler {
-	return &ContactHandler{renderer: renderer, store: s, site: site, catalog: catalog}
+func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site, catalog *i18n.Catalog, cfg cais.Config) *ContactHandler {
+	return &ContactHandler{renderer: renderer, store: s, site: site, catalog: catalog, cfg: cfg}
 }
 
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
-	httpx.RenderOrError(w, h.renderer, "base", "contact", meta.ForRequest(h.site, r))
+	httpx.RenderOrError(w, h.renderer, "base", "contact", meta.ForRequest(h.site, r), h.cfg)
 }
 
 func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
@@ -516,12 +520,19 @@ func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.FormValue("name"))
 	email := strings.TrimSpace(r.FormValue("email"))
 
+	var errs validate.FieldErrors
+	if name == "" {
+		errs.Add("name", h.catalog.T("contact.name_required"))
+	}
 	if err := validate.Email(email); err != nil {
 		msg := h.catalog.T("contact.email_required")
 		if email != "" {
 			msg = h.catalog.T("contact.email_invalid")
 		}
-		h.renderContactResponse(w, r, http.StatusUnprocessableEntity, "contact_errors", contactErrorData{Message: msg})
+		errs.Add("email", msg)
+	}
+	if errs.Any() {
+		h.renderContactResponse(w, r, http.StatusUnprocessableEntity, "contact_errors", contactErrorData{Message: errs.First()})
 		return
 	}
 
@@ -541,7 +552,7 @@ func (h *ContactHandler) renderContactResponse(w http.ResponseWriter, r *http.Re
 		Partial: partial,
 		Data:    data,
 		Status:  status,
-	})
+	}, h.cfg)
 }
 `
 
@@ -553,10 +564,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 func TestContactHandler_Get_ReturnsForm(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/contact", nil)
 	rr := httptest.NewRecorder()
@@ -570,8 +582,25 @@ func TestContactHandler_Get_ReturnsForm(t *testing.T) {
 	}
 }
 
+func TestContactHandler_Post_MissingName_Returns422(t *testing.T) {
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog(), cais.Config{})
+
+	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=&email=alice@example.com"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	rr := httptest.NewRecorder()
+	h.Post(rr, req)
+
+	if rr.Code != http.StatusUnprocessableEntity {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusUnprocessableEntity)
+	}
+	if !strings.Contains(rr.Body.String(), "Name is required") {
+		t.Errorf("body missing name validation: %s", rr.Body.String())
+	}
+}
+
 func TestContactHandler_Post_InvalidEmail_Returns422(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -585,7 +614,7 @@ func TestContactHandler_Post_InvalidEmail_Returns422(t *testing.T) {
 }
 
 func TestContactHandler_Post_InvalidEmail_ReturnsPartial(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -604,7 +633,7 @@ func TestContactHandler_Post_InvalidEmail_ReturnsPartial(t *testing.T) {
 
 func TestContactHandler_Post_Valid_SavesAndReturnsSuccess(t *testing.T) {
 	s := setupTestStore(t)
-	h := NewContactHandler(setupTestRenderer(t), s, testSite(), testCatalog())
+	h := NewContactHandler(setupTestRenderer(t), s, testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email=alice@example.com"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -660,7 +689,7 @@ func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Site:          meta.ForRequest(h.site, r),
 		TotalContacts: count,
 		Env:           h.cfg.Env,
-	})
+	}, h.cfg)
 }
 `
 
@@ -1053,6 +1082,7 @@ const tplLayout = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}
       <div class="max-w-5xl mx-auto flex justify-between items-center">
         <a href="/" class="font-bold text-xl text-indigo-600 hover:text-indigo-700 transition">{{.AppName}}</a>
         <nav class="flex items-center gap-6 text-sm font-medium">
+          <!-- cais:nav -->
           <a href="/" class="text-slate-600 hover:text-indigo-600 transition">Home</a>
           <a href="/contact" class="text-slate-600 hover:text-indigo-600 transition">Contact</a>
           <a href="/dashboard" class="text-slate-600 hover:text-indigo-600 transition">Dashboard</a>
@@ -1661,7 +1691,7 @@ import (
 )
 
 func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
-	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog)
+	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog, cfg)
 	r.Get("/", home.ServeHTTP)
 }
 `
@@ -1680,6 +1710,7 @@ import (
 )
 
 type Store interface {
+	Ping() error
 	Close() error
 }
 
@@ -1710,6 +1741,10 @@ func NewSQLiteStore(dsn string, env string) (*SQLiteStore, error) {
 		cfg.Writer = devlog.MirrorDefault(os.Stdout)
 	}
 	return &SQLiteStore{db: sqllog.Wrap(db, cfg)}, nil
+}
+
+func (s *SQLiteStore) Ping() error {
+	return s.db.Raw().Ping()
 }
 
 func (s *SQLiteStore) DB() *sql.DB {
@@ -1777,6 +1812,9 @@ const tplLayoutMinimal = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} e
     <header class="bg-white border-b border-slate-200 p-4 shadow-sm">
       <div class="max-w-5xl mx-auto flex justify-between items-center">
         <a href="/" class="font-bold text-xl text-indigo-600 hover:text-indigo-700 transition">{{.AppName}}</a>
+        <nav class="flex items-center gap-6 text-sm font-medium">
+          <!-- cais:nav -->
+        </nav>
       </div>
     </header>
     <main class="flex-grow max-w-5xl w-full mx-auto p-6">{{"{{"}} template "content" . {{"}}"}}</main>
@@ -1926,6 +1964,7 @@ type Deps struct {
 
 type App struct {
 	config cais.Config
+	store  store.Store
 	router *cais.Router
 	server *http.Server
 }
@@ -1938,29 +1977,55 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 		return nil, fmt.Errorf("store is required")
 	}
 
+	site := deps.Site
+	if site.AppName == "" {
+		site = meta.SiteFrom("{{.AppName}}", cfg.AppURL)
+	}
+	deps.Site = site
+
 	r := cais.NewRouter()
 	r.Use(middleware.CSRF(cfg))
 	buf := devlog.Prepare(cfg.Env)
 	if buf != nil {
-		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))
+		r.Use(middleware.LoggerTo(cfg, devlog.MirrorDefault(log.Writer())))
+	} else {
+		r.Use(middleware.Logger(cfg))
 	}
-	devlog.Register(r, cfg.Env, buf)
+	r.Use(middleware.Recover)
+	r.Use(middleware.SecurityHeaders(cfg))
+	r.Static("/static", deps.StaticDir)
+
 	registerRoutes(r, deps, cfg)
-	r.Get("/health", healthHandler)
+	devlog.Register(r, cfg.Env, buf)
+	r.Get("/health", healthHandler(deps.Store))
 
 	return &App{
 		config: cfg,
+		store:  deps.Store,
 		router: r,
 		server: &http.Server{
-			Addr:    cfg.Port,
-			Handler: r,
+			Addr:              cfg.Port,
+			Handler:           r,
+			ReadHeaderTimeout: 10 * time.Second,
+			ReadTimeout:       30 * time.Second,
+			WriteTimeout:      30 * time.Second,
+			IdleTimeout:       60 * time.Second,
 		},
 	}, nil
 }
 
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+func healthHandler(s store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		status := "ok"
+		code := http.StatusOK
+		if err := s.Ping(); err != nil {
+			status = "degraded"
+			code = http.StatusServiceUnavailable
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(code)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": status})
+	}
 }
 
 func (a *App) Handler() http.Handler {
@@ -1982,11 +2047,14 @@ func (a *App) RunContext(ctx context.Context) error {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := a.server.Shutdown(shutdownCtx); err != nil {
+			_ = a.store.Close()
 			return err
 		}
 		<-errCh
+		_ = a.store.Close()
 		return nil
 	case err := <-errCh:
+		_ = a.store.Close()
 		if err == http.ErrServerClosed {
 			return nil
 		}
@@ -2003,7 +2071,7 @@ import (
 )
 
 func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
-	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog)
+	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog, cfg)
 	r.Get("/", home.ServeHTTP)
 }
 `
@@ -2045,6 +2113,9 @@ const tplLayoutBlank = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end
     <header class="bg-white border-b border-slate-200 p-4 shadow-sm">
       <div class="max-w-5xl mx-auto flex justify-between items-center">
         <a href="/" class="font-bold text-xl text-indigo-600 hover:text-indigo-700 transition">{{.AppName}}</a>
+        <nav class="flex items-center gap-6 text-sm font-medium">
+          <!-- cais:nav -->
+        </nav>
       </div>
     </header>
     <main class="flex-grow max-w-5xl w-full mx-auto p-6">{{"{{"}} template "content" . {{"}}"}}</main>
@@ -2095,6 +2166,9 @@ DB_PATH=./data/app.db
 
 # Security (required when ENV=production)
 ADMIN_TOKEN=
+
+# Reverse proxy (comma-separated IPs; trust X-Forwarded-For for client IP)
+TRUSTED_PROXIES=
 `
 
 const tplI18nCatalog = `package i18n

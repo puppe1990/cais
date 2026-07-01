@@ -68,7 +68,7 @@ func TestSignOut_ClearsCookieAndSession(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: DefaultCookieName, Value: token})
 	rr := httptest.NewRecorder()
 
-	SignOut(rr, store, req)
+	SignOut(rr, store, req, CookieOptions{})
 
 	if _, ok := store.Get(token); ok {
 		t.Error("session should be deleted")

@@ -114,6 +114,45 @@ func TestRouter_PostRoute(t *testing.T) {
 	}
 }
 
+func TestRouter_PutAndPatch(t *testing.T) {
+	r := NewRouter()
+	putCalled := false
+	patchCalled := false
+
+	r.Put("/items/{id}", func(w http.ResponseWriter, req *http.Request) {
+		putCalled = true
+		w.WriteHeader(http.StatusNoContent)
+	})
+	r.Patch("/items/{id}", func(w http.ResponseWriter, req *http.Request) {
+		patchCalled = true
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	putReq := httptest.NewRequest(http.MethodPut, "/items/1", nil)
+	putReq.SetPathValue("id", "1")
+	putRR := httptest.NewRecorder()
+	r.ServeHTTP(putRR, putReq)
+
+	if !putCalled {
+		t.Error("PUT handler not called")
+	}
+	if putRR.Code != http.StatusNoContent {
+		t.Errorf("PUT status = %d, want %d", putRR.Code, http.StatusNoContent)
+	}
+
+	patchReq := httptest.NewRequest(http.MethodPatch, "/items/1", nil)
+	patchReq.SetPathValue("id", "1")
+	patchRR := httptest.NewRecorder()
+	r.ServeHTTP(patchRR, patchReq)
+
+	if !patchCalled {
+		t.Error("PATCH handler not called")
+	}
+	if patchRR.Code != http.StatusNoContent {
+		t.Errorf("PATCH status = %d, want %d", patchRR.Code, http.StatusNoContent)
+	}
+}
+
 func TestRouter_Group_AppliesMiddleware(t *testing.T) {
 	r := NewRouter()
 	publicCalled := false

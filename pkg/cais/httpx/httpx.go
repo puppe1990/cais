@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/puppe1990/cais/pkg/cais"
@@ -23,10 +24,19 @@ func SeeOther(w http.ResponseWriter, r *http.Request, path string) {
 	http.Redirect(w, r, path, http.StatusSeeOther)
 }
 
+func writeRenderError(w http.ResponseWriter, err error, cfg cais.Config) {
+	if cfg.SanitizeErrors() {
+		log.Printf("render error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	http.Error(w, err.Error(), http.StatusInternalServerError)
+}
+
 // RenderOrError writes a page or returns 500 on render error.
-func RenderOrError(w http.ResponseWriter, renderer *cais.Renderer, layout, page string, data any) {
+func RenderOrError(w http.ResponseWriter, renderer *cais.Renderer, layout, page string, data any, cfg cais.Config) {
 	if err := RenderPage(w, renderer, layout, page, data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeRenderError(w, err, cfg)
 	}
 }
 
@@ -38,15 +48,15 @@ type RenderOptions struct {
 	Status  int
 }
 
-func RenderPageOrPartial(w http.ResponseWriter, r *http.Request, renderer *cais.Renderer, opts RenderOptions) {
+func RenderPageOrPartial(w http.ResponseWriter, r *http.Request, renderer *cais.Renderer, opts RenderOptions, cfg cais.Config) {
 	if opts.Status != 0 {
 		w.WriteHeader(opts.Status)
 	}
 	if cais.IsHTMX(r) {
 		if err := RenderPartial(w, renderer, opts.Partial, opts.Data); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeRenderError(w, err, cfg)
 		}
 		return
 	}
-	RenderOrError(w, renderer, opts.Layout, opts.Page, opts.Data)
+	RenderOrError(w, renderer, opts.Layout, opts.Page, opts.Data, cfg)
 }

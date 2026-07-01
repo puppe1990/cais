@@ -158,7 +158,7 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 	return cmd.Run()
 }
 
-func scaffoldHandler(dir, name string) error {
+func scaffoldHandler(dir, name string, dryRun bool) error {
 	data := dataForHandler(name)
 	files := map[string]string{
 		filepath.Join("internal/handlers", data.Snake+".go"):      tplGenericHandler,
@@ -171,29 +171,25 @@ func scaffoldHandler(dir, name string) error {
 		if _, err := os.Stat(full); err == nil {
 			return fmt.Errorf("%s already exists", path)
 		}
-		if err := writeTemplate(full, content, data); err != nil {
+		if err := writeScaffoldTemplate(full, content, data, path, dryRun); err != nil {
 			return err
 		}
-		_, _ = fmt.Printf("  create %s\n", path)
 	}
 
-	return patchRoutes(dir, data)
+	return patchRoutes(dir, data, dryRun)
 }
 
-func scaffoldPage(dir, name string) error {
+func scaffoldPage(dir, name string, dryRun bool) error {
 	data := dataForHandler(name)
-	path := filepath.Join(dir, "web/templates/pages", data.Snake+".html")
+	rel := filepath.Join("web/templates/pages", data.Snake+".html")
+	path := filepath.Join(dir, rel)
 	if _, err := os.Stat(path); err == nil {
 		return fmt.Errorf("web/templates/pages/%s.html already exists", data.Snake)
 	}
-	if err := writeTemplate(path, tplGenericPage, data); err != nil {
-		return err
-	}
-	_, _ = fmt.Printf("  create web/templates/pages/%s.html\n", data.Snake)
-	return nil
+	return writeScaffoldTemplate(path, tplGenericPage, data, rel, dryRun)
 }
 
-func scaffoldMigration(dir, name string) error {
+func scaffoldMigration(dir, name string, dryRun bool) error {
 	data := dataForHandler(name)
 	migrationsDir := filepath.Join(dir, "internal/store/migrations")
 	entries, err := os.ReadDir(migrationsDir)
@@ -208,16 +204,13 @@ func scaffoldMigration(dir, name string) error {
 		}
 	}
 	filename := fmt.Sprintf("%03d_%s.sql", next, data.Snake)
+	rel := filepath.Join("internal/store/migrations", filename)
 	path := filepath.Join(migrationsDir, filename)
-	content := fmt.Sprintf("-- migration: %s\n", data.Snake)
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		return err
-	}
-	_, _ = fmt.Printf("  create internal/store/migrations/%s\n", filename)
-	return nil
+	content := fmt.Sprintf("-- migration: %s\n-- up\n\n-- down\n\n", data.Snake)
+	return writeScaffoldFile(path, []byte(content), 0o644, rel, dryRun)
 }
 
-func patchRoutes(dir string, data scaffoldData) error {
+func patchRoutes(dir string, data scaffoldData, dryRun bool) error {
 	path := filepath.Join(dir, "internal/app/routes.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -234,18 +227,11 @@ func patchRoutes(dir string, data scaffoldData) error {
 	)
 
 	content := string(body)
-	marker := "\n}\n"
-	idx := strings.LastIndex(content, marker)
-	if idx == -1 {
-		return fmt.Errorf("could not patch routes.go")
+	updated, err := insertBeforeFunctionEnd(content, "registerRoutes", insert)
+	if err != nil {
+		return fmt.Errorf("could not patch routes.go: %w", err)
 	}
-
-	updated := content[:idx] + insert + content[idx:]
-	if err := os.WriteFile(path, []byte(updated), 0o644); err != nil {
-		return err
-	}
-	_, _ = fmt.Println("  update internal/app/routes.go")
-	return nil
+	return updateScaffoldFile(path, []byte(updated), "internal/app/routes.go", dryRun)
 }
 
 func writeTemplate(path, tpl string, data scaffoldData) error {

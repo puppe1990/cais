@@ -40,7 +40,9 @@ func Protect(cfg cais.Config, h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// TokenAuth is deprecated; use AdminAuth(cfg).
+// TokenAuth is deprecated; use AdminAuth(cfg) instead.
+//
+// Deprecated: TokenAuth loads config at call time and will be removed in a future release.
 func TokenAuth(next http.Handler) http.Handler {
 	return AdminAuth(cais.Load())(next)
 }

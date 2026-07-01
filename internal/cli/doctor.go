@@ -13,6 +13,7 @@ type doctorCheck struct {
 	Name     string
 	OK       bool
 	Optional bool
+	Info     bool
 	Detail   string
 	FixHint  string
 }
@@ -26,11 +27,19 @@ func runDoctor(w io.Writer, dir string) error {
 		checkCSS(dir),
 		checkQualityTooling(dir),
 	}
+	if isProduction(dir) {
+		checks = append(checks, checkAdminToken(dir), checkAppURL(dir))
+	}
+	if c := checkSeedsInfo(dir); c != nil {
+		checks = append(checks, *c)
+	}
 
 	var failed int
 	for _, c := range checks {
 		mark := "ok"
-		if !c.OK {
+		if c.Info {
+			mark = "info"
+		} else if !c.OK {
 			if c.Optional {
 				mark = "warn"
 			} else {
@@ -43,7 +52,7 @@ func runDoctor(w io.Writer, dir string) error {
 			_, _ = fmt.Fprintf(w, " — %s", c.Detail)
 		}
 		_, _ = fmt.Fprintln(w)
-		if !c.OK && c.FixHint != "" {
+		if !c.OK && !c.Info && c.FixHint != "" {
 			_, _ = fmt.Fprintf(w, "      fix: %s\n", c.FixHint)
 		}
 	}
@@ -140,4 +149,72 @@ func checkCSS(dir string) doctorCheck {
 		return doctorCheck{Name: "tailwind css", Detail: "styles.css missing", FixHint: "cais install && cais css"}
 	}
 	return doctorCheck{Name: "tailwind css", OK: true}
+}
+
+func isProduction(dir string) bool {
+	return resolveEnvVar(dir, "ENV") == "production"
+}
+
+func resolveEnvVar(dir, key string) string {
+	if v, ok := os.LookupEnv(key); ok {
+		return v
+	}
+	data, err := os.ReadFile(filepath.Join(dir, ".env"))
+	if err != nil {
+		return ""
+	}
+	return parseDotEnv(data)[key]
+}
+
+func parseDotEnv(data []byte) map[string]string {
+	vars := make(map[string]string)
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, val, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		vars[strings.TrimSpace(key)] = strings.TrimSpace(val)
+	}
+	return vars
+}
+
+func checkAdminToken(dir string) doctorCheck {
+	if resolveEnvVar(dir, "ADMIN_TOKEN") != "" {
+		return doctorCheck{Name: "ADMIN_TOKEN", OK: true}
+	}
+	return doctorCheck{
+		Name:     "ADMIN_TOKEN",
+		Optional: true,
+		Detail:   "required when ENV=production",
+		FixHint:  "set ADMIN_TOKEN in .env",
+	}
+}
+
+func checkAppURL(dir string) doctorCheck {
+	if resolveEnvVar(dir, "APP_URL") != "" {
+		return doctorCheck{Name: "APP_URL", OK: true}
+	}
+	return doctorCheck{
+		Name:     "APP_URL",
+		Optional: true,
+		Detail:   "required when ENV=production",
+		FixHint:  "set APP_URL in .env",
+	}
+}
+
+func checkSeedsInfo(dir string) *doctorCheck {
+	path := filepath.Join(dir, "internal/db/seeds.go")
+	if _, err := os.Stat(path); err != nil {
+		return nil
+	}
+	return &doctorCheck{
+		Name:   "db seeds",
+		OK:     true,
+		Info:   true,
+		Detail: "run cais db seed to populate demo data",
+	}
 }

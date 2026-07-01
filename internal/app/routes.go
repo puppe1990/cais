@@ -10,13 +10,13 @@ import (
 )
 
 func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config, site meta.Site) {
-	home := handlers.NewHomeHandler(deps.Renderer, site, deps.Catalog)
-	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, site, deps.Catalog)
+	home := handlers.NewHomeHandler(deps.Renderer, site, deps.Catalog, cfg)
+	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, site, deps.Catalog, cfg)
 	dashboard := handlers.NewDashboardHandler(deps.Renderer, deps.Store, site, cfg)
 	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, site, deps.Store.Sessions(), cfg, deps.Catalog)
 
-	loginLimit := middleware.NewRateLimiter(10)
-	contactLimit := middleware.NewRateLimiter(20)
+	loginLimit := middleware.NewRateLimiter(10, cfg)
+	contactLimit := middleware.NewRateLimiter(20, cfg)
 
 	r.Get("/", home.ServeHTTP)
 	r.Get("/contact", contact.Get)

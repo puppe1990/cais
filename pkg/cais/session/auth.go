@@ -14,9 +14,9 @@ func SignIn(w http.ResponseWriter, store Store, r *http.Request, userID int64, o
 	return nil
 }
 
-func SignOut(w http.ResponseWriter, store Store, r *http.Request) {
+func SignOut(w http.ResponseWriter, store Store, r *http.Request, opts CookieOptions) {
 	if token := TokenFromRequest(r); token != "" {
 		store.Delete(token)
 	}
-	ClearCookie(w)
+	ClearCookie(w, opts)
 }

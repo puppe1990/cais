@@ -45,8 +45,8 @@ func TestCLI_DBRollback_removesLastMigration(t *testing.T) {
 	if !strings.Contains(out, "001_contacts") {
 		t.Errorf("rollback output missing version: %q", out)
 	}
-	if !strings.Contains(out, "does not run SQL down migrations") {
-		t.Errorf("rollback output missing down-migration notice: %q", out)
+	if !strings.Contains(out, "=> Rolled back") {
+		t.Errorf("rollback output missing success message: %q", out)
 	}
 }
 
@@ -87,6 +87,17 @@ func TestCLI_DBPruneSessions_removesExpired(t *testing.T) {
 	}
 	if got := buf.String(); !strings.Contains(got, "=> Pruned 1 expired session(s)") {
 		t.Errorf("prune output = %q, want pruned count message", got)
+	}
+}
+
+func TestCLI_DBSeed_missingSeedsFile(t *testing.T) {
+	dir := t.TempDir()
+	writeMinimalApp(t, dir)
+
+	var buf bytes.Buffer
+	c := &CLI{Out: &buf}
+	if err := c.Run([]string{"db", "seed"}); err == nil {
+		t.Fatal("expected error without seeds.go")
 	}
 }
 

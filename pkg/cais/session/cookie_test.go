@@ -37,7 +37,7 @@ func TestSetCookie_AndTokenFromRequest(t *testing.T) {
 
 func TestClearCookie(t *testing.T) {
 	rr := httptest.NewRecorder()
-	ClearCookie(rr)
+	ClearCookie(rr, CookieOptions{})
 
 	res := rr.Result()
 	defer func() { _ = res.Body.Close() }()
@@ -48,5 +48,21 @@ func TestClearCookie(t *testing.T) {
 	}
 	if cookies[0].MaxAge != -1 {
 		t.Errorf("MaxAge = %d, want -1", cookies[0].MaxAge)
+	}
+}
+
+func TestClearCookie_SecureFlag(t *testing.T) {
+	rr := httptest.NewRecorder()
+	ClearCookie(rr, CookieOptions{Secure: true})
+
+	res := rr.Result()
+	defer func() { _ = res.Body.Close() }()
+
+	cookies := res.Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("cookies = %d, want 1", len(cookies))
+	}
+	if !cookies[0].Secure {
+		t.Error("cleared cookie should preserve Secure flag")
 	}
 }

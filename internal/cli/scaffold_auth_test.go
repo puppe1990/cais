@@ -72,3 +72,33 @@ func TestScaffoldNewApp_includesAuth(t *testing.T) {
 		t.Error("routes.go missing rate limiter on login")
 	}
 }
+
+func TestScaffoldAuth_migrationIncludesExpiresAt(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "authmigrate")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "authmigrate",
+		ModulePath: "github.com/puppe1990/authmigrate",
+	}, false, true); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := scaffoldAuth(appDir, scaffoldData{
+		AppName:    "authmigrate",
+		ModulePath: "github.com/puppe1990/authmigrate",
+	}, false); err != nil {
+		t.Fatal(err)
+	}
+
+	migration, err := os.ReadFile(filepath.Join(appDir, "internal/store/migrations/002_auth.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(migration)
+	if !strings.Contains(body, "expires_at") {
+		t.Errorf("002_auth.sql missing expires_at:\n%s", body)
+	}
+	if !strings.Contains(body, `expires_at DATETIME NOT NULL DEFAULT (datetime('now', '+7 days'))`) {
+		t.Errorf("002_auth.sql missing expires_at default:\n%s", body)
+	}
+}
