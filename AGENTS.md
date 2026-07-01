@@ -70,7 +70,19 @@ cais g handler settings
 
 Field types: `string`, `text`, `url`, `bool`, `int`. Suffix `?` for optional.
 
-## Commands
+## App commands (run from a Cais app)
+
+```bash
+cais install  # npm install + go mod tidy
+cais css      # build Tailwind
+cais dev      # hot reload + tailwind watch
+cais build    # bin/server
+cais server   # go run ./cmd/server
+cais test     # go test ./...
+cais doctor   # verify htmx, air, go.mod
+```
+
+## Framework commands (Cais repo)
 
 ```bash
 make test-v   # TDD: watch RED/GREEN

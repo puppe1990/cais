@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -33,6 +32,14 @@ func (c *CLI) Run(args []string) error {
 		return c.cmdNew(args[1:])
 	case "generate", "g":
 		return c.cmdGenerate(args[1:])
+	case "install", "i":
+		return c.cmdInstall()
+	case "css":
+		return c.cmdCSS()
+	case "dev":
+		return c.cmdDev()
+	case "build", "b":
+		return c.cmdBuild()
 	case "server", "s":
 		return c.cmdServer()
 	case "test":
@@ -58,20 +65,25 @@ Usage:
   cais g resource <name> [--fields title:string,url:url] [--public] [--no-seed]
   cais g page <name>         Generate page template only
   cais g migration <name>    Generate SQL migration file
-  cais doctor                Check app setup (htmx, air, go.mod)
+  cais install               npm install + go mod tidy
+  cais css                   Build Tailwind CSS
+  cais dev                   Hot reload (air + tailwind watch)
+  cais build                 Build bin/server
   cais server                Run the app (go run ./cmd/server)
   cais test                  Run tests (go test ./...)
+  cais doctor                Check app setup (htmx, air, go.mod)
   cais help                  Show this help
 
 Aliases:
   cais g        → cais generate
+  cais i        → cais install
+  cais b        → cais build
   cais s        → cais server
 
 Examples:
-  cais new dashboard ../dashboard
-  cais new myapp --blank
+  cais new myapp && cd myapp && cais install && cais dev
   cais g handler settings
-  cais server`)
+  cais css && cais server`)
 }
 
 func (c *CLI) cmdNew(args []string) error {
@@ -120,7 +132,7 @@ func (c *CLI) cmdNew(args []string) error {
 		return err
 	}
 
-	_, _ = fmt.Fprintf(c.Out, "Created app %q at %s\n\nNext steps:\n  cd %s\n  npm install\n  make dev\n", name, abs, abs)
+	_, _ = fmt.Fprintf(c.Out, "Created app %q at %s\n\nNext steps:\n  cd %s\n  cais install\n  cais dev\n", name, abs, abs)
 	return nil
 }
 
@@ -162,42 +174,28 @@ func (c *CLI) cmdGenerate(args []string) error {
 }
 
 func (c *CLI) cmdServer() error {
-	cwd, err := os.Getwd()
+	dir, err := c.appDir()
 	if err != nil {
 		return err
 	}
-	if !isCaisApp(cwd) {
-		return fmt.Errorf("not a Cais app")
-	}
-	cmd := exec.Command("go", "run", "./cmd/server")
-	cmd.Dir = cwd
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-	return cmd.Run()
+	_, _ = fmt.Fprintln(c.Out, "→ go run ./cmd/server")
+	return runCmd(dir, "go", "run", "./cmd/server")
 }
 
 func (c *CLI) cmdDoctor() error {
-	cwd, err := os.Getwd()
+	dir, err := c.appDir()
 	if err != nil {
 		return err
 	}
-	if !isCaisApp(cwd) {
-		return fmt.Errorf("not a Cais app")
-	}
-	return runDoctor(c.Out, cwd)
+	return runDoctor(c.Out, dir)
 }
 
 func (c *CLI) cmdTest() error {
-	cwd, err := os.Getwd()
+	dir, err := c.appDir()
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command("go", "test", "./...", "-race", "-count=1")
-	cmd.Dir = cwd
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return runCmd(dir, "go", "test", "./...", "-race", "-count=1")
 }
 
 func moduleName(app string) string {
