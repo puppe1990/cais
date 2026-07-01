@@ -14,15 +14,17 @@ import (
 
 func (c *CLI) cmdDB(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: cais db <migrate|status>")
+		return fmt.Errorf("usage: cais db <migrate|status|rollback>")
 	}
 	switch args[0] {
 	case "migrate":
 		return c.cmdDBMigrate()
 	case "status":
 		return c.cmdDBStatus()
+	case "rollback":
+		return c.cmdDBRollback()
 	default:
-		return fmt.Errorf("unknown db command %q (use migrate or status)", args[0])
+		return fmt.Errorf("unknown db command %q (use migrate, status, or rollback)", args[0])
 	}
 }
 
@@ -41,6 +43,25 @@ func (c *CLI) cmdDBMigrate() error {
 		return err
 	}
 	_, _ = fmt.Fprintln(c.Out, "=> Migrations up to date")
+	return nil
+}
+
+func (c *CLI) cmdDBRollback() error {
+	dir, err := c.appDir()
+	if err != nil {
+		return err
+	}
+	db, migrationsDir, cleanup, err := openAppDB(dir)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	version, err := migrate.RollbackLastDir(db, migrationsDir)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(c.Out, "=> Rolled back %s (does not run SQL down migrations)\n", version)
 	return nil
 }
 

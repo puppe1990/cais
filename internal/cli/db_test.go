@@ -22,6 +22,29 @@ func TestCLI_DBStatus_listsMigrations(t *testing.T) {
 	}
 }
 
+func TestCLI_DBRollback_removesLastMigration(t *testing.T) {
+	dir := t.TempDir()
+	writeMinimalApp(t, dir)
+
+	c := &CLI{Out: &bytes.Buffer{}}
+	if err := c.Run([]string{"db", "migrate"}); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	c2 := &CLI{Out: &buf}
+	if err := c2.Run([]string{"db", "rollback"}); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "001_contacts") {
+		t.Errorf("rollback output missing version: %q", out)
+	}
+	if !strings.Contains(out, "does not run SQL down migrations") {
+		t.Errorf("rollback output missing down-migration notice: %q", out)
+	}
+}
+
 func TestCLI_DBMigrate_isIdempotent(t *testing.T) {
 	dir := t.TempDir()
 	writeMinimalApp(t, dir)

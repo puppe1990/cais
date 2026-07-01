@@ -177,5 +177,67 @@ func TestListSQL_ignoresNonSQLFiles(t *testing.T) {
 	}
 }
 
+func TestRollbackLast_removesLastAppliedMigration(t *testing.T) {
+	migrations := fstest.MapFS{
+		"migrations/001_users.sql": &fstest.MapFile{
+			Data: []byte(`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);`),
+		},
+		"migrations/002_posts.sql": &fstest.MapFile{
+			Data: []byte(`CREATE TABLE posts (id INTEGER PRIMARY KEY, title TEXT NOT NULL);`),
+		},
+	}
+
+	db := testDB(t)
+	if err := Apply(db, migrations, "migrations"); err != nil {
+		t.Fatal(err)
+	}
+
+	version, err := RollbackLast(db, migrations, "migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version != "002_posts" {
+		t.Errorf("RollbackLast version = %q, want 002_posts", version)
+	}
+
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM schema_migrations").Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Errorf("schema_migrations count = %d, want 1 after rollback", count)
+	}
+
+	applied, err := isApplied(db, "001_users")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !applied {
+		t.Error("001_users should still be applied")
+	}
+
+	applied, err = isApplied(db, "002_posts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if applied {
+		t.Error("002_posts should no longer be applied")
+	}
+}
+
+func TestRollbackLast_errorsWhenNoAppliedMigrations(t *testing.T) {
+	migrations := fstest.MapFS{
+		"migrations/001_users.sql": &fstest.MapFile{
+			Data: []byte(`CREATE TABLE users (id INTEGER PRIMARY KEY);`),
+		},
+	}
+
+	db := testDB(t)
+	_, err := RollbackLast(db, migrations, "migrations")
+	if err == nil {
+		t.Fatal("expected error when no migrations applied")
+	}
+}
+
 // Ensure fstest.MapFS satisfies fs.FS at compile time.
 var _ fs.FS = fstest.MapFS{}
