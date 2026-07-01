@@ -16,10 +16,11 @@ func PrintDevBanner(w io.Writer, version string) {
 	_, _ = fmt.Fprintf(w, "Cais v%s · %s · hot reload\n\n", version, runtime.Version())
 }
 
-const devBannerArt = `   ____      _
-  / ___|__ _(_) ___
- | |   / _` + "`" + `_ | |/ __|
- | |__| (_| | | (__
-  \____\__,_|_|\___|
+// Four distinct letters: C · A · I · S
+const devBannerArt = `  ____    ___   _____   ____
+ / ___|  / _ \ |_   _| / ___|
+| |     | | | |  | |   \___ \
+| |___  | |_| |  | |    ___) |
+ \____|  \___/   |_|   |____/
 
 `

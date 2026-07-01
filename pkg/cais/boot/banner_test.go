@@ -19,4 +19,8 @@ func TestPrintDevBanner_ShowsCaisVersion(t *testing.T) {
 	if strings.Contains(out, "air") || strings.Contains(out, "AIR") {
 		t.Fatalf("banner should not mention air:\n%s", out)
 	}
+	// Four letter blocks: C, A, I, S
+	if strings.Count(out, "____") < 3 {
+		t.Fatalf("banner should spell CAIS with distinct letters:\n%s", out)
+	}
 }
