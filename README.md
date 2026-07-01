@@ -149,6 +149,15 @@ r.Group(middleware.AdminAuth(cfg), func(g *cais.Router) {
 })
 ```
 
+**Admin auth modes**
+
+| Middleware              | Use case                                                        |
+| ----------------------- | --------------------------------------------------------------- |
+| `RequireAuth("/login")` | Browser pages (dashboard, `cais g resource` admin CRUD default) |
+| `AdminAuth(cfg)`        | API/scripts with Bearer token (`--admin-auth bearer`)           |
+
+Note: `cais g resource` defaults to session auth. Use `--admin-auth bearer` for token-only admin APIs.
+
 **CSRF** — double-submit cookie on all mutations (enabled by default):
 
 ```go
