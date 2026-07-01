@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/puppe1990/cais/pkg/cais/boot"
 )
 
 const (
@@ -90,7 +92,7 @@ func (c *CLI) cmdDev() error {
 	defer func() { _ = watch.Process.Kill() }()
 
 	if air := findAir(); air != "" {
-		_, _ = fmt.Fprintln(c.Out, "=> Starting dev server (hot reload via air)")
+		boot.PrintDevBanner(c.Out, boot.CaisVersion())
 		return runCmd(dir, air, "-c", ".air.toml")
 	}
 
