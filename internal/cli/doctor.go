@@ -123,7 +123,7 @@ func checkAir() doctorCheck {
 func checkCSS(dir string) doctorCheck {
 	path := filepath.Join(dir, "web/static/css/styles.css")
 	if _, err := os.Stat(path); err != nil {
-		return doctorCheck{Name: "tailwind css", Detail: "styles.css missing", FixHint: "npm install && make css"}
+		return doctorCheck{Name: "tailwind css", Detail: "styles.css missing", FixHint: "cais install && cais css"}
 	}
 	return doctorCheck{Name: "tailwind css", OK: true}
 }

@@ -10,7 +10,7 @@ require (
 )
 `
 
-const tplEmptyCSS = `/* Run: make css */\n`
+const tplEmptyCSS = `/* Run: cais css */\n`
 
 const tplAir = `root = "."
 tmp_dir = "tmp"
@@ -1040,20 +1040,24 @@ const tplREADME = "# {{.AppName}}\n\n" +
 	"- SQLite (modernc.org/sqlite, no CGO)\n\n" +
 	"## Quick start\n\n" +
 	"```bash\n" +
-	"npm install\n" +
-	"make dev      # http://localhost:8080\n" +
-	"make test     # full test suite\n" +
-	"make build    # builds bin/server\n" +
+	"cais install  # npm install + go mod tidy\n" +
+	"cais dev        # http://localhost:8080\n" +
+	"cais test       # full test suite\n" +
+	"cais build      # bin/server\n" +
 	"```\n\n" +
 	"## Cais CLI\n\n" +
 	"This app was scaffolded with the Cais CLI. Useful commands:\n\n" +
 	"```bash\n" +
+	"cais install               # npm install + go mod tidy\n" +
+	"cais css                   # build Tailwind\n" +
+	"cais dev                   # hot reload + tailwind watch\n" +
+	"cais server                # go run ./cmd/server\n" +
 	"cais g handler <name>      # handler + test + page template\n" +
 	"cais g resource <name>     # model + migration + admin CRUD\n" +
 	"cais g page <name>         # page template only\n" +
 	"cais g migration <name>    # SQL migration file\n" +
-	"cais server                # go run ./cmd/server\n" +
 	"cais test                  # go test ./...\n" +
+	"cais doctor                # verify setup\n" +
 	"```\n\n" +
 	"## Structure\n\n" +
 	"```\n" +
@@ -1482,9 +1486,9 @@ const tplREADMEBlank = "# {{.AppName}}\n\n" +
 	"Full-stack Go app built with [Cais](https://github.com/puppe1990/cais): server-side HTML, HTMX, Tailwind, and SQLite.\n\n" +
 	"## Quick start\n\n" +
 	"```bash\n" +
-	"npm install\n" +
-	"make dev      # http://localhost:8080\n" +
-	"make test     # full test suite\n" +
+	"cais install  # npm install + go mod tidy\n" +
+	"cais dev        # http://localhost:8080\n" +
+	"cais test       # full test suite\n" +
 	"```\n\n" +
 	"## Add your first resource\n\n" +
 	"```bash\n" +
