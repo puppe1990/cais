@@ -6,8 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/matheuspuppe/cais/internal/models"
 	_ "modernc.org/sqlite"
+
+	"github.com/matheuspuppe/cais/internal/models"
 )
 
 type Store interface {
@@ -34,7 +35,7 @@ func NewSQLiteStore(dsn string) (*SQLiteStore, error) {
 	}
 
 	if err := applyMigrations(db); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, err
 	}
 

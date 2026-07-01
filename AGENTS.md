@@ -13,15 +13,15 @@ Before writing production code:
 
 ## Structure
 
-| Directory | Responsibility |
-|-----------|----------------|
-| `pkg/cais/` | Framework: config, router, render, htmx, middleware |
-| `internal/app/` | Bootstrap: route and dependency wiring |
-| `internal/handlers/` | HTTP handlers |
-| `internal/store/` | SQLite persistence |
-| `web/templates/` | HTML templates (layouts, pages, partials) |
-| `web/static/` | Compiled Tailwind CSS + vendored HTMX |
-| `cmd/server/` | Entry point |
+| Directory            | Responsibility                                      |
+| -------------------- | --------------------------------------------------- |
+| `pkg/cais/`          | Framework: config, router, render, htmx, middleware |
+| `internal/app/`      | Bootstrap: route and dependency wiring              |
+| `internal/handlers/` | HTTP handlers                                       |
+| `internal/store/`    | SQLite persistence                                  |
+| `web/templates/`     | HTML templates (layouts, pages, partials)           |
+| `web/static/`        | Compiled Tailwind CSS + vendored HTMX               |
+| `cmd/server/`        | Entry point                                         |
 
 ## New page
 
@@ -48,10 +48,15 @@ Before writing production code:
 ```bash
 make test-v   # TDD: watch RED/GREEN
 make test     # validation with -race
+make lint     # golangci-lint
+make format   # prettier --write
+make ci       # test + lint + format-check
 make dev      # hot reload + tailwind watch
 make build    # bin/cais
 make docker   # ~15-20MB image
 ```
+
+Pre-commit (tests, lint, prettier): `make pre-commit-install` once, then hooks run on every commit.
 
 ## Do not
 

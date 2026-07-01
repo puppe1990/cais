@@ -1,9 +1,11 @@
 {{ define "base" }}
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head><title>{{ block "title" . }}Test{{ end }}</title></head>
-<body>
-{{ template "content" . }}
-</body>
+  <head>
+    <title>{{ block "title" . }}Test{{ end }}</title>
+  </head>
+  <body>
+    {{ template "content" . }}
+  </body>
 </html>
 {{ end }}

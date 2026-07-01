@@ -9,6 +9,17 @@ Full-stack Go framework for mini apps on Lightsail: server-side HTML, HTMX, Tail
 - Tailwind CSS 3.x
 - SQLite (`modernc.org/sqlite`, no CGO)
 
+## CI and pre-commit
+
+GitHub Actions runs tests, `golangci-lint`, and Prettier on every push/PR to `main`.
+
+```bash
+make pre-commit-install   # once: installs git hooks
+make ci                   # test + lint + format-check locally
+```
+
+Pre-commit hooks run: trailing whitespace, Prettier, `go fmt`, `go test`, and `golangci-lint`.
+
 ## Quick start
 
 Requires Go on your PATH and `~/go/bin` for hot reload (`air`):
@@ -35,11 +46,11 @@ cmd/server/        → entry point
 
 ## Environment variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `:8080` | Server port |
+| Variable  | Default         | Description      |
+| --------- | --------------- | ---------------- |
+| `PORT`    | `:8080`         | Server port      |
 | `DB_PATH` | `./data/app.db` | SQLite file path |
-| `ENV` | `development` | Environment |
+| `ENV`     | `development`   | Environment      |
 
 ## Deploy (Lightsail)
 

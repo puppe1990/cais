@@ -45,7 +45,7 @@ func setupTestApp(t *testing.T) *App {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { _ = s.Close() })
 
 	cfg := cais.Config{Port: ":0", DBPath: ":memory:", Env: "test"}
 	a, err := New(cfg, Deps{

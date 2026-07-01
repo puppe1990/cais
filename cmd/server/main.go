@@ -49,7 +49,7 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 
 	staticDir, err := findWebDir("static")
 	if err != nil {
-		s.Close()
+		_ = s.Close()
 		return nil, err
 	}
 

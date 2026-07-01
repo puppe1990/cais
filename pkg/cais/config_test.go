@@ -1,9 +1,6 @@
 package cais
 
-import (
-	"os"
-	"testing"
-)
+import "testing"
 
 func TestConfig_DefaultPort(t *testing.T) {
 	t.Setenv("PORT", "")
@@ -42,7 +39,7 @@ func TestConfig_DBPath(t *testing.T) {
 }
 
 func TestConfig_DefaultEnv(t *testing.T) {
-	os.Unsetenv("ENV")
+	t.Setenv("ENV", "")
 
 	cfg := Load()
 

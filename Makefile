@@ -1,4 +1,4 @@
-.PHONY: dev build test test-v css css-watch docker clean
+.PHONY: dev build test test-v css css-watch docker clean lint format format-check pre-commit-install ci
 
 BIN := bin/cais
 CSS_IN := input.css
@@ -27,6 +27,20 @@ dev: css
 
 docker:
 	docker build -t cais:latest .
+
+lint:
+	golangci-lint run ./...
+
+format:
+	npm run format
+
+format-check:
+	npm run format:check
+
+pre-commit-install:
+	pre-commit install
+
+ci: test lint format-check
 
 clean:
 	rm -rf bin/ data/ tmp/
