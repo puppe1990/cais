@@ -100,24 +100,44 @@ func patchAppForAuth(dir string) error {
 		return err
 	}
 	content := string(body)
-	if strings.Contains(content, "LoadSession") {
-		return nil
-	}
+	changed := false
 
-	if !strings.Contains(content, "github.com/puppe1990/cais/pkg/cais/session") {
-		content = strings.Replace(content,
-			`"github.com/puppe1990/cais/pkg/cais/middleware"`,
-			`"github.com/puppe1990/cais/pkg/cais/middleware"
+	if !strings.Contains(content, "LoadSession") {
+		if !strings.Contains(content, "github.com/puppe1990/cais/pkg/cais/session") {
+			content = strings.Replace(content,
+				`"github.com/puppe1990/cais/pkg/cais/middleware"`,
+				`"github.com/puppe1990/cais/pkg/cais/middleware"
 	"github.com/puppe1990/cais/pkg/cais/session"`,
+				1,
+			)
+		}
+		content = strings.Replace(content,
+			"r.Use(middleware.CSRF)\n",
+			"r.Use(middleware.CSRF)\n\tr.Use(middleware.LoadSession(deps.Store.Sessions()))\n\tr.Use(middleware.Flash)\n",
 			1,
 		)
+		changed = true
+	} else if !strings.Contains(content, "middleware.Flash") {
+		content = strings.Replace(content,
+			"r.Use(middleware.LoadSession(deps.Store.Sessions()))\n",
+			"r.Use(middleware.LoadSession(deps.Store.Sessions()))\n\tr.Use(middleware.Flash)\n",
+			1,
+		)
+		changed = true
 	}
 
-	content = strings.Replace(content,
-		"r.Use(middleware.CSRF)\n",
-		"r.Use(middleware.CSRF)\n\tr.Use(middleware.LoadSession(deps.Store.Sessions()))\n",
-		1,
-	)
+	if !strings.Contains(content, "SecurityHeaders") {
+		content = strings.Replace(content,
+			"r.Use(middleware.Recover)\n",
+			"r.Use(middleware.Recover)\n\tr.Use(middleware.SecurityHeaders(cfg))\n",
+			1,
+		)
+		changed = true
+	}
+
+	if !changed {
+		return nil
+	}
 
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return err
@@ -145,10 +165,23 @@ func patchRoutesForAuth(dir string) error {
 			1,
 		)
 	}
+	if !strings.Contains(content, `"net/http"`) {
+		content = strings.Replace(content,
+			`import (
+	"github.com/puppe1990/cais/pkg/cais"`,
+			`import (
+	"net/http"
 
-	insert := `	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions())
+	"github.com/puppe1990/cais/pkg/cais"`,
+			1,
+		)
+	}
+
+	insert := `	loginLimit := middleware.NewRateLimiter(10)
+
+	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions(), cfg)
 	r.Get("/login", auth.Login)
-	r.Post("/login", auth.LoginPost)
+	r.Post("/login", loginLimit.Middleware(http.HandlerFunc(auth.LoginPost)).ServeHTTP)
 	r.Post("/logout", auth.LogoutPost)
 
 `
@@ -201,6 +234,7 @@ import (
 
 	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/flash"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/session"
@@ -211,6 +245,7 @@ type AuthHandler struct {
 	store    store.Store
 	site     meta.Site
 	sessions session.Store
+	cfg      cais.Config
 }
 
 type loginData struct {
@@ -218,8 +253,8 @@ type loginData struct {
 	Error string
 }
 
-func NewAuthHandler(renderer *cais.Renderer, s store.Store, site meta.Site, sessions session.Store) *AuthHandler {
-	return &AuthHandler{renderer: renderer, store: s, site: site, sessions: sessions}
+func NewAuthHandler(renderer *cais.Renderer, s store.Store, site meta.Site, sessions session.Store, cfg cais.Config) *AuthHandler {
+	return &AuthHandler{renderer: renderer, store: s, site: site, sessions: sessions, cfg: cfg}
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -227,7 +262,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
-	httpx.RenderOrError(w, h.renderer, "base", "login", loginData{Site: meta.WithCSRF(h.site, r)})
+	httpx.RenderOrError(w, h.renderer, "base", "login", loginData{Site: meta.ForRequest(h.site, r)})
 }
 
 func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
@@ -241,16 +276,17 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 	user, err := h.store.FindUserByEmail(email)
 	if err != nil || !session.VerifyPassword(user.PasswordHash, password) {
 		httpx.RenderOrError(w, h.renderer, "base", "login", loginData{
-			Site:  meta.WithCSRF(h.site, r),
+			Site:  meta.ForRequest(h.site, r),
 			Error: "Email ou senha inválidos.",
 		})
 		return
 	}
 
-	if err := session.SignIn(w, h.sessions, user.ID, session.CookieOptions{}); err != nil {
+	if err := session.SignIn(w, h.sessions, user.ID, session.CookieOptionsFromConfig(h.cfg)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	flash.Set(w, "notice", "Bem-vindo!")
 	httpx.SeeOther(w, r, "/dashboard")
 }
 
@@ -269,13 +305,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/session"
 )
 
 func TestAuth_Login_redirectsWhenAuthenticated(t *testing.T) {
 	s := setupTestStore(t)
 	sessions := s.Sessions()
-	h := NewAuthHandler(setupTestRenderer(t), s, testSite(), sessions)
+	h := NewAuthHandler(setupTestRenderer(t), s, testSite(), sessions, cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/login", nil)
 	req = session.WithUserID(req, 1)
@@ -289,7 +326,7 @@ func TestAuth_Login_redirectsWhenAuthenticated(t *testing.T) {
 
 func TestAuth_LoginPost_invalidCredentials(t *testing.T) {
 	s := setupTestStore(t)
-	h := NewAuthHandler(setupTestRenderer(t), s, testSite(), s.Sessions())
+	h := NewAuthHandler(setupTestRenderer(t), s, testSite(), s.Sessions(), cais.Config{})
 
 	form := url.Values{"email": {"nobody@example.com"}, "password": {"wrong"}}
 	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))

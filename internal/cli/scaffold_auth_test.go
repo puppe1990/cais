@@ -47,4 +47,28 @@ func TestScaffoldNewApp_includesAuth(t *testing.T) {
 	if !strings.Contains(string(appGo), "LoadSession") {
 		t.Error("app.go missing LoadSession middleware")
 	}
+	if !strings.Contains(string(appGo), "middleware.Flash") {
+		t.Error("app.go missing Flash middleware")
+	}
+	if !strings.Contains(string(appGo), "SecurityHeaders") {
+		t.Error("app.go missing SecurityHeaders middleware")
+	}
+
+	authHandler, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/auth.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	authBody := string(authHandler)
+	if !strings.Contains(authBody, "CookieOptionsFromConfig") {
+		t.Error("auth.go missing CookieOptionsFromConfig")
+	}
+	if !strings.Contains(authBody, "flash.Set") {
+		t.Error("auth.go missing flash.Set after login")
+	}
+	if !strings.Contains(authBody, "meta.ForRequest") {
+		t.Error("auth.go missing meta.ForRequest")
+	}
+	if !strings.Contains(body, "NewRateLimiter") {
+		t.Error("routes.go missing rate limiter on login")
+	}
 }

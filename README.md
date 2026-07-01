@@ -51,6 +51,8 @@ export PATH="$HOME/go/bin:$PATH"
 | `cais console`                                                                  | Interactive REPL (store, cfg, db + SQL)       |
 | `cais db migrate`                                                               | Run pending SQL migrations                    |
 | `cais db status`                                                                | List applied/pending migrations               |
+| `cais db rollback`                                                              | Remove last applied migration record          |
+| `cais db prune-sessions`                                                        | Delete expired login sessions from SQLite     |
 | `cais doctor`                                                                   | Check htmx, air, go.mod, CSS                  |
 
 Field types: `string`, `text`, `url`, `bool`, `int`, `date`. Suffix `?` for optional.
@@ -118,6 +120,7 @@ r.Group(middleware.Protect, func(g *cais.Router) {
 
 ```go
 httpx.RenderOrError(w, renderer, "base", "home", data)
+httpx.RenderPageOrPartial(w, r, renderer, httpx.RenderOptions{Layout: "base", Page: "contact", Partial: "contact_errors", Data: data, Status: 422})
 httpx.RenderPartial(w, renderer, "errors", data)
 httpx.SeeOther(w, r, "/admin")
 ```
@@ -151,14 +154,17 @@ r.Use(middleware.CSRF)
 site := meta.WithCSRF(meta.SiteFrom("MyApp", cfg.AppURL), r)
 ```
 
-**Session auth** — cookie-based sessions for user-facing apps:
+**Session auth** — cookie-based sessions for user-facing apps (7-day expiry, `cais db prune-sessions`):
 
 ```go
-store := session.NewMemoryStore()
 r.Use(middleware.LoadSession(store))
+r.Use(middleware.Flash)
 r.Get("/dashboard", middleware.RequireAuth("/login")(dashboard.Index))
-session.SignIn(w, store, userID, session.CookieOptions{})
+session.SignIn(w, store, userID, session.CookieOptionsFromConfig(cfg))
+flash.Set(w, "notice", "Welcome!")
 ```
+
+**Security** — `middleware.SecurityHeaders(cfg)` and `middleware.NewRateLimiter(n)` on login/contact POST routes.
 
 ## Environment variables
 

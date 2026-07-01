@@ -53,11 +53,18 @@ Set `ADMIN_TOKEN` in production (`cfg.Validate()` fails on boot if missing). Use
 
 ```go
 r.Use(middleware.LoadSession(deps.Store.Sessions()))
+r.Use(middleware.Flash)
 r.Get("/dashboard", middleware.RequireAuthFunc("/login", dashboard.ServeHTTP))
-session.SignIn(w, sessions, userID, session.CookieOptions{})
+auth := handlers.NewAuthHandler(renderer, store, site, store.Sessions(), cfg)
+session.SignIn(w, sessions, userID, session.CookieOptionsFromConfig(cfg))
+flash.Set(w, "notice", "Bem-vindo!")
 ```
 
 Dev seed user: `demo@example.com` / `password`. Sessions persist in SQLite via `session.NewSQLiteStore`.
+
+**Session expiry** — cookies and DB rows expire after 7 days (`sessionTTL` / `defaultMaxAge`). SQLite stores `expires_at`; expired rows are ignored on lookup. Prune stale rows with `cais db prune-sessions` (or call `session.Store.PruneExpired()`).
+
+**Production cookies** — `session.CookieOptionsFromConfig(cfg)` sets `Secure` when `cfg.CookieSecure()` is true (`ENV=production`).
 
 ## New page
 
@@ -71,9 +78,32 @@ Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap so layouts render corre
 ## CSRF
 
 - `middleware.CSRF` on the router (validates POST/PUT/DELETE/PATCH)
-- Pass `meta.WithCSRF(site, r)` in page data — layout renders `<meta name="csrf-token">` + HTMX header script
+- Pass `meta.ForRequest(site, r)` in page data (CSRF + flash) — layout renders `<meta name="csrf-token">` + HTMX header script
 - HTML forms: `<input type="hidden" name="csrf_token" value="{{ .CSRFToken }}" />`
 - Integration tests: GET page first (cookie), then POST with matching token
+
+## Flash messages
+
+- `middleware.Flash` on the router (after `LoadSession`)
+- Set on redirect: `flash.Set(w, "notice", "Saved!")` — read in templates via `meta.ForRequest(site, r)` → `.Flash`
+- One-shot: consumed on the next request
+
+## Security headers
+
+- `middleware.SecurityHeaders(cfg)` on the router (after `Recover`)
+- Sets `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`
+- Adds `Strict-Transport-Security` in production when `cfg.CookieSecure()` is true
+
+## Rate limiting
+
+Wrap sensitive POST routes with per-IP token buckets:
+
+```go
+loginLimit := middleware.NewRateLimiter(10)   // 10 req/min
+contactLimit := middleware.NewRateLimiter(20) // 20 req/min
+r.Post("/login", loginLimit.Middleware(http.HandlerFunc(auth.LoginPost)).ServeHTTP)
+r.Post("/contact", contactLimit.Middleware(http.HandlerFunc(contact.Post)).ServeHTTP)
+```
 
 ## HTMX interactions
 
@@ -81,8 +111,28 @@ Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap so layouts render corre
 - Partials are parsed into full pages too, so `{{ template "name" . }}` works in pages and layouts
 - For HTMX swaps, handler returns the partial via `RenderPartial` (not a full layout)
 - Template attributes: `hx-post`, `hx-target`, `hx-swap`
-- Handler: if `cais.IsHTMX(r)` → `RenderPartial`, else → `Render` with layout
+- Handler: use `httpx.RenderPageOrPartial` for forms that return partial on HTMX and full page otherwise
 - Test with `req.Header.Set("HX-Request", "true")`
+
+```go
+httpx.RenderPageOrPartial(w, r, renderer, httpx.RenderOptions{
+  Layout: "base", Page: "contact", Partial: "contact_errors", Data: data, Status: 422,
+})
+```
+
+## Form validation
+
+Use `validate.Email`, `validate.URL`, `validate.Required` for single-field checks. For multiple fields, collect errors in `validate.FieldErrors`:
+
+```go
+var errs validate.FieldErrors
+if item.Name == "" {
+  errs.Add("name", "Name is required")
+}
+if errs.Any() {
+  // re-render form with errs
+}
+```
 
 ## HTMX UX (app-like feel)
 
@@ -114,7 +164,7 @@ In `ENV=development`:
 
 Boot banner via `boot.Print` in `cmd/server/main.go`. Port auto-pick via `cais.ResolvePort` when preferred port is busy.
 
-Set `APP_URL` for absolute OG image URLs in production.
+Set `APP_URL` for absolute OG image URLs. **`APP_URL` is required when `ENV=production`** — `cfg.Validate()` fails on boot if missing.
 
 ## CLI generators
 
@@ -143,8 +193,10 @@ cais server   # go run ./cmd/server
 cais test     # go test ./...
 cais doctor   # verify htmx, air, go.mod
 cais console  # Rails-style REPL (store, cfg, db + sql)
-cais db migrate  # run pending migrations
-cais db status   # list applied/pending migrations
+cais db migrate        # run pending migrations
+cais db status         # list applied/pending migrations
+cais db rollback       # remove last applied migration record (no SQL down)
+cais db prune-sessions # delete expired login sessions from SQLite
 ```
 
 Console bindings: `store`, `cfg`, `db`, plus any custom keys in `Bindings`. Commands: `help`, `sql`, `reload`, `history`, `!N`/`!!`, `exit`. Arrow keys when stdin is a TTY.
