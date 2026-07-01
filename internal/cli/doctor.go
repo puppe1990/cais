@@ -24,6 +24,7 @@ func runDoctor(w io.Writer, dir string) error {
 		checkHTMX(dir),
 		checkAir(),
 		checkCSS(dir),
+		checkQualityTooling(dir),
 	}
 
 	var failed int
@@ -118,6 +119,19 @@ func checkAir() doctorCheck {
 		Detail:   "not found",
 		FixHint:  "go install github.com/air-verse/air@latest",
 	}
+}
+
+func checkQualityTooling(dir string) doctorCheck {
+	path := filepath.Join(dir, ".github/workflows/ci.yml")
+	if _, err := os.Stat(path); err != nil {
+		return doctorCheck{
+			Name:     "quality tooling",
+			Optional: true,
+			Detail:   "CI/pre-commit not configured",
+			FixHint:  "cais g ci",
+		}
+	}
+	return doctorCheck{Name: "quality tooling", OK: true}
 }
 
 func checkCSS(dir string) doctorCheck {
