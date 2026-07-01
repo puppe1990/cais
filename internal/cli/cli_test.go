@@ -449,6 +449,25 @@ func TestParseFields(t *testing.T) {
 	}
 }
 
+func TestParseFields_DateType(t *testing.T) {
+	fields, err := parseFields("title:string,due_date:date")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fields) != 2 {
+		t.Fatalf("len = %d", len(fields))
+	}
+	if fields[1].GoType != "string" {
+		t.Errorf("date GoType = %q, want string", fields[1].GoType)
+	}
+	if fields[1].HTMLType != "date" {
+		t.Errorf("date HTMLType = %q, want date", fields[1].HTMLType)
+	}
+	if fields[1].SQLType != "TEXT NOT NULL DEFAULT ''" {
+		t.Errorf("date SQLType = %q", fields[1].SQLType)
+	}
+}
+
 func TestPatchGoModReplace(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	parent := t.TempDir()

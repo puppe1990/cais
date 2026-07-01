@@ -210,6 +210,9 @@ func seedValueForField(f FieldDef) string {
 			}
 			return `"Lorem ipsum dolor sit amet, consectetur adipiscing elit."`
 		}
+		if f.HTMLType == "date" {
+			return `"2024-01-15"`
+		}
 		if strings.Contains(name, "email") {
 			return `"user@example.com"`
 		}
