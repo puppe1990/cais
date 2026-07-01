@@ -17,7 +17,7 @@ type FieldDef struct {
 
 func parseFields(spec string) ([]FieldDef, error) {
 	if strings.TrimSpace(spec) == "" {
-		return defaultFields(), nil
+		return defaultFields()
 	}
 
 	var fields []FieldDef
@@ -30,10 +30,14 @@ func parseFields(spec string) ([]FieldDef, error) {
 		if err != nil {
 			return nil, err
 		}
-		fields = append(fields, fieldFromNameType(name, typ, req))
+		f, err := fieldFromNameType(name, typ, req)
+		if err != nil {
+			return nil, err
+		}
+		fields = append(fields, f)
 	}
 	if len(fields) == 0 {
-		return defaultFields(), nil
+		return defaultFields()
 	}
 	return fields, nil
 }
@@ -58,27 +62,96 @@ func parseFieldPart(part string) (name, typ string, required bool, err error) {
 	return name, typ, required, nil
 }
 
-func fieldFromNameType(name, typ string, required bool) FieldDef {
+func fieldFromNameType(name, typ string, required bool) (FieldDef, error) {
 	pascal := toPascal(name)
 	if toSnake(name) == "url" {
 		pascal = "URL"
 	}
 	switch typ {
+	case "string":
+		return stringField(name, pascal, required, "text", "input"), nil
 	case "text":
-		return FieldDef{Name: toSnake(name), Pascal: pascal, SQLType: "TEXT NOT NULL DEFAULT ''", GoType: "string", HTMLType: "text", Widget: "textarea", Required: required}
+		return stringField(name, pascal, required, "text", "textarea"), nil
 	case "url":
-		return FieldDef{Name: toSnake(name), Pascal: pascal, SQLType: "TEXT NOT NULL", GoType: "string", HTMLType: "url", Widget: "input", Required: required}
+		f := stringField(name, pascal, required, "url", "input")
+		if required {
+			f.SQLType = "TEXT NOT NULL"
+		} else {
+			f.SQLType = "TEXT"
+		}
+		return f, nil
 	case "bool":
-		return FieldDef{Name: toSnake(name), Pascal: pascal, SQLType: "INTEGER NOT NULL DEFAULT 0", GoType: "bool", HTMLType: "checkbox", Widget: "checkbox", Required: false}
+		return FieldDef{Name: toSnake(name), Pascal: pascal, SQLType: "INTEGER NOT NULL DEFAULT 0", GoType: "bool", HTMLType: "checkbox", Widget: "checkbox", Required: false}, nil
 	case "int":
-		return FieldDef{Name: toSnake(name), Pascal: pascal, SQLType: "INTEGER NOT NULL DEFAULT 0", GoType: "int64", HTMLType: "number", Widget: "input", Required: required}
+		return intField(name, pascal, required), nil
 	case "date":
-		return FieldDef{Name: toSnake(name), Pascal: pascal, SQLType: "TEXT NOT NULL DEFAULT ''", GoType: "string", HTMLType: "date", Widget: "input", Required: required}
+		return stringField(name, pascal, required, "date", "input"), nil
 	default:
-		return FieldDef{Name: toSnake(name), Pascal: pascal, SQLType: "TEXT NOT NULL", GoType: "string", HTMLType: "text", Widget: "input", Required: required}
+		return FieldDef{}, fmt.Errorf("unknown field type %q (use string, text, url, bool, int, date)", typ)
 	}
 }
 
-func defaultFields() []FieldDef {
-	return []FieldDef{fieldFromNameType("name", "string", true)}
+func stringField(name, pascal string, required bool, htmlType, widget string) FieldDef {
+	f := FieldDef{
+		Name:     toSnake(name),
+		Pascal:   pascal,
+		HTMLType: htmlType,
+		Widget:   widget,
+		Required: required,
+	}
+	if required {
+		f.SQLType = "TEXT NOT NULL"
+		if widget == "textarea" {
+			f.SQLType = "TEXT NOT NULL DEFAULT ''"
+		}
+		f.GoType = "string"
+	} else {
+		f.SQLType = "TEXT"
+		f.GoType = "*string"
+	}
+	return f
+}
+
+func intField(name, pascal string, required bool) FieldDef {
+	f := FieldDef{
+		Name:     toSnake(name),
+		Pascal:   pascal,
+		HTMLType: "number",
+		Widget:   "input",
+		Required: required,
+	}
+	if required {
+		f.SQLType = "INTEGER NOT NULL DEFAULT 0"
+		f.GoType = "int64"
+	} else {
+		f.SQLType = "INTEGER"
+		f.GoType = "*int64"
+	}
+	return f
+}
+
+func defaultFields() ([]FieldDef, error) {
+	f, err := fieldFromNameType("name", "string", true)
+	if err != nil {
+		return nil, err
+	}
+	return []FieldDef{f}, nil
+}
+
+func fieldNeedsStrPtr(fields []FieldDef) bool {
+	for _, f := range fields {
+		if f.GoType == "*string" {
+			return true
+		}
+	}
+	return false
+}
+
+func fieldNeedsInt64Ptr(fields []FieldDef) bool {
+	for _, f := range fields {
+		if f.GoType == "*int64" {
+			return true
+		}
+	}
+	return false
 }

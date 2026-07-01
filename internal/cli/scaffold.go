@@ -68,6 +68,7 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		"internal/i18n/en.go":                         tplI18nEn,
 		"internal/i18n/pt.go":                         tplI18nPt,
 		"internal/i18n/i18n_test.go":                  tplI18nTest,
+		"internal/db/seeds.go":                        tplSeeds,
 	}
 	for path, content := range qualityToolingFiles() {
 		files[path] = content
@@ -106,6 +107,7 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 			"internal/i18n/en.go":                   tplI18nEn,
 			"internal/i18n/pt.go":                   tplI18nPt,
 			"internal/i18n/i18n_test.go":            tplI18nTest,
+			"internal/db/seeds.go":                  tplSeedsMinimal,
 		}
 		for path, content := range qualityToolingFiles() {
 			files[path] = content
@@ -115,10 +117,15 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		delete(files, "internal/handlers/contact_test.go")
 		delete(files, "internal/handlers/dashboard.go")
 		delete(files, "internal/handlers/dashboard_test.go")
+		delete(files, "internal/handlers/auth.go")
+		delete(files, "internal/handlers/auth_test.go")
 		delete(files, "internal/models/contact.go")
+		delete(files, "internal/models/user.go")
 		delete(files, "internal/store/migrations/001_contacts.sql")
+		delete(files, "internal/store/migrations/002_auth.sql")
 		delete(files, "web/templates/pages/contact.html")
 		delete(files, "web/templates/pages/dashboard.html")
+		delete(files, "web/templates/pages/login.html")
 		delete(files, "web/templates/partials/contact_errors.html")
 		delete(files, "web/templates/partials/contact_success.html")
 		files["internal/app/routes.go"] = tplRoutesMinimal
@@ -127,6 +134,7 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		files["web/templates/layouts/base.html"] = tplLayoutMinimal
 		files["internal/handlers/home_test.go"] = tplHomeTestMinimal
 		files["internal/store/migrations/.gitkeep"] = ""
+		files["internal/db/seeds.go"] = tplSeedsMinimal
 	}
 
 	for path, content := range files {
@@ -191,21 +199,11 @@ func scaffoldPage(dir, name string, dryRun bool) error {
 
 func scaffoldMigration(dir, name string, dryRun bool) error {
 	data := dataForHandler(name)
-	migrationsDir := filepath.Join(dir, "internal/store/migrations")
-	entries, err := os.ReadDir(migrationsDir)
+	rel, _, err := nextMigrationFile(dir, data.Snake, dryRun)
 	if err != nil {
 		return err
 	}
-
-	next := 1
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".sql") {
-			next++
-		}
-	}
-	filename := fmt.Sprintf("%03d_%s.sql", next, data.Snake)
-	rel := filepath.Join("internal/store/migrations", filename)
-	path := filepath.Join(migrationsDir, filename)
+	path := filepath.Join(dir, rel)
 	content := fmt.Sprintf("-- migration: %s\n-- up\n\n-- down\n\n", data.Snake)
 	return writeScaffoldFile(path, []byte(content), 0o644, rel, dryRun)
 }
@@ -222,7 +220,7 @@ func patchRoutes(dir string, data scaffoldData, dryRun bool) error {
 	}
 
 	insert := fmt.Sprintf(
-		"\n\t%s := handlers.New%sHandler(deps.Renderer)\n\tr.Get(\"/%s\", %s.ServeHTTP)\n",
+		"\n\t%s := handlers.New%sHandler(deps.Renderer, deps.Site, deps.Catalog, cfg)\n\tr.Get(\"/%s\", %s.ServeHTTP)\n",
 		data.Camel, data.Pascal, data.Snake, data.Camel,
 	)
 

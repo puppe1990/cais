@@ -11,6 +11,7 @@ type resourceOpts struct {
 	Seed      bool
 	Paginate  bool
 	AdminAuth string
+	Force     bool
 	dryRun    bool
 }
 
@@ -30,6 +31,8 @@ func parseResourceOpts(args []string) (resourceOpts, error) {
 			opts.Paginate = true
 		case "--no-seed":
 			opts.Seed = false
+		case "--force":
+			opts.Force = true
 		case "--admin-auth":
 			if i+1 >= len(args) {
 				return opts, fmt.Errorf("--admin-auth requires a value")
@@ -69,6 +72,21 @@ func buildResourceMigration(data scaffoldData) string {
 	return fmt.Sprintf("-- up\n%s\n\n-- down\nDROP TABLE IF EXISTS %s;\n", create, data.Plural)
 }
 
+func nullableStoreHelpers(fields []FieldDef) string {
+	var b strings.Builder
+	if fieldNeedsStrPtr(fields) {
+		b.WriteString(`
+func strPtr(s string) *string { return &s }
+`)
+	}
+	if fieldNeedsInt64Ptr(fields) {
+		b.WriteString(`
+func int64Ptr(n int64) *int64 { return &n }
+`)
+	}
+	return b.String()
+}
+
 func buildResourceStoreMethods(data scaffoldData) string {
 	cols, ph := insertColumns(data.Fields)
 	args := insertArgs(data.Fields)
@@ -76,7 +94,7 @@ func buildResourceStoreMethods(data scaffoldData) string {
 	updArgs := insertArgs(data.Fields) + ", c.ID"
 	sel := selectColumns(data.Fields)
 
-	return fmt.Sprintf(`
+	return nullableStoreHelpers(data.Fields) + fmt.Sprintf(`
 func (s *SQLiteStore) Insert%s(c models.%s) (int64, error) {
 	result, err := s.db.Exec(
 		"INSERT INTO %s (%s) VALUES (%s)",
@@ -165,7 +183,7 @@ func (s *SQLiteStore) List%s(page, perPage int) ([]models.%s, int, error) {
 	if perPage < 1 {
 		perPage = 25
 	}
-	offset := (page - 1) * perPage
+	offset := pagination.Offset(page, perPage)
 	rows, err := s.db.Query(
 		"SELECT id, %s, created_at FROM %s ORDER BY id DESC LIMIT ? OFFSET ?",
 		perPage, offset,
@@ -229,67 +247,79 @@ func (s *SQLiteStore) count%s() (int64, error) {
 func seedValueForField(f FieldDef) string {
 	name := strings.ToLower(f.Name)
 	switch f.GoType {
+	case "*string":
+		return "strPtr(" + seedStringValue(f, name) + ")"
+	case "*int64":
+		return "int64Ptr(" + seedIntValue(f, name) + ")"
 	case "bool":
 		if strings.Contains(name, "active") || strings.Contains(name, "enabled") {
 			return "true"
 		}
 		return "false"
 	case "int64":
-		if strings.Contains(name, "count") || strings.Contains(name, "total") {
-			return "10"
-		}
-		if strings.Contains(name, "price") || strings.Contains(name, "amount") {
-			return "99"
-		}
-		if strings.Contains(name, "age") || strings.Contains(name, "year") {
-			return "25"
-		}
-		if strings.Contains(name, "rating") || strings.Contains(name, "score") {
-			return "5"
-		}
-		if strings.Contains(name, "minute") || strings.Contains(name, "hour") || strings.Contains(name, "second") || strings.Contains(name, "duration") || strings.Contains(name, "calorie") {
-			return "30"
-		}
-		if strings.Contains(name, "quantity") || strings.Contains(name, "qty") || strings.Contains(name, "servings") {
-			return "4"
-		}
-		return "1"
+		return seedIntValue(f, name)
 	default:
-		if f.HTMLType == "url" {
-			if strings.Contains(name, "github") {
-				return `"https://github.com/example"`
-			}
-			if strings.Contains(name, "twitter") || strings.Contains(name, "x") {
-				return `"https://twitter.com/example"`
-			}
-			return `"https://example.com"`
-		}
-		if f.Widget == "textarea" {
-			if strings.Contains(name, "description") {
-				return `"A detailed description of this item."`
-			}
-			if strings.Contains(name, "notes") || strings.Contains(name, "comment") {
-				return `"Some notes about this entry."`
-			}
-			return `"Lorem ipsum dolor sit amet, consectetur adipiscing elit."`
-		}
-		if f.HTMLType == "date" {
-			return `"2024-01-15"`
-		}
-		if strings.Contains(name, "email") {
-			return `"user@example.com"`
-		}
-		if strings.Contains(name, "name") || strings.Contains(name, "title") {
-			return `"Sample Item"`
-		}
-		if strings.Contains(name, "status") {
-			return `"active"`
-		}
-		if strings.Contains(name, "category") {
-			return `"general"`
-		}
-		return `"Sample"`
+		return seedStringValue(f, name)
 	}
+}
+
+func seedIntValue(f FieldDef, name string) string {
+	if strings.Contains(name, "count") || strings.Contains(name, "total") {
+		return "10"
+	}
+	if strings.Contains(name, "price") || strings.Contains(name, "amount") {
+		return "99"
+	}
+	if strings.Contains(name, "age") || strings.Contains(name, "year") {
+		return "25"
+	}
+	if strings.Contains(name, "rating") || strings.Contains(name, "score") {
+		return "5"
+	}
+	if strings.Contains(name, "minute") || strings.Contains(name, "hour") || strings.Contains(name, "second") || strings.Contains(name, "duration") || strings.Contains(name, "calorie") {
+		return "30"
+	}
+	if strings.Contains(name, "quantity") || strings.Contains(name, "qty") || strings.Contains(name, "servings") {
+		return "4"
+	}
+	return "1"
+}
+
+func seedStringValue(f FieldDef, name string) string {
+	if f.HTMLType == "url" {
+		if strings.Contains(name, "github") {
+			return `"https://github.com/example"`
+		}
+		if strings.Contains(name, "twitter") || strings.Contains(name, "x") {
+			return `"https://twitter.com/example"`
+		}
+		return `"https://example.com"`
+	}
+	if f.Widget == "textarea" {
+		if strings.Contains(name, "description") {
+			return `"A detailed description of this item."`
+		}
+		if strings.Contains(name, "notes") || strings.Contains(name, "comment") {
+			return `"Some notes about this entry."`
+		}
+		return `"Lorem ipsum dolor sit amet, consectetur adipiscing elit."`
+	}
+	if f.HTMLType == "date" {
+		return `"2024-01-15"`
+	}
+	if strings.Contains(name, "email") {
+		return `"user@example.com"`
+	}
+	if strings.Contains(name, "name") || strings.Contains(name, "title") {
+		return `"Sample Item"`
+	}
+	if strings.Contains(name, "status") {
+		return `"active"`
+	}
+	if strings.Contains(name, "category") {
+		return `"general"`
+	}
+	return `"Sample"`
 }
 
 func insertColumns(fields []FieldDef) (cols, placeholders string) {
@@ -411,32 +441,43 @@ func buildAdminParseForm(data scaffoldData) string {
 		case "bool":
 			literal = append(literal, fmt.Sprintf("%s: r.FormValue(%q) == \"on\"", f.Pascal, f.Name))
 		case "int64":
-			if f.Required {
-				after = append(after, fmt.Sprintf(`raw%s := strings.TrimSpace(r.FormValue(%q))
+			after = append(after, fmt.Sprintf(`raw%s := strings.TrimSpace(r.FormValue(%q))
 	if raw%s == "" {
-		return models.%s{}, fmt.Errorf(%q)
-	}
-	%sVal, err := strconv.ParseInt(raw%s, 10, 64)
-	if err != nil {
-		return models.%s{}, fmt.Errorf(%q)
-	}
-	item.%s = %sVal`, f.Pascal, f.Name, f.Pascal, data.Pascal, f.Name+" is required", f.Name, f.Pascal, data.Pascal, f.Name+" must be a number", f.Pascal, f.Name))
+		errs.Add(%q, %q)
+	} else if %sVal, err := strconv.ParseInt(raw%s, 10, 64); err != nil {
+		errs.Add(%q, %q)
+	} else {
+		item.%s = %sVal
+	}`, f.Pascal, f.Name, f.Pascal, f.Name, f.Name+" is required", f.Name, f.Pascal, f.Name, f.Name+" must be a number", f.Pascal, f.Name))
+		case "*int64":
+			after = append(after, fmt.Sprintf(`if raw%s := strings.TrimSpace(r.FormValue(%q)); raw%s != "" {
+		if %sVal, err := strconv.ParseInt(raw%s, 10, 64); err != nil {
+			errs.Add(%q, %q)
+		} else {
+			item.%s = &%sVal
+		}
+	}`, f.Pascal, f.Name, f.Pascal, f.Name, f.Pascal, f.Name, f.Name+" must be a number", f.Pascal, f.Name))
+		case "*string":
+			if f.HTMLType == "url" {
+				after = append(after, fmt.Sprintf(`if raw%s := strings.TrimSpace(r.FormValue(%q)); raw%s != "" {
+		if err := validate.URL(raw%s); err != nil {
+			errs.Add(%q, err.Error())
+		} else {
+			item.%s = &raw%s
+		}
+	}`, f.Pascal, f.Name, f.Pascal, f.Pascal, f.Name, f.Pascal, f.Pascal))
 			} else {
 				after = append(after, fmt.Sprintf(`if raw%s := strings.TrimSpace(r.FormValue(%q)); raw%s != "" {
-		%sVal, err := strconv.ParseInt(raw%s, 10, 64)
-		if err != nil {
-			return models.%s{}, fmt.Errorf(%q)
-		}
-		item.%s = %sVal
-	}`, f.Pascal, f.Name, f.Pascal, f.Name, f.Pascal, data.Pascal, f.Name+" must be a number", f.Pascal, f.Name))
+		item.%s = &raw%s
+	}`, f.Pascal, f.Name, f.Pascal, f.Pascal, f.Pascal))
 			}
 		default:
 			literal = append(literal, fmt.Sprintf("%s: strings.TrimSpace(r.FormValue(%q))", f.Pascal, f.Name))
 			if f.Required {
 				if f.HTMLType == "url" {
-					validations = append(validations, fmt.Sprintf("if err := validate.URL(item.%s); err != nil {\n\t\treturn models.%s{}, err\n\t}", f.Pascal, data.Pascal))
+					validations = append(validations, fmt.Sprintf("if item.%s == \"\" {\n\t\terrs.Add(%q, %q)\n\t} else if err := validate.URL(item.%s); err != nil {\n\t\terrs.Add(%q, err.Error())\n\t}", f.Pascal, f.Name, f.Name+" is required", f.Pascal, f.Name))
 				} else {
-					validations = append(validations, fmt.Sprintf("if item.%s == \"\" {\n\t\treturn models.%s{}, fmt.Errorf(%q)\n\t}", f.Pascal, data.Pascal, f.Name+" is required"))
+					validations = append(validations, fmt.Sprintf("if item.%s == \"\" {\n\t\terrs.Add(%q, %q)\n\t}", f.Pascal, f.Name, f.Name+" is required"))
 				}
 			}
 		}
@@ -449,12 +490,17 @@ func buildAdminParseForm(data scaffoldData) string {
 	if len(after) > 0 {
 		afterBlock = "\n\t" + strings.Join(after, "\n\t") + "\n"
 	}
-	return fmt.Sprintf(`item := models.%s{%s}%s%s	return item, nil`, data.Pascal, strings.Join(literal, ", "), validateBlock, afterBlock)
+	return fmt.Sprintf(`var errs validate.FieldErrors
+	if err := r.ParseForm(); err != nil {
+		errs.Add("_form", err.Error())
+		return models.%s{}, errs
+	}
+	item := models.%s{%s}%s%s	return item, errs`, data.Pascal, data.Pascal, strings.Join(literal, ", "), validateBlock, afterBlock)
 }
 
 func needsStrconv(fields []FieldDef) bool {
 	for _, f := range fields {
-		if f.GoType == "int64" {
+		if f.GoType == "int64" || f.GoType == "*int64" {
 			return true
 		}
 	}
@@ -464,15 +510,6 @@ func needsStrconv(fields []FieldDef) bool {
 func hasBoolField(fields []FieldDef) bool {
 	for _, f := range fields {
 		if f.GoType == "bool" {
-			return true
-		}
-	}
-	return false
-}
-
-func needsValidate(fields []FieldDef) bool {
-	for _, f := range fields {
-		if f.HTMLType == "url" && f.Required {
 			return true
 		}
 	}
@@ -521,18 +558,17 @@ func buildAdminIndexMethod(data scaffoldData) string {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	hasPrev := page > 1
-	hasNext := page*perPage < total
+	pg := pagination.New(page, perPage, total)
 	httpx.RenderOrError(w, h.renderer, "base", "admin_%s", Admin%sIndexData{
 		CSRFToken: csrf.TokenFromRequest(r),
 		Items:     items,
-		Page:      page,
-		Total:     total,
-		PerPage:   perPage,
-		HasPrev:   hasPrev,
-		HasNext:   hasNext,
-		PrevPage:  page - 1,
-		NextPage:  page + 1,
+		Page:      pg.Page,
+		Total:     pg.Total,
+		PerPage:   pg.PerPage,
+		HasPrev:   pg.HasPrev,
+		HasNext:   pg.HasNext,
+		PrevPage:  pg.PrevPage,
+		NextPage:  pg.NextPage,
 	}, h.cfg)
 }`, data.PluralPascal, data.PluralPascal, data.Plural, data.PluralPascal)
 	}
@@ -548,16 +584,19 @@ func buildAdminIndexMethod(data scaffoldData) string {
 
 func buildResourceAdminHandler(data scaffoldData) string {
 	parse := buildAdminParseForm(data)
-	hasValidate := needsValidate(data.Fields)
 	hasStrconv := needsStrconv(data.Fields) || data.Paginate
 	indexDataStruct := buildAdminIndexDataStruct(data)
 	indexMethod := buildAdminIndexMethod(data)
+	paginationImport := ""
+	if data.Paginate {
+		paginationImport = "\t\"" + frameworkModule + "/pkg/cais/pagination\"\n"
+	}
 	return fmt.Sprintf(`package handlers
 
 import (
-	"fmt"
 	"net/http"
 %s	"strings"
+	"%s/pkg/cais/validate"
 %s
 	"%s/pkg/cais"
 	"%s/pkg/cais/csrf"
@@ -578,6 +617,7 @@ type Admin%sFormData struct {
 	CSRFToken string
 	Item      models.%s
 	IsNew     bool
+	Errors    validate.FieldErrors
 }
 
 func NewAdmin%sHandler(renderer *cais.Renderer, s store.Store, cfg cais.Config) *Admin%sHandler {
@@ -600,9 +640,15 @@ func (h *Admin%sHandler) Edit(w http.ResponseWriter, r *http.Request, id int64) 
 }
 
 func (h *Admin%sHandler) Create(w http.ResponseWriter, r *http.Request) {
-	item, err := h.parseForm(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	item, errs := h.parseForm(r)
+	if errs.Any() {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", Admin%sFormData{
+			CSRFToken: csrf.TokenFromRequest(r),
+			Item:      item,
+			IsNew:     true,
+			Errors:    errs,
+		}, h.cfg)
 		return
 	}
 	if _, err := h.store.Insert%s(item); err != nil {
@@ -613,12 +659,17 @@ func (h *Admin%sHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Admin%sHandler) Update(w http.ResponseWriter, r *http.Request, id int64) {
-	item, err := h.parseForm(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	item, errs := h.parseForm(r)
+	item.ID = id
+	if errs.Any() {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", Admin%sFormData{
+			CSRFToken: csrf.TokenFromRequest(r),
+			Item:      item,
+			Errors:    errs,
+		}, h.cfg)
 		return
 	}
-	item.ID = id
 	if err := h.store.Update%s(item); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -634,15 +685,13 @@ func (h *Admin%sHandler) Delete(w http.ResponseWriter, r *http.Request, id int64
 	httpx.SeeOther(w, r, "/admin/%s")
 }
 
-func (h *Admin%sHandler) parseForm(r *http.Request) (models.%s, error) {
-	if err := r.ParseForm(); err != nil {
-		return models.%s{}, err
-	}
+func (h *Admin%sHandler) parseForm(r *http.Request) (models.%s, validate.FieldErrors) {
 	%s
 }
 `,
 		boolImport(hasStrconv, "\t\"strconv\"\n"),
-		boolImport(hasValidate, "\t\""+frameworkModule+"/pkg/cais/validate\"\n"),
+		frameworkModule,
+		paginationImport,
 		frameworkModule, frameworkModule, frameworkModule, data.ModulePath, data.ModulePath,
 		data.PluralPascal,
 		indexDataStruct,
@@ -651,10 +700,10 @@ func (h *Admin%sHandler) parseForm(r *http.Request) (models.%s, error) {
 		indexMethod,
 		data.PluralPascal, data.Snake, data.Pascal,
 		data.PluralPascal, data.Pascal, data.Snake, data.Pascal,
+		data.PluralPascal, data.Snake, data.Pascal, data.Pascal, data.Plural,
+		data.PluralPascal, data.Snake, data.Pascal, data.Pascal, data.Plural,
 		data.PluralPascal, data.Pascal, data.Plural,
-		data.PluralPascal, data.Pascal, data.Plural,
-		data.PluralPascal, data.Pascal, data.Plural,
-		data.PluralPascal, data.Pascal, data.Pascal, parse,
+		data.PluralPascal, data.Pascal, parse,
 	)
 }
 
@@ -753,7 +802,7 @@ func firstBoolField(fields []FieldDef) *FieldDef {
 
 func firstIntField(fields []FieldDef) *FieldDef {
 	for i, f := range fields {
-		if f.GoType == "int64" {
+		if f.GoType == "int64" || f.GoType == "*int64" {
 			return &fields[i]
 		}
 	}
@@ -772,11 +821,8 @@ func buildAdminFormHTML(data scaffoldData) string {
 	for _, f := range data.Fields {
 		switch f.Widget {
 		case "textarea":
-			fmt.Fprintf(&fields, `    <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="%s">%s</label>
-      <textarea class="w-full border border-slate-300 rounded-lg px-3 py-2 min-h-[80px] focus:ring-2 focus:ring-indigo-500 outline-none" id="%s" name="%s">{{ .Item.%s }}</textarea>
-    </div>
-`, f.Name, f.Pascal, f.Name, f.Name, f.Pascal)
+			fmt.Fprintf(&fields, `    {{ fieldInput (makeField "%s" "%s" .Item.%s "textarea" %t .Errors) }}
+`, f.Name, f.Pascal, f.Pascal, f.Required)
 		case "checkbox":
 			fmt.Fprintf(&fields, `    <label class="flex items-center gap-2 text-sm text-slate-700">
       <input type="checkbox" name="%s" class="rounded border-slate-300 text-indigo-600" {{ if .Item.%s }}checked{{ end }} />
@@ -784,15 +830,8 @@ func buildAdminFormHTML(data scaffoldData) string {
     </label>
 `, f.Name, f.Pascal, f.Pascal)
 		default:
-			req := ""
-			if f.Required {
-				req = ` required`
-			}
-			fmt.Fprintf(&fields, `    <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="%s">%s</label>
-      <input class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" type="%s" id="%s" name="%s" value="{{ .Item.%s }}"%s />
-    </div>
-`, f.Name, f.Pascal, f.HTMLType, f.Name, f.Name, f.Pascal, req)
+			fmt.Fprintf(&fields, `    {{ fieldInput (makeField "%s" "%s" .Item.%s "%s" %t .Errors) }}
+`, f.Name, f.Pascal, f.Pascal, f.HTMLType, f.Required)
 		}
 	}
 	return fmt.Sprintf(`{{ define "title" }}{{ if .IsNew }}New %s{{ else }}Edit %s{{ end }}{{ end }} {{ define "content" }}
@@ -801,7 +840,7 @@ func buildAdminFormHTML(data scaffoldData) string {
   <h1 class="text-3xl font-bold text-slate-900 mb-6">{{ if .IsNew }}New %s{{ else }}Edit %s{{ end }}</h1>
   <form class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4" method="post"
     action="{{ if .IsNew }}/admin/%s{{ else }}/admin/%s/{{ .Item.ID }}{{ end }}">
-    <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}" />
+    {{ csrfField .CSRFToken }}
 %s
     <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition">
       {{ if .IsNew }}Create{{ else }}Save{{ end }}
@@ -903,7 +942,7 @@ func buildPublicListItemHTML(data scaffoldData) string {
 		switch f.GoType {
 		case "bool":
 			meta = append(meta, fmt.Sprintf(`<span hx-post="/%s/{{ .ID }}/toggle" hx-swap="outerHTML swap:150ms" hx-target="this" data-cais-optimistic="toggle" class="cursor-pointer inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ if .%s }}bg-green-50 text-green-700{{ else }}bg-slate-100 text-slate-600{{ end }}">{{ if .%s }}%s{{ else }}Pending{{ end }}</span>`, data.Plural, f.Pascal, f.Pascal, f.Pascal))
-		case "int64":
+		case "int64", "*int64":
 			meta = append(meta, fmt.Sprintf(`<span class="text-sm text-slate-500">%s: {{ .%s }}</span>`, f.Pascal, f.Pascal))
 		}
 	}

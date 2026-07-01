@@ -31,8 +31,14 @@ func StatusDir(db *sql.DB, dir string) ([]Entry, error) {
 	return Status(db, os.DirFS(dir), ".")
 }
 
+// RollbackResult describes the outcome of rolling back a migration.
+type RollbackResult struct {
+	Version    string
+	RanDownSQL bool
+}
+
 // RollbackLastDir removes the last applied migration record from a filesystem directory.
-func RollbackLastDir(db *sql.DB, dir string) (string, error) {
+func RollbackLastDir(db *sql.DB, dir string) (RollbackResult, error) {
 	return RollbackLast(db, os.DirFS(dir), ".")
 }
 
@@ -97,10 +103,10 @@ func Status(db *sql.DB, migrations fs.FS, dir string) ([]Entry, error) {
 // RollbackLast rolls back the last applied migration. When the migration file
 // contains a -- down section, that SQL is executed before removing the
 // schema_migrations record. Without a down section, only the record is removed.
-func RollbackLast(db *sql.DB, migrations fs.FS, dir string) (string, error) {
+func RollbackLast(db *sql.DB, migrations fs.FS, dir string) (RollbackResult, error) {
 	entries, err := Status(db, migrations, dir)
 	if err != nil {
-		return "", err
+		return RollbackResult{}, err
 	}
 
 	var lastApplied string
@@ -110,37 +116,38 @@ func RollbackLast(db *sql.DB, migrations fs.FS, dir string) (string, error) {
 		}
 	}
 	if lastApplied == "" {
-		return "", fmt.Errorf("no applied migrations to roll back")
+		return RollbackResult{}, fmt.Errorf("no applied migrations to roll back")
 	}
 
 	sqlPath := path.Join(dir, lastApplied+".sql")
 	sqlBytes, err := fs.ReadFile(migrations, sqlPath)
 	if err != nil {
-		return "", fmt.Errorf("read migration %s: %w", lastApplied, err)
+		return RollbackResult{}, fmt.Errorf("read migration %s: %w", lastApplied, err)
 	}
 	_, downSQL := parseMigrationSQL(string(sqlBytes))
+	ranDown := downSQL != ""
 
 	tx, err := db.Begin()
 	if err != nil {
-		return "", fmt.Errorf("begin rollback %s: %w", lastApplied, err)
+		return RollbackResult{}, fmt.Errorf("begin rollback %s: %w", lastApplied, err)
 	}
 
-	if downSQL != "" {
+	if ranDown {
 		if _, err := tx.Exec(downSQL); err != nil {
 			_ = tx.Rollback()
-			return "", fmt.Errorf("rollback migration %s: %w", lastApplied, err)
+			return RollbackResult{}, fmt.Errorf("rollback migration %s: %w", lastApplied, err)
 		}
 	}
 
 	if _, err := tx.Exec("DELETE FROM schema_migrations WHERE version = ?", lastApplied); err != nil {
 		_ = tx.Rollback()
-		return "", fmt.Errorf("remove migration %s: %w", lastApplied, err)
+		return RollbackResult{}, fmt.Errorf("remove migration %s: %w", lastApplied, err)
 	}
 	if err := tx.Commit(); err != nil {
-		return "", fmt.Errorf("commit rollback %s: %w", lastApplied, err)
+		return RollbackResult{}, fmt.Errorf("commit rollback %s: %w", lastApplied, err)
 	}
 
-	return lastApplied, nil
+	return RollbackResult{Version: lastApplied, RanDownSQL: ranDown}, nil
 }
 
 func listSQL(migrations fs.FS, dir string) ([]string, error) {

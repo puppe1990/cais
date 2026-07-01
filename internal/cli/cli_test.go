@@ -198,6 +198,77 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 	}
 }
 
+func TestCLI_GenerateConsoleDryRun(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "cliconsoledry")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "cliconsoledry",
+		ModulePath: "github.com/puppe1990/cliconsoledry",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(appDir, "cmd/console/main.go")); err != nil {
+		t.Fatal(err)
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(appDir)
+	t.Cleanup(func() { _ = os.Chdir(cwd) })
+
+	c := &CLI{Out: io.Discard}
+	if err := c.Run([]string{"g", "--dry-run", "console"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(appDir, "cmd/console/main.go")); !os.IsNotExist(err) {
+		t.Error("CLI --dry-run should not create cmd/console/main.go")
+	}
+}
+
+func TestCLI_GenerateCIDryRun(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "clicidry")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "clicidry",
+		ModulePath: "github.com/puppe1990/clicidry",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{".github/workflows/ci.yml", ".golangci.yml"} {
+		if err := os.Remove(filepath.Join(appDir, path)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	makefileBefore, err := os.ReadFile(filepath.Join(appDir, "Makefile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(appDir)
+	t.Cleanup(func() { _ = os.Chdir(cwd) })
+
+	c := &CLI{Out: io.Discard}
+	if err := c.Run([]string{"g", "--dry-run", "ci"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(appDir, ".github/workflows/ci.yml")); !os.IsNotExist(err) {
+		t.Error("CLI --dry-run should not create ci.yml")
+	}
+	makefileAfter, err := os.ReadFile(filepath.Join(appDir, "Makefile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(makefileAfter) != string(makefileBefore) {
+		t.Error("CLI --dry-run should not modify Makefile")
+	}
+}
+
 func TestCLI_GenerateResourceDryRun(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "clidryrun")
@@ -874,7 +945,7 @@ func TestParseFields_DateType(t *testing.T) {
 	if fields[1].HTMLType != "date" {
 		t.Errorf("date HTMLType = %q, want date", fields[1].HTMLType)
 	}
-	if fields[1].SQLType != "TEXT NOT NULL DEFAULT ''" {
+	if fields[1].SQLType != "TEXT NOT NULL" {
 		t.Errorf("date SQLType = %q", fields[1].SQLType)
 	}
 }
@@ -1202,6 +1273,31 @@ func TestCLI_Help_IncludesModuleFlag(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "--module") {
 		t.Error("help missing --module flag")
+	}
+}
+
+func TestScaffoldMigration_usesMaxMigrationNumber(t *testing.T) {
+	dir := t.TempDir()
+	migrationsDir := filepath.Join(dir, "internal", "store", "migrations")
+	if err := os.MkdirAll(migrationsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"001_contacts.sql", "003_other.sql"} {
+		if err := os.WriteFile(filepath.Join(migrationsDir, name), []byte("-- up\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := scaffoldMigration(dir, "posts", false); err != nil {
+		t.Fatal(err)
+	}
+
+	want := filepath.Join(migrationsDir, "004_posts.sql")
+	if _, err := os.Stat(want); err != nil {
+		t.Fatalf("expected %s: %v", want, err)
+	}
+	if _, err := os.Stat(filepath.Join(migrationsDir, "003_posts.sql")); err == nil {
+		t.Fatal("should not create 003_posts.sql when 003 is taken")
 	}
 }
 

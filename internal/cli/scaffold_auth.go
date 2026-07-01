@@ -12,12 +12,17 @@ func scaffoldAuth(dir string, data scaffoldData, dryRun bool) error {
 		return fmt.Errorf("auth already exists — remove internal/handlers/auth.go first")
 	}
 
+	migrationPath, _, err := nextMigrationFile(dir, "auth", dryRun)
+	if err != nil {
+		return err
+	}
+
 	files := map[string]string{
-		"internal/models/user.go":                tplUserModel,
-		"internal/handlers/auth.go":              tplAuthHandler,
-		"internal/handlers/auth_test.go":         tplAuthTest,
-		"internal/store/migrations/002_auth.sql": tplMigration002Auth,
-		"web/templates/pages/login.html":         tplPageLogin,
+		"internal/models/user.go":        tplUserModel,
+		"internal/handlers/auth.go":      tplAuthHandler,
+		"internal/handlers/auth_test.go": tplAuthTest,
+		migrationPath:                    tplMigration002Auth,
+		"web/templates/pages/login.html": tplPageLogin,
 	}
 
 	for path, content := range files {
@@ -51,6 +56,18 @@ func patchStoreForAuth(dir string, dryRun bool) error {
 		return nil
 	}
 
+	module := readModulePath(dir)
+	modelsImport := fmt.Sprintf(`"%s/internal/models"`, module)
+
+	if !strings.Contains(content, modelsImport) {
+		content = strings.Replace(content,
+			`import (`,
+			fmt.Sprintf(`import (
+	%s`, modelsImport),
+			1,
+		)
+	}
+
 	if !strings.Contains(content, "github.com/puppe1990/cais/pkg/cais/session") {
 		content = strings.Replace(content,
 			`"github.com/puppe1990/cais/pkg/cais/sqllog"`,
@@ -60,9 +77,13 @@ func patchStoreForAuth(dir string, dryRun bool) error {
 		)
 	}
 
+	ifaceMarker := "\n\tClose() error"
+	if !strings.Contains(content, ifaceMarker) {
+		return fmt.Errorf("could not patch store interface for auth")
+	}
 	content = strings.Replace(content,
-		"\tCountContacts() (int64, error)\n\tClose() error",
-		"\tCountContacts() (int64, error)\n\tFindUserByEmail(email string) (models.User, error)\n\tSessions() session.Store\n\tClose() error",
+		ifaceMarker,
+		"\n\tFindUserByEmail(email string) (models.User, error)\n\tSessions() session.Store"+ifaceMarker,
 		1,
 	)
 

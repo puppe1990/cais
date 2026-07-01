@@ -13,28 +13,30 @@ Before writing production code:
 
 ## Structure
 
-| Directory            | Responsibility                                          |
-| -------------------- | ------------------------------------------------------- |
-| `pkg/cais/`          | Framework: config, router, render, htmx, middleware     |
-| `pkg/cais/httpx/`    | Render and redirect helpers for handlers                |
-| `pkg/cais/meta/`     | Open Graph / Twitter preview (`Site`, `PreviewHTML`)    |
-| `pkg/cais/session/`  | Cookie sessions (`SignIn`, `SignOut`, `Store`)          |
-| `pkg/cais/boot/`     | Rails-style startup banner                              |
-| `pkg/cais/devlog/`   | Development log buffer + `/logs` viewer                 |
-| `pkg/cais/sqllog/`   | SQL query logging wrapper (`Wrap`, `EnabledForEnv`)     |
-| `pkg/cais/console/`  | Interactive REPL (yaegi + SQL)                          |
-| `pkg/cais/csrf/`     | CSRF tokens (double-submit cookie)                      |
-| `pkg/cais/validate/` | Form field validation helpers                           |
-| `pkg/cais/forms/`    | Template helpers (`csrfField`, `fieldError`)            |
-| `pkg/cais/i18n/`     | Locale catalogs (`LOCALE` env, `t` template func)       |
-| `pkg/cais/testutil/` | Test helpers (`NewRenderer`, `NewRequest`, path values) |
-| `pkg/cais/pwa/`      | Default PWA assets generator (manifest, icons, og.png)  |
-| `internal/app/`      | Bootstrap: route and dependency wiring                  |
-| `internal/handlers/` | HTTP handlers                                           |
-| `internal/store/`    | SQLite persistence                                      |
-| `web/templates/`     | HTML templates (layouts, pages, partials)               |
-| `web/static/`        | Tailwind CSS, HTMX, PWA (manifest, sw.js, icons)        |
-| `cmd/server/`        | Entry point                                             |
+| Directory              | Responsibility                                                          |
+| ---------------------- | ----------------------------------------------------------------------- |
+| `pkg/cais/`            | Framework: config, router, render, htmx, middleware                     |
+| `pkg/cais/httpx/`      | Render and redirect helpers for handlers                                |
+| `pkg/cais/meta/`       | Open Graph / Twitter preview (`Site`, `PreviewHTML`)                    |
+| `pkg/cais/session/`    | Cookie sessions (`SignIn`, `SignOut`, `Store`)                          |
+| `pkg/cais/boot/`       | Rails-style startup banner                                              |
+| `pkg/cais/devlog/`     | Development log buffer + `/logs` viewer                                 |
+| `pkg/cais/sqllog/`     | SQL query logging wrapper (`Wrap`, `EnabledForEnv`)                     |
+| `pkg/cais/console/`    | Interactive REPL (yaegi + SQL)                                          |
+| `pkg/cais/csrf/`       | CSRF tokens (double-submit cookie)                                      |
+| `pkg/cais/validate/`   | Form field validation helpers                                           |
+| `pkg/cais/forms/`      | Template helpers (`csrfField`, `fieldError`, `makeField`, `fieldInput`) |
+| `pkg/cais/i18n/`       | Locale catalogs (`LOCALE` env, `t` template func)                       |
+| `pkg/cais/testutil/`   | Test helpers (`NewRenderer`, `NewRequest`, path values)                 |
+| `pkg/cais/pwa/`        | Default PWA assets generator (manifest, icons, og.png)                  |
+| `pkg/cais/cache/`      | In-memory TTL cache (stdlib)                                            |
+| `pkg/cais/pagination/` | Offset/limit helpers for list pages                                     |
+| `internal/app/`        | Bootstrap: route and dependency wiring                                  |
+| `internal/handlers/`   | HTTP handlers                                                           |
+| `internal/store/`      | SQLite persistence                                                      |
+| `web/templates/`       | HTML templates (layouts, pages, partials)                               |
+| `web/static/`          | Tailwind CSS, HTMX, PWA (manifest, sw.js, icons)                        |
+| `cmd/server/`          | Entry point                                                             |
 
 ## Router path params and groups
 
@@ -89,7 +91,7 @@ Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap so layouts render corre
 - `middleware.CSRF(cfg)` on the router (validates POST/PUT/DELETE/PATCH)
 - Pass `meta.ForRequest(site, r)` in page data (CSRF + flash) — layout renders `<meta name="csrf-token">` + HTMX header script
 - HTML forms: `{{ csrfField .CSRFToken }}` (`pkg/cais/forms`, registered on the renderer) or `<input type="hidden" name="csrf_token" value="{{ .CSRFToken }}" />`
-- Field errors in templates: `{{ fieldError .Errors "email" }}`
+- Field errors: `{{ fieldError .Errors "email" }}` or full field markup: `{{ fieldInput (makeField "email" "Email" .Email "email" true .Errors) }}`
 - Integration tests: GET page first (cookie), then POST with matching token
 
 ## Flash messages
@@ -136,7 +138,7 @@ httpx.RenderPageOrPartial(w, r, renderer, httpx.RenderOptions{
 
 ## Form validation
 
-Use `validate.Email`, `validate.URL`, `validate.Required` for single-field checks. For multiple fields, collect errors in `validate.FieldErrors`:
+Use `validate.Email`, `validate.URL`, `validate.Required`, `validate.MinLength`, `validate.MaxLength` for single-field checks. For multiple fields, collect errors in `validate.FieldErrors`:
 
 ```go
 var errs validate.FieldErrors
@@ -149,6 +151,14 @@ if errs.Any() {
 ```
 
 Pass `errs` as `.Errors` in page data when re-rendering forms.
+
+**Form helpers** (`pkg/cais/forms`, registered on the renderer):
+
+```html
+{{ fieldInput (makeField "name" "Name" .Name "text" true .Errors) }}
+```
+
+`makeField` returns `forms.FieldData`; `fieldInput` renders input/textarea/checkbox + error. Resource generator admin forms use these by default.
 
 ## HTMX UX (app-like feel)
 
@@ -205,14 +215,19 @@ cais new myapp              # includes GitHub Actions CI, pre-commit, golangci-l
 cais new myapp --minimal
 cais new myapp --blank
 cais new myapp --module github.com/acme/myapp
-cais g [--dry-run] resource bookmark --fields title:string,url:url,notes:text? --public --paginate
+cais g [--dry-run] resource bookmark --fields title:string,url:url,notes:text? --public --paginate --force
+cais destroy [--dry-run] resource bookmark   # undo generator output
+cais destroy [--dry-run] model bookmark      # remove model + migration + store methods
+cais destroy [--dry-run] handler settings
+cais destroy [--dry-run] auth                # remove login/auth scaffolding
+cais destroy [--dry-run] migration add_tags  # remove *_add_tags.sql
 cais g [--dry-run] model bookmark --fields title:string,url:url
 cais g [--dry-run] handler settings
 cais g [--dry-run] page about
 cais g [--dry-run] migration add_tags
 cais g [--dry-run] auth       # login/logout + protected dashboard
-cais g console                # scaffold cmd/console/main.go
-cais g ci                     # add CI/pre-commit to existing apps
+cais g [--dry-run] console    # scaffold cmd/console/main.go
+cais g [--dry-run] ci         # add CI/pre-commit to existing apps
 cais doctor                   # verify htmx, air, go.mod
 cais routes                   # list routes from internal/app/routes.go
 ```
@@ -223,7 +238,9 @@ Field types: `string`, `text`, `url`, `bool`, `int`, `date`. Suffix `?` for opti
 
 **Model generator** — `cais g model` creates model struct, migration, and store methods only (no handlers, templates, or routes). Use for data layer without admin CRUD.
 
-**Dry-run** — `cais g --dry-run ...` prints files that would be created without writing them.
+**Dry-run** — `cais g --dry-run ...` and `cais destroy --dry-run ...` print planned changes without writing files.
+
+**Destroy** — `cais destroy resource|handler|model <name>` removes generated files and unpatches `routes.go`, `store.go`, `seeds.go`, and layout nav where applicable. `destroy auth` also reverts `app.go` session middleware. `destroy migration` removes matching `*_<name>.sql` only (does not roll back `schema_migrations`).
 
 **Demo seed** — `cais g resource` (unless `--no-seed`) generates `SeedDemo*` store methods and wires them into `cmd/server/main.go` at boot.
 
@@ -243,7 +260,13 @@ cais db migrate        # run pending migrations
 cais db status         # list applied/pending migrations
 cais db rollback       # roll back last migration (runs -- down SQL when present)
 cais db prune-sessions # delete expired login sessions from SQLite
+cais db seed           # run internal/db/seeds.go (idempotent)
+cais db seed --list    # list seed helpers referenced in seeds.go
+cais routes --verbose  # routes with handler names and middleware
+cais version           # print framework version
 ```
+
+**Generator troubleshooting** — if `could not patch routes.go` or `could not patch store`, check that `registerRoutes` and `Close() error` markers exist. Public nav links need `<!-- cais:nav -->` in the layout (or `</nav>`). Run `cais db migrate` after `g resource` / `g model` / `g auth`.
 
 Console bindings: `store`, `cfg`, `db`, plus any custom keys in `Bindings`. Commands: `help`, `sql`, `reload`, `history`, `!N`/`!!`, `exit`. Arrow keys when stdin is a TTY.
 

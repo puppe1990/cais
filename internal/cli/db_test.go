@@ -48,6 +48,9 @@ func TestCLI_DBRollback_removesLastMigration(t *testing.T) {
 	if !strings.Contains(out, "=> Rolled back") {
 		t.Errorf("rollback output missing success message: %q", out)
 	}
+	if !strings.Contains(out, "no -- down section") {
+		t.Errorf("rollback output missing down-section warning: %q", out)
+	}
 }
 
 func TestCLI_DBPruneSessions_removesExpired(t *testing.T) {
