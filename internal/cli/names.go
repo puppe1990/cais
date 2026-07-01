@@ -43,11 +43,28 @@ func dataForResource(name string) scaffoldData {
 }
 
 func toPlural(snake string) string {
+	if snake == "" {
+		return snake
+	}
+	if strings.HasSuffix(snake, "ies") || strings.HasSuffix(snake, "ses") || strings.HasSuffix(snake, "xes") {
+		return snake
+	}
+	for _, suf := range []string{"ss", "sh", "ch", "x", "z"} {
+		if strings.HasSuffix(snake, suf) {
+			return snake + "es"
+		}
+	}
 	if strings.HasSuffix(snake, "s") {
+		if strings.HasSuffix(snake, "us") || strings.HasSuffix(snake, "is") {
+			return snake + "es"
+		}
 		return snake
 	}
 	if strings.HasSuffix(snake, "y") && len(snake) > 1 {
-		return snake[:len(snake)-1] + "ies"
+		prev := snake[len(snake)-2]
+		if prev != 'a' && prev != 'e' && prev != 'i' && prev != 'o' && prev != 'u' {
+			return snake[:len(snake)-1] + "ies"
+		}
 	}
 	return snake + "s"
 }
