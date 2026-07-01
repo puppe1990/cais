@@ -20,6 +20,7 @@ type scaffoldData struct {
 	Fields       []FieldDef
 	Public       bool
 	Seed         bool
+	Paginate     bool
 	AdminAuth    string
 }
 

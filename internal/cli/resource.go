@@ -18,6 +18,7 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 	data.Fields = fields
 	data.Public = opts.Public
 	data.Seed = opts.Seed
+	data.Paginate = opts.Paginate
 	data.AdminAuth = opts.AdminAuth
 
 	migrationsDir := filepath.Join(dir, "internal/store/migrations")
@@ -239,13 +240,20 @@ func patchStoreForResource(dir string, data scaffoldData, dryRun bool) error {
 	if !strings.Contains(content, ifaceMarker) {
 		return fmt.Errorf("could not patch store interface")
 	}
+	listMethod := fmt.Sprintf("\n\tListAll%s() ([]models.%s, error)", data.PluralPascal, data.Pascal)
+	if data.Paginate {
+		listMethod = fmt.Sprintf(
+			"\n\tList%s(page, perPage int) ([]models.%s, int, error)%s",
+			data.PluralPascal, data.Pascal, listMethod,
+		)
+	}
 	ifaceInsert := fmt.Sprintf(
-		"\n\tInsert%s(models.%s) (int64, error)\n\tUpdate%s(models.%s) error\n\tDelete%s(id int64) error\n\tFind%sByID(id int64) (models.%s, error)\n\tListAll%s() ([]models.%s, error)",
+		"\n\tInsert%s(models.%s) (int64, error)\n\tUpdate%s(models.%s) error\n\tDelete%s(id int64) error\n\tFind%sByID(id int64) (models.%s, error)%s",
 		data.Pascal, data.Pascal,
 		data.Pascal, data.Pascal,
 		data.Pascal,
 		data.Pascal, data.Pascal,
-		data.PluralPascal, data.Pascal,
+		listMethod,
 	)
 	if data.Seed {
 		ifaceInsert += fmt.Sprintf("\n\tSeedDemo%s() error", data.PluralPascal)
@@ -254,6 +262,9 @@ func patchStoreForResource(dir string, data scaffoldData, dryRun bool) error {
 
 	implMarker := "\nfunc (s *SQLiteStore) Close()"
 	implInsert := buildResourceStoreMethods(data)
+	if data.Paginate {
+		implInsert += buildResourcePaginatedStoreMethod(data)
+	}
 	if data.Seed {
 		implInsert += buildResourceSeed(data)
 	}

@@ -9,6 +9,7 @@ type resourceOpts struct {
 	Fields    string
 	Public    bool
 	Seed      bool
+	Paginate  bool
 	AdminAuth string
 	dryRun    bool
 }
@@ -25,6 +26,8 @@ func parseResourceOpts(args []string) (resourceOpts, error) {
 			opts.Fields = args[i]
 		case "--public":
 			opts.Public = true
+		case "--paginate":
+			opts.Paginate = true
 		case "--no-seed":
 			opts.Seed = false
 		case "--admin-auth":
@@ -144,6 +147,52 @@ func (s *SQLiteStore) ListAll%s() ([]models.%s, error) {
 		data.Pascal, data.Pascal, data.Pascal, scanDeclare(data.Fields), sel, data.Plural, scanVars(data.Fields), data.Pascal, data.Snake, scanAssign(data.Fields),
 		data.PluralPascal, data.Pascal, sel, data.Plural, data.Plural,
 		data.Pascal, data.Pascal, scanLoopDeclare(data.Fields), scanVars(data.Fields), data.Snake, scanLoopAssign(data.Fields),
+	)
+}
+
+func buildResourcePaginatedStoreMethod(data scaffoldData) string {
+	sel := selectColumns(data.Fields)
+	return fmt.Sprintf(`
+func (s *SQLiteStore) List%s(page, perPage int) ([]models.%s, int, error) {
+	var total int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM %s").Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count %s: %%w", err)
+	}
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 {
+		perPage = 25
+	}
+	offset := (page - 1) * perPage
+	rows, err := s.db.Query(
+		"SELECT id, %s, created_at FROM %s ORDER BY id DESC LIMIT ? OFFSET ?",
+		perPage, offset,
+	)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list %s: %%w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var items []models.%s
+	for rows.Next() {
+		var c models.%s
+%s
+		if err := rows.Scan(%s); err != nil {
+			return nil, 0, fmt.Errorf("scan %s: %%w", err)
+		}
+%s
+		items = append(items, c)
+	}
+	return items, total, rows.Err()
+}
+`,
+		data.PluralPascal, data.Pascal,
+		data.Plural, data.Plural,
+		sel, data.Plural, data.Plural,
+		data.Pascal, data.Pascal,
+		scanLoopDeclare(data.Fields), scanVars(data.Fields), data.Snake, scanLoopAssign(data.Fields),
 	)
 }
 
@@ -437,10 +486,72 @@ func boolImport(cond bool, s string) string {
 	return ""
 }
 
+func buildAdminIndexDataStruct(data scaffoldData) string {
+	if data.Paginate {
+		return fmt.Sprintf(`type Admin%sIndexData struct {
+	CSRFToken string
+	Items     []models.%s
+	Page      int
+	Total     int
+	PerPage   int
+	HasPrev   bool
+	HasNext   bool
+	PrevPage  int
+	NextPage  int
+}`, data.PluralPascal, data.Pascal)
+	}
+	return fmt.Sprintf(`type Admin%sIndexData struct {
+	CSRFToken string
+	Items     []models.%s
+}`, data.PluralPascal, data.Pascal)
+}
+
+func buildAdminIndexMethod(data scaffoldData) string {
+	if data.Paginate {
+		return fmt.Sprintf(`func (h *Admin%sHandler) Index(w http.ResponseWriter, r *http.Request) {
+	page := 1
+	if p := r.URL.Query().Get("page"); p != "" {
+		if n, err := strconv.Atoi(p); err == nil && n > 0 {
+			page = n
+		}
+	}
+	perPage := 25
+	items, total, err := h.store.List%s(page, perPage)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	hasPrev := page > 1
+	hasNext := page*perPage < total
+	httpx.RenderOrError(w, h.renderer, "base", "admin_%s", Admin%sIndexData{
+		CSRFToken: csrf.TokenFromRequest(r),
+		Items:     items,
+		Page:      page,
+		Total:     total,
+		PerPage:   perPage,
+		HasPrev:   hasPrev,
+		HasNext:   hasNext,
+		PrevPage:  page - 1,
+		NextPage:  page + 1,
+	}, h.cfg)
+}`, data.PluralPascal, data.PluralPascal, data.Plural, data.PluralPascal)
+	}
+	return fmt.Sprintf(`func (h *Admin%sHandler) Index(w http.ResponseWriter, r *http.Request) {
+	items, err := h.store.ListAll%s()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	httpx.RenderOrError(w, h.renderer, "base", "admin_%s", Admin%sIndexData{CSRFToken: csrf.TokenFromRequest(r), Items: items}, h.cfg)
+}`, data.PluralPascal, data.PluralPascal, data.Plural, data.PluralPascal)
+}
+
 func buildResourceAdminHandler(data scaffoldData) string {
 	parse := buildAdminParseForm(data)
 	hasValidate := needsValidate(data.Fields)
-	hasStrconv := needsStrconv(data.Fields)
+	hasStrconv := needsStrconv(data.Fields) || data.Paginate
+	indexDataStruct := buildAdminIndexDataStruct(data)
+	indexMethod := buildAdminIndexMethod(data)
 	return fmt.Sprintf(`package handlers
 
 import (
@@ -461,10 +572,7 @@ type Admin%sHandler struct {
 	cfg      cais.Config
 }
 
-type Admin%sIndexData struct {
-	CSRFToken string
-	Items     []models.%s
-}
+%s
 
 type Admin%sFormData struct {
 	CSRFToken string
@@ -476,14 +584,7 @@ func NewAdmin%sHandler(renderer *cais.Renderer, s store.Store, cfg cais.Config) 
 	return &Admin%sHandler{renderer: renderer, store: s, cfg: cfg}
 }
 
-func (h *Admin%sHandler) Index(w http.ResponseWriter, r *http.Request) {
-	items, err := h.store.ListAll%s()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	httpx.RenderOrError(w, h.renderer, "base", "admin_%s", Admin%sIndexData{CSRFToken: csrf.TokenFromRequest(r), Items: items}, h.cfg)
-}
+%s
 
 func (h *Admin%sHandler) New(w http.ResponseWriter, r *http.Request) {
 	httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", Admin%sFormData{CSRFToken: csrf.TokenFromRequest(r), IsNew: true}, h.cfg)
@@ -544,11 +645,10 @@ func (h *Admin%sHandler) parseForm(r *http.Request) (models.%s, error) {
 		boolImport(hasValidate, "\t\""+frameworkModule+"/pkg/cais/validate\"\n"),
 		frameworkModule, frameworkModule, frameworkModule, data.ModulePath, data.ModulePath,
 		data.PluralPascal,
-		data.PluralPascal, data.Pascal,
+		indexDataStruct,
 		data.Pascal, data.Pascal,
 		data.PluralPascal, data.PluralPascal, data.PluralPascal,
-		data.PluralPascal,
-		data.PluralPascal, data.Plural, data.PluralPascal,
+		indexMethod,
 		data.PluralPascal, data.Snake, data.Pascal,
 		data.PluralPascal, data.Pascal, data.Snake, data.Pascal,
 		data.PluralPascal, data.Pascal, data.Plural,
@@ -720,6 +820,23 @@ func buildAdminIndexHTML(data scaffoldData) string {
 			break
 		}
 	}
+	paginationBlock := ""
+	if data.Paginate {
+		paginationBlock = fmt.Sprintf(`    <div class="flex items-center justify-between px-6 py-4 border-t bg-slate-50">
+      {{ if .HasPrev }}
+      <a href="/admin/%s?page={{ .PrevPage }}" class="text-indigo-600 hover:underline">← Previous</a>
+      {{ else }}
+      <span></span>
+      {{ end }}
+      <span class="text-sm text-slate-500">Page {{ .Page }}</span>
+      {{ if .HasNext }}
+      <a href="/admin/%s?page={{ .NextPage }}" class="text-indigo-600 hover:underline">Next →</a>
+      {{ else }}
+      <span></span>
+      {{ end }}
+    </div>
+`, data.Plural, data.Plural)
+	}
 	return fmt.Sprintf(`{{ define "title" }}Admin — %s{{ end }} {{ define "content" }}
 <div class="max-w-3xl mx-auto">
   <div class="flex items-center justify-between mb-8">
@@ -746,10 +863,10 @@ func buildAdminIndexHTML(data scaffoldData) string {
         {{ end }}
       </tbody>
     </table>
-  </div>
+%s  </div>
 </div>
 {{ end }}
-`, data.Title, data.Title, data.Plural, data.Plural, displayField.Pascal, displayField.Pascal, data.Plural, data.Plural)
+`, data.Title, data.Title, data.Plural, data.Plural, displayField.Pascal, displayField.Pascal, data.Plural, data.Plural, paginationBlock)
 }
 
 func displayFieldForList(fields []FieldDef) FieldDef {

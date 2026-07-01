@@ -50,6 +50,8 @@ func (c *CLI) Run(args []string) error {
 		return c.cmdConsole()
 	case "db":
 		return c.cmdDB(args[1:])
+	case "routes":
+		return c.cmdRoutes()
 	case "help", "-h", "--help":
 		c.printHelp()
 		return nil
@@ -68,7 +70,7 @@ Usage:
   cais new <app> [dir] --blank     Empty app (no starter content)
   cais new <app> [dir] --module <path>   Override go module path
   cais g [--dry-run] handler <name>      Generate handler + test + page template
-  cais g [--dry-run] resource <name> [--fields title:string,url:url] [--public] [--no-seed] [--admin-auth session|bearer]
+  cais g [--dry-run] resource <name> [--fields title:string,url:url] [--public] [--paginate] [--no-seed] [--admin-auth session|bearer]
   cais g [--dry-run] model <name> [--fields title:string,url:url]
   cais g [--dry-run] page <name>         Generate page template only
   cais g [--dry-run] migration <name>    Generate SQL migration file
@@ -86,6 +88,7 @@ Usage:
   cais db status             List migration status
   cais db rollback           Remove last applied migration record (no SQL down)
   cais db prune-sessions     Delete expired login sessions from SQLite
+  cais routes                List HTTP routes from internal/app/routes.go
   cais help                  Show this help
 
 Aliases:
