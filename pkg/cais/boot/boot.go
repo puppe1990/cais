@@ -9,9 +9,10 @@ import (
 )
 
 type Options struct {
-	AppName string
-	Config  cais.Config
-	Version string
+	AppName         string
+	Config          cais.Config
+	Version         string
+	PortShiftedFrom string
 }
 
 func Print(w io.Writer, opts Options) {
@@ -24,6 +25,9 @@ func Print(w io.Writer, opts Options) {
 		app = "app"
 	}
 
+	if from := strings.TrimSpace(opts.PortShiftedFrom); from != "" && from != opts.Config.Port {
+		_, _ = fmt.Fprintf(w, "=> Port %s in use, using %s\n", from, opts.Config.Port)
+	}
 	_, _ = fmt.Fprintf(w, "=> Booting %s (Cais v%s)\n", app, version)
 	_, _ = fmt.Fprintf(w, "=> Environment: %s\n", opts.Config.Env)
 	_, _ = fmt.Fprintf(w, "=> Database:    sqlite3 (%s)\n", opts.Config.DBPath)

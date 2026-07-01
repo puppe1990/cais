@@ -16,21 +16,19 @@ const tplAir = `root = "."
 tmp_dir = "tmp"
 
 [build]
-  entrypoint = "./cmd/server"
   cmd = "go build -o ./tmp/main ./cmd/server"
-  bin = "./tmp/main"
+  entrypoint = ["./tmp/main"]
   delay = 1000
   exclude_dir = ["tmp", "data", "bin", "node_modules"]
   include_ext = ["go", "html"]
   stop_on_error = true
-  log = "build_errors"
 
 [log]
   time = false
+  main_only = true
 
 [misc]
   clean_on_exit = true
-  log = "main_only"
 `
 
 const tplMain = `package main
@@ -51,15 +49,27 @@ import (
 
 func main() {
 	cfg := cais.Load()
+	preferredPort := cfg.Port
+	port, shifted, err := cais.ResolvePort(cfg.Port, cfg.Env)
+	if err != nil {
+		log.Fatal(err)
+	}
+	cfg.Port = port
+
 	a, err := bootstrapWithConfig(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	shiftedFrom := ""
+	if shifted {
+		shiftedFrom = preferredPort
+	}
 	boot.Print(os.Stdout, boot.Options{
-		AppName: "{{.AppName}}",
-		Config:  cfg,
-		Version: boot.CaisVersion(),
+		AppName:         "{{.AppName}}",
+		Config:          cfg,
+		Version:         boot.CaisVersion(),
+		PortShiftedFrom: shiftedFrom,
 	})
 	if err := a.Run(); err != nil {
 		log.Fatal(err)
@@ -1295,15 +1305,27 @@ import (
 
 func main() {
 	cfg := cais.Load()
+	preferredPort := cfg.Port
+	port, shifted, err := cais.ResolvePort(cfg.Port, cfg.Env)
+	if err != nil {
+		log.Fatal(err)
+	}
+	cfg.Port = port
+
 	a, err := bootstrapWithConfig(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	shiftedFrom := ""
+	if shifted {
+		shiftedFrom = preferredPort
+	}
 	boot.Print(os.Stdout, boot.Options{
-		AppName: "{{.AppName}}",
-		Config:  cfg,
-		Version: boot.CaisVersion(),
+		AppName:         "{{.AppName}}",
+		Config:          cfg,
+		Version:         boot.CaisVersion(),
+		PortShiftedFrom: shiftedFrom,
 	})
 	if err := a.Run(); err != nil {
 		log.Fatal(err)
