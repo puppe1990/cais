@@ -128,6 +128,37 @@ func findWebDir(subpath string) (string, error) {
 }
 `
 
+const tplConsole = `package main
+
+import (
+	"log"
+
+	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/console"
+	"{{.ModulePath}}/internal/store"
+)
+
+func main() {
+	cfg := cais.Load()
+	s, err := store.NewSQLiteStore(cfg.DBPath, cfg.Env)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+
+	if err := console.Run(console.Options{
+		AppName: "{{.AppName}}",
+		Config:  cfg,
+		Bindings: map[string]any{
+			"store": s,
+			"db":    s.DB(),
+		},
+	}); err != nil {
+		log.Fatal(err)
+	}
+}
+`
+
 const tplApp = `package app
 
 import (
@@ -698,6 +729,10 @@ func (s *SQLiteStore) CountContacts() (int64, error) {
 	return count, nil
 }
 
+func (s *SQLiteStore) DB() *sql.DB {
+	return s.db.Raw()
+}
+
 func (s *SQLiteStore) Close() error {
 	return s.db.Close()
 }
@@ -1071,6 +1106,7 @@ const tplREADME = "# {{.AppName}}\n\n" +
 	"cais css                   # build Tailwind\n" +
 	"cais dev                   # hot reload + tailwind watch\n" +
 	"cais server                # go run ./cmd/server\n" +
+	"cais console               # interactive Go REPL + SQL\n" +
 	"cais g handler <name>      # handler + test + page template\n" +
 	"cais g resource <name>     # model + migration + admin CRUD\n" +
 	"cais g page <name>         # page template only\n" +
@@ -1225,6 +1261,10 @@ func NewSQLiteStore(dsn string, env string) (*SQLiteStore, error) {
 	}
 
 	return &SQLiteStore{db: sqllog.Wrap(db, sqllog.Config{Enabled: sqllog.EnabledForEnv(env)})}, nil
+}
+
+func (s *SQLiteStore) DB() *sql.DB {
+	return s.db.Raw()
 }
 
 func (s *SQLiteStore) Close() error {

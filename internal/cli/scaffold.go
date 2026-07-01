@@ -15,6 +15,7 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 	files := map[string]string{
 		"go.mod":                                      tplGoMod,
 		"cmd/server/main.go":                          tplMain,
+		"cmd/console/main.go":                         tplConsole,
 		"internal/app/app.go":                         tplApp,
 		"internal/app/routes.go":                      tplRoutes,
 		"internal/handlers/home.go":                   tplHomeHandler,
@@ -51,6 +52,7 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		files = map[string]string{
 			"go.mod":                             tplGoMod,
 			"cmd/server/main.go":                 tplMainBlank,
+			"cmd/console/main.go":                tplConsole,
 			"internal/app/app.go":                tplAppBlank,
 			"internal/app/routes.go":             tplRoutesBlank,
 			"internal/handlers/helpers_test.go":  tplHelpersTest,
