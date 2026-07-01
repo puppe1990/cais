@@ -48,5 +48,8 @@ func (c Config) Validate() error {
 	if c.Env == "production" && c.AdminToken == "" {
 		return fmt.Errorf("ADMIN_TOKEN is required when ENV=production")
 	}
+	if c.Env == "production" && c.AppURL == "" {
+		return fmt.Errorf("APP_URL is required when ENV=production")
+	}
 	return nil
 }

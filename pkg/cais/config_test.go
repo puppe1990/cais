@@ -74,9 +74,16 @@ func TestConfig_AdminToken(t *testing.T) {
 }
 
 func TestConfig_Validate_requiresAdminTokenInProduction(t *testing.T) {
-	cfg := Config{Env: "production", AdminToken: ""}
+	cfg := Config{Env: "production", AdminToken: "", AppURL: "https://example.com"}
 	if err := cfg.Validate(); err == nil {
 		t.Fatal("expected error without ADMIN_TOKEN in production")
+	}
+}
+
+func TestConfig_Validate_requiresAppURLInProduction(t *testing.T) {
+	cfg := Config{Env: "production", AdminToken: "secret", AppURL: ""}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected error without APP_URL in production")
 	}
 }
 
