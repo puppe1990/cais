@@ -11,7 +11,7 @@ import (
 
 func setupTestStore(t *testing.T) store.Store {
 	t.Helper()
-	s, err := store.NewSQLiteStore(":memory:")
+	s, err := store.NewSQLiteStore(":memory:", "test")
 	if err != nil {
 		t.Fatal(err)
 	}

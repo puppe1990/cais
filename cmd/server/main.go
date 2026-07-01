@@ -59,7 +59,7 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 		return nil, fmt.Errorf("renderer: %w", err)
 	}
 
-	s, err := store.NewSQLiteStore(cfg.DBPath)
+	s, err := store.NewSQLiteStore(cfg.DBPath, cfg.Env)
 	if err != nil {
 		return nil, fmt.Errorf("store: %w", err)
 	}
