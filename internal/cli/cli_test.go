@@ -193,6 +193,37 @@ func TestScaffoldResource_PublicWithFields(t *testing.T) {
 	}
 }
 
+func TestScaffoldResource_PublicInsertsNavAfterMarker(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "shop")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "shop",
+		ModulePath: "github.com/puppe1990/shop",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "product", resourceOpts{Public: true}); err != nil {
+		t.Fatal(err)
+	}
+
+	layout, err := os.ReadFile(filepath.Join(appDir, "web/templates/layouts/base.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(layout)
+	if !strings.Contains(body, "<!-- cais:nav -->") {
+		t.Fatal("layout missing <!-- cais:nav --> marker")
+	}
+	markerIdx := strings.Index(body, "<!-- cais:nav -->")
+	linkIdx := strings.Index(body, `href="/products"`)
+	if linkIdx == -1 {
+		t.Fatal("layout missing public products nav link")
+	}
+	if linkIdx < markerIdx {
+		t.Error("nav link should appear after <!-- cais:nav --> marker")
+	}
+}
+
 func TestScaffoldResource_PluralPascal_ListAllMethod(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "recipes")

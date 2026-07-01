@@ -387,6 +387,8 @@ func patchRoutesForResource(dir string, data scaffoldData) error {
 	return patchLayoutNav(dir, data)
 }
 
+const layoutNavMarker = "<!-- cais:nav -->"
+
 func patchLayoutNav(dir string, data scaffoldData) error {
 	if !data.Public {
 		return nil
@@ -397,21 +399,20 @@ func patchLayoutNav(dir string, data scaffoldData) error {
 		return err
 	}
 	content := string(body)
-	if strings.Contains(content, "/"+data.Plural+`"`) {
+	linkHref := `href="/` + data.Plural + `"`
+	if strings.Contains(content, linkHref) {
 		return nil
 	}
-	nav := fmt.Sprintf(`        <nav class="flex items-center gap-6 text-sm font-medium">
-          <a href="/%s" class="text-slate-600 hover:text-indigo-600 transition">%s</a>
-          <a href="/admin/%s" class="text-slate-600 hover:text-indigo-600 transition">Admin</a>
-        </nav>
-`, data.Plural, toTitle(data.Plural), data.Plural)
-	content = strings.Replace(content,
-		`</div>
-    </header>`,
-		nav+`      </div>
-    </header>`,
-		1,
-	)
+	link := fmt.Sprintf(`          <a href="/%s" class="text-slate-600 hover:text-indigo-600 transition">%s</a>
+`, data.Plural, toTitle(data.Plural))
+	switch {
+	case strings.Contains(content, layoutNavMarker):
+		content = strings.Replace(content, layoutNavMarker, layoutNavMarker+"\n"+link, 1)
+	case strings.Contains(content, "</nav>"):
+		content = strings.Replace(content, "</nav>", link+"        </nav>", 1)
+	default:
+		return fmt.Errorf("%s: missing %s marker and </nav> element", path, layoutNavMarker)
+	}
 	content = patchLayoutLogoHref(dir, content, data)
 	return os.WriteFile(path, []byte(content), 0o644)
 }

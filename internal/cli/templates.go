@@ -1082,6 +1082,7 @@ const tplLayout = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}
       <div class="max-w-5xl mx-auto flex justify-between items-center">
         <a href="/" class="font-bold text-xl text-indigo-600 hover:text-indigo-700 transition">{{.AppName}}</a>
         <nav class="flex items-center gap-6 text-sm font-medium">
+          <!-- cais:nav -->
           <a href="/" class="text-slate-600 hover:text-indigo-600 transition">Home</a>
           <a href="/contact" class="text-slate-600 hover:text-indigo-600 transition">Contact</a>
           <a href="/dashboard" class="text-slate-600 hover:text-indigo-600 transition">Dashboard</a>
@@ -1811,6 +1812,9 @@ const tplLayoutMinimal = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} e
     <header class="bg-white border-b border-slate-200 p-4 shadow-sm">
       <div class="max-w-5xl mx-auto flex justify-between items-center">
         <a href="/" class="font-bold text-xl text-indigo-600 hover:text-indigo-700 transition">{{.AppName}}</a>
+        <nav class="flex items-center gap-6 text-sm font-medium">
+          <!-- cais:nav -->
+        </nav>
       </div>
     </header>
     <main class="flex-grow max-w-5xl w-full mx-auto p-6">{{"{{"}} template "content" . {{"}}"}}</main>
@@ -2109,6 +2113,9 @@ const tplLayoutBlank = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end
     <header class="bg-white border-b border-slate-200 p-4 shadow-sm">
       <div class="max-w-5xl mx-auto flex justify-between items-center">
         <a href="/" class="font-bold text-xl text-indigo-600 hover:text-indigo-700 transition">{{.AppName}}</a>
+        <nav class="flex items-center gap-6 text-sm font-medium">
+          <!-- cais:nav -->
+        </nav>
       </div>
     </header>
     <main class="flex-grow max-w-5xl w-full mx-auto p-6">{{"{{"}} template "content" . {{"}}"}}</main>
