@@ -10,6 +10,7 @@ type resourceOpts struct {
 	Public    bool
 	Seed      bool
 	AdminAuth string
+	dryRun    bool
 }
 
 func parseResourceOpts(args []string) (resourceOpts, error) {

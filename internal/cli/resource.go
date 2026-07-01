@@ -21,8 +21,10 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 	data.AdminAuth = opts.AdminAuth
 
 	migrationsDir := filepath.Join(dir, "internal/store/migrations")
-	if err := os.MkdirAll(migrationsDir, 0o755); err != nil {
-		return err
+	if !opts.dryRun {
+		if err := os.MkdirAll(migrationsDir, 0o755); err != nil {
+			return err
+		}
 	}
 	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {
@@ -60,32 +62,31 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 		if _, err := os.Stat(full); err == nil {
 			return fmt.Errorf("%s already exists", path)
 		}
-		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		if err := writeScaffoldFile(full, []byte(content), 0o644, path, opts.dryRun); err != nil {
 			return err
 		}
-		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
-			return err
-		}
-		_, _ = fmt.Printf("  create %s\n", path)
 	}
 
-	if err := patchStoreForResource(dir, data); err != nil {
+	if err := patchStoreForResource(dir, data, opts.dryRun); err != nil {
 		return err
 	}
-	if err := patchStoreTestForResource(dir, data); err != nil {
+	if err := patchStoreTestForResource(dir, data, opts.dryRun); err != nil {
 		return err
 	}
-	if err := patchRoutesForResource(dir, data); err != nil {
+	if err := patchRoutesForResource(dir, data, opts.dryRun); err != nil {
 		return err
 	}
 	var finalErr error
 	if data.Seed {
-		finalErr = patchMainForSeed(dir, data)
+		finalErr = patchMainForSeed(dir, data, opts.dryRun)
 	} else {
-		finalErr = patchLayoutNav(dir, data)
+		finalErr = patchLayoutNav(dir, data, opts.dryRun)
 	}
 	if finalErr != nil {
 		return finalErr
+	}
+	if opts.dryRun {
+		return nil
 	}
 	return gofmtGoFiles(dir)
 }
@@ -223,7 +224,7 @@ func Test%sHandler_List(t *testing.T) {
 `, frameworkModule, data.PluralPascal, seedCall, data.PluralPascal, data.Plural, data.Plural)
 }
 
-func patchStoreForResource(dir string, data scaffoldData) error {
+func patchStoreForResource(dir string, data scaffoldData, dryRun bool) error {
 	path := filepath.Join(dir, "internal/store/store.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -270,14 +271,10 @@ func patchStoreForResource(dir string, data scaffoldData) error {
 		)
 	}
 
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		return err
-	}
-	_, _ = fmt.Println("  update internal/store/store.go")
-	return nil
+	return updateScaffoldFile(path, []byte(content), "internal/store/store.go", dryRun)
 }
 
-func patchStoreTestForResource(dir string, data scaffoldData) error {
+func patchStoreTestForResource(dir string, data scaffoldData, dryRun bool) error {
 	path := filepath.Join(dir, "internal/store/store_test.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -314,6 +311,9 @@ func TestStore_Insert%s(t *testing.T) {
 		)
 	}
 	content = strings.TrimRight(content, "\n") + "\n" + insert
+	if dryRun {
+		return nil
+	}
 	return os.WriteFile(path, []byte(content), 0o644)
 }
 
@@ -331,7 +331,7 @@ func buildInsertTestLiteral(fields []FieldDef) string {
 	return strings.Join(parts, ", ")
 }
 
-func patchRoutesForResource(dir string, data scaffoldData) error {
+func patchRoutesForResource(dir string, data scaffoldData, dryRun bool) error {
 	path := filepath.Join(dir, "internal/app/routes.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -380,16 +380,15 @@ func patchRoutesForResource(dir string, data scaffoldData) error {
 	if err2 != nil {
 		return fmt.Errorf("could not patch routes.go: %w", err2)
 	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+	if err := updateScaffoldFile(path, []byte(content), "internal/app/routes.go", dryRun); err != nil {
 		return err
 	}
-	_, _ = fmt.Println("  update internal/app/routes.go")
-	return patchLayoutNav(dir, data)
+	return patchLayoutNav(dir, data, dryRun)
 }
 
 const layoutNavMarker = "<!-- cais:nav -->"
 
-func patchLayoutNav(dir string, data scaffoldData) error {
+func patchLayoutNav(dir string, data scaffoldData, dryRun bool) error {
 	if !data.Public {
 		return nil
 	}
@@ -414,6 +413,9 @@ func patchLayoutNav(dir string, data scaffoldData) error {
 		return fmt.Errorf("%s: missing %s marker and </nav> element", path, layoutNavMarker)
 	}
 	content = patchLayoutLogoHref(dir, content, data)
+	if dryRun {
+		return nil
+	}
 	return os.WriteFile(path, []byte(content), 0o644)
 }
 
@@ -432,7 +434,7 @@ func patchLayoutLogoHref(dir, content string, data scaffoldData) string {
 	)
 }
 
-func patchMainForSeed(dir string, data scaffoldData) error {
+func patchMainForSeed(dir string, data scaffoldData, dryRun bool) error {
 	path := filepath.Join(dir, "cmd/server/main.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -440,7 +442,7 @@ func patchMainForSeed(dir string, data scaffoldData) error {
 	}
 	content := string(body)
 	if strings.Contains(content, "SeedDemo"+data.PluralPascal) {
-		return patchLayoutNav(dir, data)
+		return patchLayoutNav(dir, data, dryRun)
 	}
 	marker := "\n\tstaticDir, err := findWebDir(\"static\")"
 	seed := fmt.Sprintf(`
@@ -453,9 +455,8 @@ func patchMainForSeed(dir string, data scaffoldData) error {
 		return fmt.Errorf("could not patch main.go for seed")
 	}
 	content = strings.Replace(content, marker, seed+marker, 1)
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+	if err := updateScaffoldFile(path, []byte(content), "cmd/server/main.go", dryRun); err != nil {
 		return err
 	}
-	_, _ = fmt.Println("  update cmd/server/main.go")
-	return patchLayoutNav(dir, data)
+	return patchLayoutNav(dir, data, dryRun)
 }

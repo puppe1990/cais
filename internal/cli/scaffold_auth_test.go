@@ -86,7 +86,7 @@ func TestScaffoldAuth_migrationIncludesExpiresAt(t *testing.T) {
 	if err := scaffoldAuth(appDir, scaffoldData{
 		AppName:    "authmigrate",
 		ModulePath: "github.com/puppe1990/authmigrate",
-	}); err != nil {
+	}, false); err != nil {
 		t.Fatal(err)
 	}
 

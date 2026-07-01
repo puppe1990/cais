@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func scaffoldAuth(dir string, data scaffoldData) error {
+func scaffoldAuth(dir string, data scaffoldData, dryRun bool) error {
 	if _, err := os.Stat(filepath.Join(dir, "internal/handlers/auth.go")); err == nil {
 		return fmt.Errorf("auth already exists — remove internal/handlers/auth.go first")
 	}
@@ -22,26 +22,25 @@ func scaffoldAuth(dir string, data scaffoldData) error {
 
 	for path, content := range files {
 		full := filepath.Join(dir, path)
-		if err := writeTemplate(full, content, data); err != nil {
+		if err := writeScaffoldTemplate(full, content, data, path, dryRun); err != nil {
 			return fmt.Errorf("%s: %w", path, err)
 		}
-		_, _ = fmt.Printf("  create %s\n", path)
 	}
 
-	if err := patchStoreForAuth(dir); err != nil {
+	if err := patchStoreForAuth(dir, dryRun); err != nil {
 		return err
 	}
-	if err := patchAppForAuth(dir); err != nil {
+	if err := patchAppForAuth(dir, dryRun); err != nil {
 		return err
 	}
-	if err := patchRoutesForAuth(dir); err != nil {
+	if err := patchRoutesForAuth(dir, dryRun); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func patchStoreForAuth(dir string) error {
+func patchStoreForAuth(dir string, dryRun bool) error {
 	path := filepath.Join(dir, "internal/store/store.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -86,14 +85,10 @@ func (s *SQLiteStore) Sessions() session.Store {
 `
 	content = strings.Replace(content, "\nfunc (s *SQLiteStore) Close()", insert+"\nfunc (s *SQLiteStore) Close()", 1)
 
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		return err
-	}
-	_, _ = fmt.Println("  update internal/store/store.go")
-	return nil
+	return updateScaffoldFile(path, []byte(content), "internal/store/store.go", dryRun)
 }
 
-func patchAppForAuth(dir string) error {
+func patchAppForAuth(dir string, dryRun bool) error {
 	path := filepath.Join(dir, "internal/app/app.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -139,14 +134,10 @@ func patchAppForAuth(dir string) error {
 		return nil
 	}
 
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		return err
-	}
-	_, _ = fmt.Println("  update internal/app/app.go")
-	return nil
+	return updateScaffoldFile(path, []byte(content), "internal/app/app.go", dryRun)
 }
 
-func patchRoutesForAuth(dir string) error {
+func patchRoutesForAuth(dir string, dryRun bool) error {
 	path := filepath.Join(dir, "internal/app/routes.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -193,11 +184,7 @@ func patchRoutesForAuth(dir string) error {
 		1,
 	)
 
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		return err
-	}
-	_, _ = fmt.Println("  update internal/app/routes.go")
-	return nil
+	return updateScaffoldFile(path, []byte(content), "internal/app/routes.go", dryRun)
 }
 
 const tplUserModel = `package models

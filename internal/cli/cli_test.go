@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,7 +36,7 @@ func TestCLI_Help_IncludesResource(t *testing.T) {
 	if err := c.Run([]string{"help"}); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(buf.String(), "g resource") {
+	if !strings.Contains(buf.String(), "[--dry-run] resource") {
 		t.Error("help missing g resource")
 	}
 }
@@ -117,6 +118,77 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 	}
 	if strings.Contains(string(routesBody), "\n\n\n") {
 		t.Error("routes.go has triple newlines (formatting issue)")
+	}
+}
+
+func TestCLI_GenerateResourceDryRun(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "clidryrun")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "clidryrun",
+		ModulePath: "github.com/puppe1990/clidryrun",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(appDir)
+	t.Cleanup(func() { _ = os.Chdir(cwd) })
+
+	c := &CLI{Out: io.Discard}
+	if err := c.Run([]string{"g", "--dry-run", "resource", "post", "--fields", "title:string"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(appDir, "internal/models/post.go")); !os.IsNotExist(err) {
+		t.Error("CLI --dry-run should not create post.go")
+	}
+}
+
+func TestScaffoldResource_DryRunWritesNothing(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "dryrun")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "dryrun",
+		ModulePath: "github.com/puppe1990/dryrun",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+
+	storeBefore, err := os.ReadFile(filepath.Join(appDir, "internal/store/store.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	routesBefore, err := os.ReadFile(filepath.Join(appDir, "internal/app/routes.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	opts := resourceOpts{Fields: "name:string", dryRun: true}
+	if err := scaffoldResource(appDir, "item", opts); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(filepath.Join(appDir, "internal/models/item.go")); !os.IsNotExist(err) {
+		t.Error("dry-run should not create item.go")
+	}
+
+	storeAfter, err := os.ReadFile(filepath.Join(appDir, "internal/store/store.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(storeAfter) != string(storeBefore) {
+		t.Error("dry-run should not modify store.go")
+	}
+
+	routesAfter, err := os.ReadFile(filepath.Join(appDir, "internal/app/routes.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(routesAfter) != string(routesBefore) {
+		t.Error("dry-run should not modify routes.go")
 	}
 }
 
@@ -397,7 +469,7 @@ func TestScaffoldHandler_AfterResourceRoutesCompile(t *testing.T) {
 	if err := scaffoldResource(appDir, "dish", resourceOpts{Public: true}); err != nil {
 		t.Fatal(err)
 	}
-	if err := scaffoldHandler(appDir, "about"); err != nil {
+	if err := scaffoldHandler(appDir, "about", false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -945,7 +1017,7 @@ func TestScaffoldMigration_numbersAfterSQLOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := scaffoldMigration(dir, "posts"); err != nil {
+	if err := scaffoldMigration(dir, "posts", false); err != nil {
 		t.Fatal(err)
 	}
 

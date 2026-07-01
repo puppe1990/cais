@@ -67,11 +67,11 @@ Usage:
   cais new <app> [dir] --minimal   Slim app (home only)
   cais new <app> [dir] --blank     Empty app (no starter content)
   cais new <app> [dir] --module <path>   Override go module path
-  cais g handler <name>      Generate handler + test + page template
-  cais g resource <name> [--fields title:string,url:url] [--public] [--no-seed] [--admin-auth session|bearer]
-  cais g page <name>         Generate page template only
-  cais g migration <name>    Generate SQL migration file
-  cais g auth                Add login/logout and protect dashboard
+  cais g [--dry-run] handler <name>      Generate handler + test + page template
+  cais g [--dry-run] resource <name> [--fields title:string,url:url] [--public] [--no-seed] [--admin-auth session|bearer]
+  cais g [--dry-run] page <name>         Generate page template only
+  cais g [--dry-run] migration <name>    Generate SQL migration file
+  cais g [--dry-run] auth                Add login/logout and protect dashboard
   cais g ci                  Add GitHub Actions CI, pre-commit, lint, Prettier
   cais install               npm install + go mod tidy
   cais css                   Build Tailwind CSS
@@ -175,8 +175,19 @@ func parseNewArgs(args []string) (newOpts, error) {
 }
 
 func (c *CLI) cmdGenerate(args []string) error {
+	dryRun := false
+	filtered := make([]string, 0, len(args))
+	for _, arg := range args {
+		if arg == "--dry-run" {
+			dryRun = true
+			continue
+		}
+		filtered = append(filtered, arg)
+	}
+	args = filtered
+
 	if len(args) < 1 {
-		return fmt.Errorf("usage: cais g <handler|page|migration|resource|console|auth|ci> [name]")
+		return fmt.Errorf("usage: cais g [--dry-run] <handler|page|migration|resource|console|auth|ci> [name]")
 	}
 
 	kind := args[0]
@@ -196,7 +207,7 @@ func (c *CLI) cmdGenerate(args []string) error {
 	case "console":
 		return scaffoldConsole(cwd)
 	case "auth":
-		return scaffoldAuth(cwd, scaffoldData{AppName: filepath.Base(cwd), ModulePath: moduleFromDir(cwd)})
+		return scaffoldAuth(cwd, scaffoldData{AppName: filepath.Base(cwd), ModulePath: moduleFromDir(cwd)}, dryRun)
 	case "ci":
 		return scaffoldCI(cwd, scaffoldData{AppName: filepath.Base(cwd), ModulePath: moduleFromDir(cwd)})
 	case "handler", "page", "migration", "resource":
@@ -206,16 +217,17 @@ func (c *CLI) cmdGenerate(args []string) error {
 		name := args[1]
 		switch kind {
 		case "handler":
-			return scaffoldHandler(cwd, name)
+			return scaffoldHandler(cwd, name, dryRun)
 		case "page":
-			return scaffoldPage(cwd, name)
+			return scaffoldPage(cwd, name, dryRun)
 		case "migration":
-			return scaffoldMigration(cwd, name)
+			return scaffoldMigration(cwd, name, dryRun)
 		case "resource":
 			opts, err := parseResourceOpts(args[2:])
 			if err != nil {
 				return err
 			}
+			opts.dryRun = dryRun
 			return scaffoldResource(cwd, name, opts)
 		}
 	default:
