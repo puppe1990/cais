@@ -1,6 +1,8 @@
 package app
 
 import (
+	"net/http"
+
 	"github.com/puppe1990/cais/internal/handlers"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/meta"
@@ -13,11 +15,14 @@ func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config, site meta.Site) 
 	dashboard := handlers.NewDashboardHandler(deps.Renderer, deps.Store, site)
 	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, site, deps.Store.Sessions(), cfg)
 
+	loginLimit := middleware.NewRateLimiter(10)
+	contactLimit := middleware.NewRateLimiter(20)
+
 	r.Get("/", home.ServeHTTP)
 	r.Get("/contact", contact.Get)
-	r.Post("/contact", contact.Post)
+	r.Post("/contact", contactLimit.Middleware(http.HandlerFunc(contact.Post)).ServeHTTP)
 	r.Get("/login", auth.Login)
-	r.Post("/login", auth.LoginPost)
+	r.Post("/login", loginLimit.Middleware(http.HandlerFunc(auth.LoginPost)).ServeHTTP)
 	r.Post("/logout", auth.LogoutPost)
 	r.Get("/dashboard", middleware.RequireAuthFunc("/login", dashboard.ServeHTTP))
 }
