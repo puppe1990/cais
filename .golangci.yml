@@ -23,7 +23,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/matheuspuppe/cais
+        - github.com/puppe1990/cais
   exclusions:
     generated: lax
     paths:

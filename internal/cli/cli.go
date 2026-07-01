@@ -48,6 +48,8 @@ func (c *CLI) Run(args []string) error {
 		return c.cmdDoctor()
 	case "console", "c":
 		return c.cmdConsole()
+	case "db":
+		return c.cmdDB(args[1:])
 	case "help", "-h", "--help":
 		c.printHelp()
 		return nil
@@ -67,6 +69,7 @@ Usage:
   cais g resource <name> [--fields title:string,url:url] [--public] [--no-seed]
   cais g page <name>         Generate page template only
   cais g migration <name>    Generate SQL migration file
+  cais g auth                Add login/logout and protect dashboard
   cais install               npm install + go mod tidy
   cais css                   Build Tailwind CSS
   cais dev                   Hot reload (air + tailwind watch)
@@ -75,6 +78,8 @@ Usage:
   cais test                  Run tests (go test ./...)
   cais doctor                Check app setup (htmx, air, go.mod)
   cais console               Interactive app console (Go REPL + SQL)
+  cais db migrate            Run pending SQL migrations
+  cais db status             List migration status
   cais help                  Show this help
 
 Aliases:
@@ -143,7 +148,7 @@ func (c *CLI) cmdNew(args []string) error {
 
 func (c *CLI) cmdGenerate(args []string) error {
 	if len(args) < 1 {
-		return fmt.Errorf("usage: cais g <handler|page|migration|resource|console> <name>")
+		return fmt.Errorf("usage: cais g <handler|page|migration|resource|console|auth> [name]")
 	}
 
 	kind := args[0]
@@ -162,6 +167,8 @@ func (c *CLI) cmdGenerate(args []string) error {
 	switch kind {
 	case "console":
 		return scaffoldConsole(cwd)
+	case "auth":
+		return scaffoldAuth(cwd, scaffoldData{AppName: filepath.Base(cwd), ModulePath: moduleFromDir(cwd)})
 	case "handler", "page", "migration", "resource":
 		if len(args) < 2 {
 			return fmt.Errorf("usage: cais g %s <name>", kind)
@@ -182,7 +189,7 @@ func (c *CLI) cmdGenerate(args []string) error {
 			return scaffoldResource(cwd, name, opts)
 		}
 	default:
-		return fmt.Errorf("unknown generator %q (use handler, page, migration, resource, or console)", kind)
+		return fmt.Errorf("unknown generator %q (use handler, page, migration, resource, auth, or console)", kind)
 	}
 	return nil
 }
@@ -215,6 +222,20 @@ func (c *CLI) cmdTest() error {
 func moduleName(app string) string {
 	slug := strings.ToLower(strings.ReplaceAll(app, "-", ""))
 	return "github.com/puppe1990/" + slug
+}
+
+func moduleFromDir(dir string) string {
+	data, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+	if err != nil {
+		return moduleName(filepath.Base(dir))
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "module ") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "module "))
+		}
+	}
+	return moduleName(filepath.Base(dir))
 }
 
 func isCaisApp(dir string) bool {

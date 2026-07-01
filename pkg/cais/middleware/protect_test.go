@@ -4,13 +4,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 func TestProtect_NoTokenEnv_PassesThrough(t *testing.T) {
-	t.Setenv("ADMIN_TOKEN", "")
+	cfg := cais.Config{Env: "development", AdminToken: ""}
 
 	called := false
-	h := Protect(func(w http.ResponseWriter, r *http.Request) {
+	h := Protect(cfg, func(w http.ResponseWriter, r *http.Request) {
 		called = true
 		w.WriteHeader(http.StatusOK)
 	})
@@ -28,9 +30,9 @@ func TestProtect_NoTokenEnv_PassesThrough(t *testing.T) {
 }
 
 func TestProtect_WithToken_RejectsUnauthorized(t *testing.T) {
-	t.Setenv("ADMIN_TOKEN", "secret")
+	cfg := cais.Config{Env: "development", AdminToken: "secret"}
 
-	h := Protect(func(w http.ResponseWriter, r *http.Request) {
+	h := Protect(cfg, func(w http.ResponseWriter, r *http.Request) {
 		t.Error("handler should not be called")
 	})
 
@@ -44,10 +46,10 @@ func TestProtect_WithToken_RejectsUnauthorized(t *testing.T) {
 }
 
 func TestProtect_WithToken_AcceptsBearer(t *testing.T) {
-	t.Setenv("ADMIN_TOKEN", "secret")
+	cfg := cais.Config{Env: "development", AdminToken: "secret"}
 
 	called := false
-	h := Protect(func(w http.ResponseWriter, r *http.Request) {
+	h := Protect(cfg, func(w http.ResponseWriter, r *http.Request) {
 		called = true
 	})
 

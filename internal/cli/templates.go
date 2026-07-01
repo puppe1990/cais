@@ -51,6 +51,9 @@ import (
 
 func main() {
 	cfg := cais.Load()
+	if err := cfg.Validate(); err != nil {
+		log.Fatal(err)
+	}
 	preferredPort := cfg.Port
 	port, shifted, err := cais.ResolvePort(cfg.Port, cfg.Env)
 	if err != nil {
@@ -219,6 +222,8 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	}
 
 	r := cais.NewRouter()
+	r.Use(middleware.CSRF)
+	r.Use(middleware.LoadSession(deps.Store.Sessions()))
 	buf := devlog.Prepare(cfg.Env)
 	if buf != nil {
 		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))
@@ -228,7 +233,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	r.Use(middleware.Recover)
 	r.Static("/static", deps.StaticDir)
 
-	registerRoutes(r, deps)
+	registerRoutes(r, deps, cfg)
 	devlog.Register(r, cfg.Env, buf)
 	r.Get("/health", healthHandler)
 
@@ -283,18 +288,23 @@ const tplRoutes = `package app
 
 import (
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/middleware"
 	"{{.ModulePath}}/internal/handlers"
 )
 
-func registerRoutes(r *cais.Router, deps Deps) {
+func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
 	home := handlers.NewHomeHandler(deps.Renderer, deps.Site)
 	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, deps.Site)
 	dashboard := handlers.NewDashboardHandler(deps.Renderer, deps.Store, deps.Site)
+	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions())
 
 	r.Get("/", home.ServeHTTP)
 	r.Get("/contact", contact.Get)
 	r.Post("/contact", contact.Post)
-	r.Get("/dashboard", dashboard.ServeHTTP)
+	r.Get("/login", auth.Login)
+	r.Post("/login", auth.LoginPost)
+	r.Post("/logout", auth.LogoutPost)
+	r.Get("/dashboard", middleware.RequireAuthFunc("/login", dashboard.ServeHTTP))
 }
 `
 
@@ -323,7 +333,7 @@ func NewHomeHandler(renderer *cais.Renderer, site meta.Site) *HomeHandler {
 
 func (h *HomeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "home", PageData{Site: h.site, Nome: "{{.AppName}}"}); err != nil {
+	if err := h.renderer.Render(w, "base", "home", PageData{Site: meta.WithCSRF(h.site, r), Nome: "{{.AppName}}"}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -451,7 +461,7 @@ func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site) *
 
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "contact", h.site); err != nil {
+	if err := h.renderer.Render(w, "base", "contact", meta.WithCSRF(h.site, r)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -492,7 +502,7 @@ func (h *ContactHandler) renderContactResponse(w http.ResponseWriter, r *http.Re
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "contact", h.site); err != nil {
+	if err := h.renderer.Render(w, "base", "contact", meta.WithCSRF(h.site, r)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -607,7 +617,7 @@ func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := DashboardData{
-		Site:          h.site,
+		Site:          meta.WithCSRF(h.site, r),
 		TotalContacts: count,
 		Env:           cais.Load().Env,
 	}
@@ -707,6 +717,8 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/puppe1990/cais/pkg/cais/devlog"
+	"github.com/puppe1990/cais/pkg/cais/session"
+	caissqlite "github.com/puppe1990/cais/pkg/cais/sqlite"
 	"github.com/puppe1990/cais/pkg/cais/sqllog"
 	"{{.ModulePath}}/internal/models"
 )
@@ -715,6 +727,8 @@ type Store interface {
 	InsertContact(contact models.Contact) (int64, error)
 	FindContact(id int64) (models.Contact, error)
 	CountContacts() (int64, error)
+	FindUserByEmail(email string) (models.User, error)
+	Sessions() session.Store
 	Close() error
 }
 
@@ -734,6 +748,10 @@ func NewSQLiteStore(dsn string, env string) (*SQLiteStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
+	if err := caissqlite.Configure(db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("configure sqlite: %w", err)
+	}
 
 	if err := applyMigrations(db); err != nil {
 		_ = db.Close()
@@ -744,7 +762,27 @@ func NewSQLiteStore(dsn string, env string) (*SQLiteStore, error) {
 	if cfg.Enabled {
 		cfg.Writer = devlog.MirrorDefault(os.Stdout)
 	}
-	return &SQLiteStore{db: sqllog.Wrap(db, cfg)}, nil
+	wrapped := sqllog.Wrap(db, cfg)
+	if err := seedAuthData(wrapped.Raw(), env); err != nil {
+		_ = wrapped.Close()
+		return nil, err
+	}
+	return &SQLiteStore{db: wrapped}, nil
+}
+
+func seedAuthData(db *sql.DB, env string) error {
+	if env != "development" {
+		return nil
+	}
+	if err := session.EnsureSQLiteSchema(db); err != nil {
+		return err
+	}
+	hash, err := session.HashPassword("password")
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("INSERT OR IGNORE INTO users (email, password_hash) VALUES (?, ?)", "demo@example.com", hash)
+	return err
 }
 
 func (s *SQLiteStore) InsertContact(contact models.Contact) (int64, error) {
@@ -777,6 +815,22 @@ func (s *SQLiteStore) CountContacts() (int64, error) {
 		return 0, fmt.Errorf("count contacts: %w", err)
 	}
 	return count, nil
+}
+
+func (s *SQLiteStore) FindUserByEmail(email string) (models.User, error) {
+	var u models.User
+	err := s.db.QueryRow(
+		"SELECT id, email, password_hash, created_at FROM users WHERE email = ?",
+		email,
+	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.CreatedAt)
+	if err != nil {
+		return models.User{}, fmt.Errorf("find user: %w", err)
+	}
+	return u, nil
+}
+
+func (s *SQLiteStore) Sessions() session.Store {
+	return session.NewSQLiteStore(s.db.Raw())
 }
 
 func (s *SQLiteStore) DB() *sql.DB {
@@ -885,39 +939,15 @@ const tplMigrations = `package store
 import (
 	"database/sql"
 	"embed"
-	"fmt"
-	"sort"
-	"strings"
+
+	"github.com/puppe1990/cais/pkg/cais/migrate"
 )
 
 //go:embed migrations/*.sql
 var migrationFS embed.FS
 
 func applyMigrations(db *sql.DB) error {
-	entries, err := migrationFS.ReadDir("migrations")
-	if err != nil {
-		return fmt.Errorf("read migrations: %w", err)
-	}
-
-	var files []string
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".sql") {
-			files = append(files, e.Name())
-		}
-	}
-	sort.Strings(files)
-
-	for _, name := range files {
-		sqlBytes, err := migrationFS.ReadFile("migrations/" + name)
-		if err != nil {
-			return fmt.Errorf("read migration %s: %w", name, err)
-		}
-		if _, err := db.Exec(string(sqlBytes)); err != nil {
-			return fmt.Errorf("apply migration %s: %w", name, err)
-		}
-	}
-
-	return nil
+	return migrate.Apply(db, migrationFS, "migrations")
 }
 `
 
@@ -945,6 +975,7 @@ const tplLayout = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    {{"{{"}} if .CSRFToken {{"}}"}}<meta name="csrf-token" content="{{"{{"}} .CSRFToken {{"}}"}}" />{{"{{"}} end {{"}}"}}
     <title>{{"{{"}} template "title" . {{"}}"}}</title>
     <meta name="description" content="{{"{{"}} template "description" . {{"}}"}}" />
     <meta property="og:type" content="website" />
@@ -983,6 +1014,14 @@ const tplLayout = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}
     <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
       {{.AppName}} — powered by Cais
     </footer>
+    <script>
+      document.body.addEventListener("htmx:configRequest", function (evt) {
+        var el = document.querySelector('meta[name="csrf-token"]');
+        if (el && el.content) {
+          evt.detail.headers["X-CSRF-Token"] = el.content;
+        }
+      });
+    </script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/static/js/sw.js");
@@ -1279,7 +1318,7 @@ import (
 	"{{.ModulePath}}/internal/handlers"
 )
 
-func registerRoutes(r *cais.Router, deps Deps) {
+func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
 	home := handlers.NewHomeHandler(deps.Renderer, deps.Site)
 	r.Get("/", home.ServeHTTP)
 }
@@ -1367,6 +1406,7 @@ const tplLayoutMinimal = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} e
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    {{"{{"}} if .CSRFToken {{"}}"}}<meta name="csrf-token" content="{{"{{"}} .CSRFToken {{"}}"}}" />{{"{{"}} end {{"}}"}}
     <title>{{"{{"}} template "title" . {{"}}"}}</title>
     <meta name="description" content="{{"{{"}} template "description" . {{"}}"}}" />
     <meta property="og:type" content="website" />
@@ -1401,6 +1441,14 @@ const tplLayoutMinimal = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} e
       {{.AppName}} — powered by Cais
     </footer>
     <script>
+      document.body.addEventListener("htmx:configRequest", function (evt) {
+        var el = document.querySelector('meta[name="csrf-token"]');
+        if (el && el.content) {
+          evt.detail.headers["X-CSRF-Token"] = el.content;
+        }
+      });
+    </script>
+    <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/static/js/sw.js");
       }
@@ -1429,6 +1477,9 @@ import (
 
 func main() {
 	cfg := cais.Load()
+	if err := cfg.Validate(); err != nil {
+		log.Fatal(err)
+	}
 	preferredPort := cfg.Port
 	port, shifted, err := cais.ResolvePort(cfg.Port, cfg.Env)
 	if err != nil {
@@ -1548,12 +1599,13 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	}
 
 	r := cais.NewRouter()
+	r.Use(middleware.CSRF)
 	buf := devlog.Prepare(cfg.Env)
 	if buf != nil {
 		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))
 	}
 	devlog.Register(r, cfg.Env, buf)
-	registerRoutes(r, deps)
+	registerRoutes(r, deps, cfg)
 	r.Get("/health", healthHandler)
 
 	return &App{
@@ -1610,7 +1662,7 @@ import (
 	"{{.ModulePath}}/internal/handlers"
 )
 
-func registerRoutes(r *cais.Router, deps Deps) {
+func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
 }
 `
 
@@ -1622,6 +1674,7 @@ const tplLayoutBlank = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    {{"{{"}} if .CSRFToken {{"}}"}}<meta name="csrf-token" content="{{"{{"}} .CSRFToken {{"}}"}}" />{{"{{"}} end {{"}}"}}
     <title>{{"{{"}} template "title" . {{"}}"}}</title>
     <meta name="description" content="{{"{{"}} template "description" . {{"}}"}}" />
     <meta property="og:type" content="website" />
@@ -1655,6 +1708,14 @@ const tplLayoutBlank = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end
     <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
       {{.AppName}} — powered by Cais
     </footer>
+    <script>
+      document.body.addEventListener("htmx:configRequest", function (evt) {
+        var el = document.querySelector('meta[name="csrf-token"]');
+        if (el && el.content) {
+          evt.detail.headers["X-CSRF-Token"] = el.content;
+        }
+      });
+    </script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/static/js/sw.js");

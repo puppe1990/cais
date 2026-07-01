@@ -6,6 +6,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    {{ if .CSRFToken }}<meta name="csrf-token" content="{{ .CSRFToken }}" />{{ end }}
     <title>{{ template "title" . }}</title>
     <meta name="description" content="{{ template "description" . }}" />
     <meta property="og:type" content="website" />
@@ -39,6 +40,14 @@
     <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
       Rodando leve no Lightsail
     </footer>
+    <script>
+      document.body.addEventListener("htmx:configRequest", function (evt) {
+        var el = document.querySelector('meta[name="csrf-token"]');
+        if (el && el.content) {
+          evt.detail.headers["X-CSRF-Token"] = el.content;
+        }
+      });
+    </script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/static/js/sw.js");

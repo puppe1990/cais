@@ -30,6 +30,11 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		"internal/store/store_test.go":                tplStoreTest,
 		"internal/store/migrations.go":                tplMigrations,
 		"internal/store/migrations/001_contacts.sql":  tplMigration001,
+		"internal/store/migrations/002_auth.sql":      tplMigration002Auth,
+		"internal/models/user.go":                     tplUserModel,
+		"internal/handlers/auth.go":                   tplAuthHandler,
+		"internal/handlers/auth_test.go":              tplAuthTest,
+		"web/templates/pages/login.html":              tplPageLogin,
 		"web/embed.go":                                tplWebEmbed,
 		"web/templates/layouts/base.html":             tplLayout,
 		"web/templates/pages/home.html":               tplPageHome,
@@ -164,7 +169,12 @@ func scaffoldMigration(dir, name string) error {
 		return err
 	}
 
-	next := len(entries) + 1
+	next := 1
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".sql") {
+			next++
+		}
+	}
 	filename := fmt.Sprintf("%03d_%s.sql", next, data.Snake)
 	path := filepath.Join(migrationsDir, filename)
 	content := fmt.Sprintf("-- migration: %s\n", data.Snake)

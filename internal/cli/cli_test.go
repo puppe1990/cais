@@ -112,8 +112,8 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 	if !strings.Contains(string(routesBody), "/admin/products") {
 		t.Error("routes.go missing /admin/products")
 	}
-	if !strings.Contains(string(routesBody), "r.Group(middleware.TokenAuth") {
-		t.Error("routes.go missing r.Group(middleware.TokenAuth")
+	if !strings.Contains(string(routesBody), "r.Group(middleware.AdminAuth(cfg)") {
+		t.Error("routes.go missing r.Group(middleware.AdminAuth(cfg)")
 	}
 	if strings.Contains(string(routesBody), "\n\n\n") {
 		t.Error("routes.go has triple newlines (formatting issue)")
@@ -594,5 +594,28 @@ func TestCLI_NewBlankCreatesEmptyApp(t *testing.T) {
 	}
 	if strings.Contains(string(routesBody), "home") {
 		t.Error("blank app routes should not reference home handler")
+	}
+}
+
+func TestScaffoldMigration_numbersAfterSQLOnly(t *testing.T) {
+	dir := t.TempDir()
+	migrationsDir := filepath.Join(dir, "internal", "store", "migrations")
+	if err := os.MkdirAll(migrationsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(migrationsDir, "001_contacts.sql"), []byte("CREATE TABLE contacts (id INTEGER PRIMARY KEY);"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(migrationsDir, ".gitkeep"), []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := scaffoldMigration(dir, "posts"); err != nil {
+		t.Fatal(err)
+	}
+
+	want := filepath.Join(migrationsDir, "002_posts.sql")
+	if _, err := os.Stat(want); err != nil {
+		t.Fatalf("expected %s: %v", want, err)
 	}
 }

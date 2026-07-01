@@ -3,15 +3,19 @@ package meta
 import (
 	"fmt"
 	"html/template"
+	"net/http"
 	"strings"
+
+	"github.com/puppe1990/cais/pkg/cais/csrf"
 )
 
 const DefaultImagePath = "/static/og.png"
 
 // Site carries app-level values available in layout templates.
 type Site struct {
-	AppName string
-	AppURL  string
+	AppName   string
+	AppURL    string
+	CSRFToken string
 }
 
 // Preview describes Open Graph / Twitter card metadata for a page.
@@ -42,6 +46,12 @@ func SiteFrom(appName, appURL string) Site {
 		AppName: appName,
 		AppURL:  strings.TrimRight(strings.TrimSpace(appURL), "/"),
 	}
+}
+
+// WithCSRF returns site with the per-request CSRF token for layout templates.
+func WithCSRF(site Site, r *http.Request) Site {
+	site.CSRFToken = csrf.TokenFromRequest(r)
+	return site
 }
 
 // AbsoluteURL joins a site base URL with a path. When base is empty, returns path.

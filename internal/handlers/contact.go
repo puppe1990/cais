@@ -9,6 +9,7 @@ import (
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
 	"github.com/puppe1990/cais/pkg/cais/meta"
+	"github.com/puppe1990/cais/pkg/cais/validate"
 )
 
 type ContactHandler struct {
@@ -26,7 +27,7 @@ func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site) *
 }
 
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
-	httpx.RenderOrError(w, h.renderer, "base", "contact", h.site)
+	httpx.RenderOrError(w, h.renderer, "base", "contact", meta.WithCSRF(h.site, r))
 }
 
 func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
@@ -38,10 +39,12 @@ func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.FormValue("name"))
 	email := strings.TrimSpace(r.FormValue("email"))
 
-	if email == "" {
-		h.renderContactResponse(w, r, http.StatusUnprocessableEntity, "contact_errors", contactErrorData{
-			Message: "O campo email é obrigatório.",
-		})
+	if err := validate.Email(email); err != nil {
+		msg := "O campo email é obrigatório."
+		if email != "" {
+			msg = "Informe um email válido."
+		}
+		h.renderContactResponse(w, r, http.StatusUnprocessableEntity, "contact_errors", contactErrorData{Message: msg})
 		return
 	}
 

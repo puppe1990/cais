@@ -4,17 +4,22 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
-func TestTokenAuth_ValidToken(t *testing.T) {
-	t.Setenv("ADMIN_TOKEN", "secret")
+func devCfg() cais.Config {
+	return cais.Config{Env: "development", AdminToken: "secret"}
+}
 
+func TestAdminAuth_acceptsBearer(t *testing.T) {
 	called := false
-	h := TokenAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := AdminAuth(devCfg())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/admin?token=secret", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	req.Header.Set("Authorization", "Bearer secret")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
@@ -23,10 +28,22 @@ func TestTokenAuth_ValidToken(t *testing.T) {
 	}
 }
 
-func TestTokenAuth_InvalidToken_Returns401(t *testing.T) {
-	t.Setenv("ADMIN_TOKEN", "secret")
+func TestAdminAuth_rejectsQueryToken(t *testing.T) {
+	h := AdminAuth(devCfg())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("handler should not be called")
+	}))
 
-	h := TokenAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	req := httptest.NewRequest(http.MethodGet, "/admin?token=secret", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401", rr.Code)
+	}
+}
+
+func TestAdminAuth_rejectsInvalidBearer(t *testing.T) {
+	h := AdminAuth(devCfg())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Error("handler should not be called")
 	}))
 
@@ -35,15 +52,14 @@ func TestTokenAuth_InvalidToken_Returns401(t *testing.T) {
 	h.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusUnauthorized {
-		t.Errorf("status = %d", rr.Code)
+		t.Errorf("status = %d, want 401", rr.Code)
 	}
 }
 
-func TestTokenAuth_EmptyEnv_PassesThrough(t *testing.T) {
-	t.Setenv("ADMIN_TOKEN", "")
-
+func TestAdminAuth_emptyTokenInDevelopment_passesThrough(t *testing.T) {
+	cfg := cais.Config{Env: "development", AdminToken: ""}
 	called := false
-	h := TokenAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := AdminAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 	}))
 
@@ -52,6 +68,21 @@ func TestTokenAuth_EmptyEnv_PassesThrough(t *testing.T) {
 	h.ServeHTTP(rr, req)
 
 	if !called {
-		t.Error("handler not called when ADMIN_TOKEN unset")
+		t.Error("handler not called when ADMIN_TOKEN unset in development")
+	}
+}
+
+func TestAdminAuth_emptyTokenInProduction_rejects(t *testing.T) {
+	cfg := cais.Config{Env: "production", AdminToken: ""}
+	h := AdminAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("handler should not be called")
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401", rr.Code)
 	}
 }
