@@ -657,6 +657,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 func TestDashboardHandler_Returns200(t *testing.T) {
