@@ -146,13 +146,17 @@ func buildResourceSeed(data scaffoldData) string {
 	}
 	var inserts []string
 	for _, f := range data.Fields {
-		switch {
-		case f.GoType == "bool":
+		switch f.GoType {
+		case "bool":
 			inserts = append(inserts, fmt.Sprintf("%s: false", f.Pascal))
-		case f.HTMLType == "url":
-			inserts = append(inserts, fmt.Sprintf("%s: \"https://example.com\"", f.Pascal))
+		case "int64":
+			inserts = append(inserts, fmt.Sprintf("%s: 30", f.Pascal))
 		default:
-			inserts = append(inserts, fmt.Sprintf("%s: \"Demo %s\"", f.Pascal, f.Pascal))
+			if f.HTMLType == "url" {
+				inserts = append(inserts, fmt.Sprintf("%s: \"https://example.com\"", f.Pascal))
+			} else {
+				inserts = append(inserts, fmt.Sprintf("%s: \"Demo %s\"", f.Pascal, f.Pascal))
+			}
 		}
 	}
 	body := fmt.Sprintf("models.%s{%s}", data.Pascal, strings.Join(inserts, ", "))
@@ -266,14 +270,35 @@ func scanLoopAssign(fields []FieldDef) string {
 }
 
 func buildAdminParseForm(data scaffoldData) string {
-	var assigns []string
+	var literal []string
+	var after []string
 	var validations []string
 	for _, f := range data.Fields {
 		switch f.GoType {
 		case "bool":
-			assigns = append(assigns, fmt.Sprintf("%s: r.FormValue(%q) == \"on\"", f.Pascal, f.Name))
+			literal = append(literal, fmt.Sprintf("%s: r.FormValue(%q) == \"on\"", f.Pascal, f.Name))
+		case "int64":
+			if f.Required {
+				after = append(after, fmt.Sprintf(`raw%s := strings.TrimSpace(r.FormValue(%q))
+	if raw%s == "" {
+		return models.%s{}, fmt.Errorf(%q)
+	}
+	%s, err := strconv.ParseInt(raw%s, 10, 64)
+	if err != nil {
+		return models.%s{}, fmt.Errorf(%q)
+	}
+	item.%s = %s`, f.Pascal, f.Name, f.Pascal, data.Pascal, f.Name+" is required", f.Pascal, f.Pascal, data.Pascal, f.Name+" must be a number", f.Pascal, f.Pascal))
+			} else {
+				after = append(after, fmt.Sprintf(`if raw%s := strings.TrimSpace(r.FormValue(%q)); raw%s != "" {
+		%s, err := strconv.ParseInt(raw%s, 10, 64)
+		if err != nil {
+			return models.%s{}, fmt.Errorf(%q)
+		}
+		item.%s = %s
+	}`, f.Pascal, f.Name, f.Pascal, f.Pascal, f.Pascal, data.Pascal, f.Name+" must be a number", f.Pascal, f.Pascal))
+			}
 		default:
-			assigns = append(assigns, fmt.Sprintf("%s: strings.TrimSpace(r.FormValue(%q))", f.Pascal, f.Name))
+			literal = append(literal, fmt.Sprintf("%s: strings.TrimSpace(r.FormValue(%q))", f.Pascal, f.Name))
 			if f.Required {
 				if f.HTMLType == "url" {
 					validations = append(validations, fmt.Sprintf("if err := validate.URL(item.%s); err != nil { return models.%s{}, err }", f.Pascal, data.Pascal))
@@ -287,7 +312,20 @@ func buildAdminParseForm(data scaffoldData) string {
 	if len(validations) > 0 {
 		validateBlock = "\n\t" + strings.Join(validations, "\n\t") + "\n"
 	}
-	return fmt.Sprintf(`item := models.%s{%s}%s	return item, nil`, data.Pascal, strings.Join(assigns, ", "), validateBlock)
+	afterBlock := ""
+	if len(after) > 0 {
+		afterBlock = "\n\t" + strings.Join(after, "\n\t") + "\n"
+	}
+	return fmt.Sprintf(`item := models.%s{%s}%s%s	return item, nil`, data.Pascal, strings.Join(literal, ", "), validateBlock, afterBlock)
+}
+
+func needsStrconv(fields []FieldDef) bool {
+	for _, f := range fields {
+		if f.GoType == "int64" {
+			return true
+		}
+	}
+	return false
 }
 
 func needsValidate(fields []FieldDef) bool {
@@ -301,9 +339,12 @@ func needsValidate(fields []FieldDef) bool {
 
 func buildResourceAdminHandler(data scaffoldData) string {
 	parse := buildAdminParseForm(data)
-	validateImport := ""
+	extraImports := ""
 	if needsValidate(data.Fields) {
-		validateImport = "\n\t\"" + frameworkModule + "/pkg/cais/validate\""
+		extraImports += "\n\t\"" + frameworkModule + "/pkg/cais/validate\""
+	}
+	if needsStrconv(data.Fields) {
+		extraImports += "\n\t\"strconv\""
 	}
 	return fmt.Sprintf(`package handlers
 
@@ -400,7 +441,7 @@ func (h *Admin%sHandler) parseForm(r *http.Request) (models.%s, error) {
 	%s
 }
 `,
-		data.ModulePath, data.ModulePath, frameworkModule, frameworkModule, validateImport,
+		data.ModulePath, data.ModulePath, frameworkModule, frameworkModule, extraImports,
 		data.PluralPascal,
 		data.PluralPascal, data.Pascal,
 		data.Pascal, data.Pascal,
