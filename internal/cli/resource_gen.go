@@ -769,7 +769,7 @@ func buildPublicListItemHTML(data scaffoldData) string {
 		}
 		switch f.GoType {
 		case "bool":
-			meta = append(meta, fmt.Sprintf(`<span hx-post="/%s/{{ .ID }}/toggle" hx-swap="outerHTML" hx-target="this" class="cursor-pointer inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ if .%s }}bg-green-50 text-green-700{{ else }}bg-slate-100 text-slate-600{{ end }}">{{ if .%s }}%s{{ else }}Pending{{ end }}</span>`, data.Plural, f.Pascal, f.Pascal, f.Pascal))
+			meta = append(meta, fmt.Sprintf(`<span hx-post="/%s/{{ .ID }}/toggle" hx-swap="outerHTML swap:150ms" hx-target="this" data-cais-optimistic="toggle" class="cursor-pointer inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ if .%s }}bg-green-50 text-green-700{{ else }}bg-slate-100 text-slate-600{{ end }}">{{ if .%s }}%s{{ else }}Pending{{ end }}</span>`, data.Plural, f.Pascal, f.Pascal, f.Pascal))
 		case "int64":
 			meta = append(meta, fmt.Sprintf(`<span class="text-sm text-slate-500">%s: {{ .%s }}</span>`, f.Pascal, f.Pascal))
 		}
@@ -822,6 +822,6 @@ func buildPublicTogglePartial(data scaffoldData) string {
 	if boolField == nil {
 		return ""
 	}
-	return fmt.Sprintf(`{{- define "%s_toggle" -}}<span hx-post="/%s/{{ .ID }}/toggle" hx-swap="outerHTML" hx-target="this" class="cursor-pointer inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ if .%s }}bg-green-50 text-green-700{{ else }}bg-slate-100 text-slate-600{{ end }}">{{ if .%s }}%s{{ else }}Pending{{ end }}</span>{{- end -}}
+	return fmt.Sprintf(`{{- define "%s_toggle" -}}<span hx-post="/%s/{{ .ID }}/toggle" hx-swap="outerHTML swap:150ms" hx-target="this" data-cais-optimistic="toggle" class="cursor-pointer inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ if .%s }}bg-green-50 text-green-700{{ else }}bg-slate-100 text-slate-600{{ end }}">{{ if .%s }}%s{{ else }}Pending{{ end }}</span>{{- end -}}
 `, data.Plural, data.Plural, boolField.Pascal, boolField.Pascal, boolField.Pascal)
 }
