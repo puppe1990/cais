@@ -9,6 +9,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/puppe1990/cais/internal/models"
+	"github.com/puppe1990/cais/pkg/cais/devlog"
 	"github.com/puppe1990/cais/pkg/cais/sqllog"
 )
 
@@ -40,7 +41,11 @@ func NewSQLiteStore(dsn string, env string) (*SQLiteStore, error) {
 		return nil, err
 	}
 
-	return &SQLiteStore{db: sqllog.Wrap(db, sqllog.Config{Enabled: sqllog.EnabledForEnv(env)})}, nil
+	cfg := sqllog.Config{Enabled: sqllog.EnabledForEnv(env)}
+	if cfg.Enabled {
+		cfg.Writer = devlog.MirrorDefault(os.Stdout)
+	}
+	return &SQLiteStore{db: sqllog.Wrap(db, cfg)}, nil
 }
 
 func (s *SQLiteStore) InsertContact(contact models.Contact) (int64, error) {

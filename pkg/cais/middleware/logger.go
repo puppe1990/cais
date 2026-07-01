@@ -15,6 +15,12 @@ func Logger(next http.Handler) http.Handler {
 	return LoggerWithWriter(log.Writer(), next)
 }
 
+func LoggerTo(w io.Writer) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return LoggerWithWriter(w, next)
+	}
+}
+
 func LoggerWithWriter(w io.Writer, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		if skipRequestLog(r.URL.Path) {
@@ -40,7 +46,7 @@ func LoggerWithWriter(w io.Writer, next http.Handler) http.Handler {
 }
 
 func skipRequestLog(path string) bool {
-	return path == "/health" || strings.HasPrefix(path, "/static/")
+	return path == "/health" || path == "/logs" || strings.HasPrefix(path, "/static/")
 }
 
 func clientIP(r *http.Request) string {

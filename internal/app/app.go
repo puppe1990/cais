@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/puppe1990/cais/internal/handlers"
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/devlog"
 	"github.com/puppe1990/cais/pkg/cais/middleware"
 )
 
@@ -34,7 +36,13 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	}
 
 	r := cais.NewRouter()
-	r.Use(middleware.Logger)
+	buf := devlog.Prepare(cfg.Env)
+	if buf != nil {
+		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))
+	} else {
+		r.Use(middleware.Logger)
+	}
+	devlog.Register(r, cfg.Env, buf)
 	r.Use(middleware.Recover)
 	r.Static("/static", deps.StaticDir)
 

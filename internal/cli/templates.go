@@ -183,10 +183,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/devlog"
 	"github.com/puppe1990/cais/pkg/cais/middleware"
 	"{{.ModulePath}}/internal/store"
 )
@@ -212,11 +214,17 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	}
 
 	r := cais.NewRouter()
-	r.Use(middleware.Logger)
+	buf := devlog.Prepare(cfg.Env)
+	if buf != nil {
+		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))
+	} else {
+		r.Use(middleware.Logger)
+	}
 	r.Use(middleware.Recover)
 	r.Static("/static", deps.StaticDir)
 
 	registerRoutes(r, deps)
+	devlog.Register(r, cfg.Env, buf)
 	r.Get("/health", healthHandler)
 
 	return &App{
@@ -679,6 +687,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	"github.com/puppe1990/cais/pkg/cais/devlog"
 	"github.com/puppe1990/cais/pkg/cais/sqllog"
 	"{{.ModulePath}}/internal/models"
 )
@@ -712,7 +721,11 @@ func NewSQLiteStore(dsn string, env string) (*SQLiteStore, error) {
 		return nil, err
 	}
 
-	return &SQLiteStore{db: sqllog.Wrap(db, sqllog.Config{Enabled: sqllog.EnabledForEnv(env)})}, nil
+	cfg := sqllog.Config{Enabled: sqllog.EnabledForEnv(env)}
+	if cfg.Enabled {
+		cfg.Writer = devlog.MirrorDefault(os.Stdout)
+	}
+	return &SQLiteStore{db: sqllog.Wrap(db, cfg)}, nil
 }
 
 func (s *SQLiteStore) InsertContact(contact models.Contact) (int64, error) {
@@ -1248,6 +1261,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/puppe1990/cais/pkg/cais/devlog"
 	"github.com/puppe1990/cais/pkg/cais/sqllog"
 	_ "modernc.org/sqlite"
 )
@@ -1278,7 +1292,11 @@ func NewSQLiteStore(dsn string, env string) (*SQLiteStore, error) {
 		return nil, err
 	}
 
-	return &SQLiteStore{db: sqllog.Wrap(db, sqllog.Config{Enabled: sqllog.EnabledForEnv(env)})}, nil
+	cfg := sqllog.Config{Enabled: sqllog.EnabledForEnv(env)}
+	if cfg.Enabled {
+		cfg.Writer = devlog.MirrorDefault(os.Stdout)
+	}
+	return &SQLiteStore{db: sqllog.Wrap(db, cfg)}, nil
 }
 
 func (s *SQLiteStore) DB() *sql.DB {
@@ -1450,10 +1468,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/devlog"
+	"github.com/puppe1990/cais/pkg/cais/middleware"
 	"{{.ModulePath}}/internal/store"
 )
 
@@ -1478,6 +1499,11 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	}
 
 	r := cais.NewRouter()
+	buf := devlog.Prepare(cfg.Env)
+	if buf != nil {
+		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))
+	}
+	devlog.Register(r, cfg.Env, buf)
 	registerRoutes(r, deps)
 	r.Get("/health", healthHandler)
 

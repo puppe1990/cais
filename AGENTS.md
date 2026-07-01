@@ -86,6 +86,8 @@ cais console  # Rails-style REPL (store, cfg, db + sql)
 
 Console bindings: `store`, `cfg`, `db`, plus any custom keys in `Bindings`. Commands: `help`, `sql`, `reload`, `history`, `!N`/`!!`, `exit`. Arrow keys when stdin is a TTY.
 
+`/logs` — development-only log viewer (localhost). Shows request + SQL logs with HTMX auto-refresh.
+
 ## Framework commands (Cais repo)
 
 ```bash
