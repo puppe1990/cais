@@ -2,12 +2,21 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 )
 
+var scaffoldOut io.Writer = os.Stdout
+
+func setScaffoldOut(w io.Writer) {
+	if w != nil {
+		scaffoldOut = w
+	}
+}
+
 func printfScaffold(action, rel string) {
-	_, _ = fmt.Printf("  %s %s\n", action, rel)
+	_, _ = fmt.Fprintf(scaffoldOut, "  %s %s\n", action, rel)
 }
 
 func writeScaffoldFile(fullPath string, content []byte, perm os.FileMode, rel string, dryRun bool) error {

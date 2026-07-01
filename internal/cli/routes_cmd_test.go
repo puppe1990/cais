@@ -35,11 +35,11 @@ func TestParseRoutesContent_detectsRoutes(t *testing.T) {
 	entries := parseRoutesContent(fixtureRoutesGo)
 
 	want := []RouteEntry{
-		{Method: "GET", Path: "/"},
-		{Method: "POST", Path: "/contact"},
-		{Method: "GET", Path: "/admin/items"},
-		{Method: "POST", Path: "/admin/items"},
-		{Method: "GET", Path: "/admin/items/{id}/edit"},
+		{Method: "GET", Path: "/", Handler: "home.ServeHTTP"},
+		{Method: "POST", Path: "/contact", Handler: "contact.Post"},
+		{Method: "GET", Path: "/admin/items", Handler: "admin.Index", Middleware: "middleware.AdminAuth(cfg)"},
+		{Method: "POST", Path: "/admin/items", Handler: "admin.Create", Middleware: "middleware.AdminAuth(cfg)"},
+		{Method: "GET", Path: "/admin/items/{id}/edit", Handler: "cais.IntParam(\"id\", admin.Edit)", Middleware: "middleware.AdminAuth(cfg)"},
 	}
 	if len(entries) != len(want) {
 		t.Fatalf("got %d routes, want %d: %#v", len(entries), len(want), entries)
@@ -100,6 +100,55 @@ func TestCLI_Routes_listsRoutes(t *testing.T) {
 	}, "\n")
 	if out != want {
 		t.Errorf("routes output:\n%s\nwant:\n%s", out, want)
+	}
+}
+
+func TestParseRoutesContent_verboseIncludesMiddleware(t *testing.T) {
+	entries := parseRoutesVerbose(fixtureRoutesGo)
+	if len(entries) != 5 {
+		t.Fatalf("got %d routes, want 5", len(entries))
+	}
+	var adminRoute *RouteEntry
+	for i := range entries {
+		if entries[i].Path == "/admin/items" && entries[i].Method == "GET" {
+			adminRoute = &entries[i]
+			break
+		}
+	}
+	if adminRoute == nil {
+		t.Fatal("missing admin items route")
+	}
+	if adminRoute.Middleware != "middleware.AdminAuth(cfg)" {
+		t.Errorf("Middleware = %q", adminRoute.Middleware)
+	}
+	if adminRoute.Handler != "admin.Index" {
+		t.Errorf("Handler = %q", adminRoute.Handler)
+	}
+}
+
+func TestCLI_Routes_verboseFlag(t *testing.T) {
+	dir := t.TempDir()
+	writeRoutesApp(t, dir)
+
+	var buf bytes.Buffer
+	c := &CLI{Out: &buf}
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(cwd) })
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Run([]string{"routes", "--verbose"}); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "admin.Index") {
+		t.Errorf("verbose output missing handler: %q", out)
+	}
+	if !strings.Contains(out, "AdminAuth") {
+		t.Errorf("verbose output missing middleware: %q", out)
 	}
 }
 

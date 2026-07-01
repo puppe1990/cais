@@ -6,8 +6,9 @@ import (
 	"path/filepath"
 )
 
-func scaffoldConsole(appDir string) error {
-	path := filepath.Join(appDir, "cmd", "console", "main.go")
+func scaffoldConsole(appDir string, dryRun bool) error {
+	rel := "cmd/console/main.go"
+	path := filepath.Join(appDir, rel)
 	if _, err := os.Stat(path); err == nil {
 		return fmt.Errorf("cmd/console/main.go already exists")
 	}
@@ -17,13 +18,12 @@ func scaffoldConsole(appDir string) error {
 		return fmt.Errorf("could not read module path from go.mod")
 	}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := writeScaffoldTemplate(path, tplConsole, data, rel, dryRun); err != nil {
 		return err
 	}
-	if err := writeTemplate(path, tplConsole, data); err != nil {
-		return err
+	if !dryRun {
+		_, _ = fmt.Println("  create cmd/console/main.go")
 	}
-	_, _ = fmt.Println("  create cmd/console/main.go")
 	return nil
 }
 

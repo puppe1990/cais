@@ -11,6 +11,8 @@ func Funcs() template.FuncMap {
 	return template.FuncMap{
 		"csrfField":  CSRFTokenField,
 		"fieldError": FieldError,
+		"makeField":  MakeField,
+		"fieldInput": FieldInput,
 	}
 }
 

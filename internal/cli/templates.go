@@ -1623,21 +1623,30 @@ import (
 	"net/http"
 
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/httpx"
+	"github.com/puppe1990/cais/pkg/cais/i18n"
+	"github.com/puppe1990/cais/pkg/cais/meta"
 )
+
+type {{.Pascal}}PageData struct {
+	meta.Site
+}
 
 type {{.Pascal}}Handler struct {
 	renderer *cais.Renderer
+	site     meta.Site
+	catalog  *i18n.Catalog
+	cfg      cais.Config
 }
 
-func New{{.Pascal}}Handler(renderer *cais.Renderer) *{{.Pascal}}Handler {
-	return &{{.Pascal}}Handler{renderer: renderer}
+func New{{.Pascal}}Handler(renderer *cais.Renderer, site meta.Site, catalog *i18n.Catalog, cfg cais.Config) *{{.Pascal}}Handler {
+	return &{{.Pascal}}Handler{renderer: renderer, site: site, catalog: catalog, cfg: cfg}
 }
 
 func (h *{{.Pascal}}Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "{{.Snake}}", nil); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	httpx.RenderOrError(w, h.renderer, "base", "{{.Snake}}", {{.Pascal}}PageData{
+		Site: meta.ForRequest(h.site, r),
+	}, h.cfg)
 }
 `
 
@@ -1648,10 +1657,12 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 func Test{{.Pascal}}Handler_Returns200(t *testing.T) {
-	h := New{{.Pascal}}Handler(setupTestRenderer(t))
+	h := New{{.Pascal}}Handler(setupTestRenderer(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/{{.Snake}}", nil)
 	rr := httptest.NewRecorder()
@@ -1663,7 +1674,7 @@ func Test{{.Pascal}}Handler_Returns200(t *testing.T) {
 }
 
 func Test{{.Pascal}}Handler_ContainsTitle(t *testing.T) {
-	h := New{{.Pascal}}Handler(setupTestRenderer(t))
+	h := New{{.Pascal}}Handler(setupTestRenderer(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/{{.Snake}}", nil)
 	rr := httptest.NewRecorder()
@@ -2280,6 +2291,37 @@ var ptMessages = map[string]string{
 	"dashboard.env":      "Ambiente:",
 
 	"layout.footer": "Rodando leve no Lightsail",
+}
+`
+
+const tplSeeds = `package db
+
+import (
+	"{{.ModulePath}}/internal/models"
+	"{{.ModulePath}}/internal/store"
+)
+
+// RunSeeds populates demo data. Safe to run multiple times.
+func RunSeeds(s store.Store) error {
+	// cais:seeds
+	if _, err := s.InsertContact(models.Contact{
+		Name:  "Demo",
+		Email: "demo@example.com",
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+`
+
+const tplSeedsMinimal = `package db
+
+import "{{.ModulePath}}/internal/store"
+
+// RunSeeds populates demo data. Safe to run multiple times.
+func RunSeeds(s store.Store) error {
+	// cais:seeds
+	return nil
 }
 `
 

@@ -10,6 +10,19 @@
 
 **Prerequisite:** Run from a dedicated git worktree (`superpowers:using-git-worktrees`) before implementation.
 
+**Last updated:** 2026-07-01
+
+### Implementation status
+
+| Phase                   | Tasks | Status                                                                                                   |
+| ----------------------- | ----- | -------------------------------------------------------------------------------------------------------- |
+| 1 — Security Foundation | 1–5   | **Shipped** (session expiry, secure cookies, security headers, rate limit, ClientIP + config validation) |
+| 2 — DX Helpers          | 6–8   | **Shipped** (`RenderPageOrPartial`, `FieldErrors`, flash)                                                |
+| 3 — CLI DB Tooling      | 9–10  | **Shipped** (`db rollback`, `db prune-sessions`)                                                         |
+| 4 — Generator & Docs    | 11    | **Shipped** (scaffolds + AGENTS.md + README.md synced)                                                   |
+
+**Follow-up work** (see `2026-07-01-framework-roadmap.md`): `cais destroy`, `forms.FieldData`/`fieldInput`, `MinLength`/`MaxLength`, `cais routes --verbose`, coverage targets, AST patch wiring.
+
 ---
 
 ## File Map
@@ -32,7 +45,7 @@
 | `internal/handlers/contact.go`     | Use `RenderPageOrPartial`                          |
 | `internal/cli/templates.go`        | Generator output uses new helpers                  |
 
-**Out of scope (separate plans):** resource pagination/search, new field types, docs site, structured JSON logging, `cais routes` command.
+**Out of scope when written (now shipped elsewhere):** resource pagination (`--paginate`), `cais routes`. **Still out of scope:** structured JSON logging, docs site, password reset.
 
 ---
 
@@ -46,7 +59,7 @@
 - Modify: `pkg/cais/session/sqlite_test.go`
 - Create: `internal/store/migrations/004_session_expiry.sql` (reference app only if schema lives in migrations; otherwise schema is in `EnsureSQLiteSchema`)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `pkg/cais/session/sqlite_test.go`:
 
@@ -96,13 +109,13 @@ func TestSQLiteStore_PruneExpired_removesOldRows(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./pkg/cais/session/... -v -run 'TestSQLiteStore_Get_rejectsExpired|TestSQLiteStore_PruneExpired'`
 
 Expected: FAIL — `PruneExpired` undefined or `Get` returns true for expired token.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Update schema in `pkg/cais/session/sqlite.go`:
 
@@ -179,19 +192,19 @@ func EnsureSQLiteSchema(db *sql.DB) error {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./pkg/cais/session/... -v -run 'TestSQLiteStore_Get_rejectsExpired|TestSQLiteStore_PruneExpired'`
 
 Expected: PASS
 
-- [ ] **Step 5: Run full session package**
+- [x] **Step 5: Run full session package**
 
 Run: `make test` or `go test ./pkg/cais/session/... -race`
 
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add pkg/cais/session/sqlite.go pkg/cais/session/sqlite_test.go
@@ -210,7 +223,7 @@ git commit -m "feat(session): expire SQLite sessions and add PruneExpired"
 - Create: `pkg/cais/session/cookie_config_test.go`
 - Modify: `internal/handlers/auth.go`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `pkg/cais/config_test.go`:
 
@@ -249,13 +262,13 @@ func TestCookieOptionsFromConfig_productionSecure(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./pkg/cais/... ./pkg/cais/session/... -v -run 'CookieSecure|CookieOptionsFromConfig'`
 
 Expected: FAIL — methods not defined.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `pkg/cais/config.go`:
 
@@ -283,13 +296,13 @@ if err := session.SignIn(w, h.sessions, user.ID, session.CookieOptionsFromConfig
 
 Add `cfg cais.Config` field to `AuthHandler` and update constructor + wiring in `internal/app/routes.go` (or wherever `NewAuthHandler` is called).
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `go test ./pkg/cais/... ./internal/handlers/... -v -run 'CookieSecure|CookieOptionsFromConfig|Auth'`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add pkg/cais/config.go pkg/cais/config_test.go pkg/cais/session/cookie.go pkg/cais/session/cookie_config_test.go internal/handlers/auth.go internal/app/
@@ -306,7 +319,7 @@ git commit -m "feat(session): enable Secure cookies in production"
 - Create: `pkg/cais/middleware/security_test.go`
 - Modify: `internal/app/app.go`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `pkg/cais/middleware/security_test.go`:
 
@@ -354,13 +367,13 @@ func TestSecurityHeaders_development_noHSTS(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./pkg/cais/middleware/... -v -run TestSecurityHeaders`
 
 Expected: FAIL — `SecurityHeaders` not defined.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `pkg/cais/middleware/security.go`:
 
@@ -399,13 +412,13 @@ Wire in `internal/app/app.go` (after `Recover`, before routes):
 r.Use(middleware.SecurityHeaders(cfg))
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `go test ./pkg/cais/middleware/... ./internal/app/... -v -run 'SecurityHeaders|TestApp'`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add pkg/cais/middleware/security.go pkg/cais/middleware/security_test.go internal/app/app.go
@@ -422,7 +435,7 @@ git commit -m "feat(middleware): add security headers"
 - Create: `pkg/cais/middleware/ratelimit_test.go`
 - Modify: `internal/app/routes.go` (or route registration file)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `pkg/cais/middleware/ratelimit_test.go`:
 
@@ -461,13 +474,13 @@ func TestRateLimit_blocksAfterBurst(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./pkg/cais/middleware/... -v -run TestRateLimit`
 
 Expected: FAIL — `NewRateLimiter` not defined.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `pkg/cais/middleware/ratelimit.go`:
 
@@ -540,13 +553,13 @@ r.Post("/contact", contactLimit.Middleware(http.HandlerFunc(contact.Post)).Serve
 
 Adjust to match existing router API (may need a small wrapper if `Post` only accepts `HandlerFunc`).
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `go test ./pkg/cais/middleware/... -v -run TestRateLimit`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add pkg/cais/middleware/ratelimit.go pkg/cais/middleware/ratelimit_test.go internal/app/
@@ -564,7 +577,7 @@ git commit -m "feat(middleware): add per-IP rate limiting"
 - Modify: `pkg/cais/config.go`
 - Modify: `pkg/cais/config_test.go`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `pkg/cais/middleware/logger_test.go`:
 
@@ -590,13 +603,13 @@ func TestConfig_Validate_requiresAppURLInProduction(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./pkg/cais/middleware/... ./pkg/cais/... -v -run 'TestClientIP|requiresAppURL'`
 
 Expected: FAIL
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `pkg/cais/middleware/logger.go`, replace `clientIP`:
 
@@ -637,13 +650,13 @@ func (c Config) Validate() error {
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `make test`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add pkg/cais/middleware/logger.go pkg/cais/middleware/logger_test.go pkg/cais/config.go pkg/cais/config_test.go
@@ -662,7 +675,7 @@ git commit -m "feat: proxy-aware client IP and APP_URL validation"
 - Modify: `pkg/cais/httpx/httpx_test.go`
 - Modify: `internal/handlers/contact.go`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `pkg/cais/httpx/httpx_test.go`:
 
@@ -703,13 +716,13 @@ func TestRenderPageOrPartial_fullPageWhenNotHTMX(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./pkg/cais/httpx/... -v -run TestRenderPageOrPartial`
 
 Expected: FAIL — `RenderOptions` / `RenderPageOrPartial` not defined.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Add to `pkg/cais/httpx/httpx.go`:
 
@@ -750,13 +763,13 @@ func (h *ContactHandler) renderContactResponse(w http.ResponseWriter, r *http.Re
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `go test ./pkg/cais/httpx/... ./internal/handlers/... -v -run 'RenderPageOrPartial|Contact'`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add pkg/cais/httpx/httpx.go pkg/cais/httpx/httpx_test.go internal/handlers/contact.go
@@ -772,7 +785,7 @@ git commit -m "feat(httpx): add RenderPageOrPartial for HTMX handlers"
 - Create: `pkg/cais/validate/errors.go`
 - Create: `pkg/cais/validate/errors_test.go`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `pkg/cais/validate/errors_test.go`:
 
@@ -798,13 +811,13 @@ func TestFieldErrors_AddAndFirst(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./pkg/cais/validate/... -v -run TestFieldErrors`
 
 Expected: FAIL
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `pkg/cais/validate/errors.go`:
 
@@ -837,13 +850,13 @@ func (e FieldErrors) Any() bool {
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `go test ./pkg/cais/validate/... -v`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add pkg/cais/validate/errors.go pkg/cais/validate/errors_test.go
@@ -863,7 +876,7 @@ git commit -m "feat(validate): add FieldErrors map"
 - Modify: `internal/app/app.go`
 - Modify: `web/templates/layouts/base.html` (flash banner partial)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `pkg/cais/flash/flash_test.go`:
 
@@ -900,13 +913,13 @@ func TestSetAndConsume(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./pkg/cais/flash/... -v -run TestSetAndConsume`
 
 Expected: FAIL
 
-- [ ] **Step 3: Implement flash package**
+- [x] **Step 3: Implement flash package**
 
 Create `pkg/cais/flash/flash.go`:
 
@@ -984,7 +997,7 @@ Wire `middleware.Flash` in `internal/app/app.go` after session load.
 
 Add to layout a conditional banner when `.Flash` is set — pass from a small helper in page data or template func.
 
-- [ ] **Step 4: Use flash in auth logout/login redirect**
+- [x] **Step 4: Use flash in auth logout/login redirect**
 
 In `internal/handlers/auth.go` after successful login:
 
@@ -993,7 +1006,7 @@ flash.Set(w, "notice", "Bem-vindo!")
 httpx.SeeOther(w, r, "/dashboard")
 ```
 
-- [ ] **Step 5: Run tests and commit**
+- [x] **Step 5: Run tests and commit**
 
 Run: `make test`
 
@@ -1016,7 +1029,7 @@ git commit -m "feat(flash): one-shot flash messages on redirect"
 - Modify: `internal/cli/db_test.go`
 - Modify: `internal/cli/cli.go` (help text)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `pkg/cais/migrate/migrate_test.go`:
 
@@ -1049,13 +1062,13 @@ func TestRollbackLast_removesLastAppliedMigration(t *testing.T) {
 
 **Note:** Rollback only removes the `schema_migrations` row — SQL down migrations are out of scope (YAGNI). Document this limitation in CLI help.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./pkg/cais/migrate/... -v -run TestRollbackLast`
 
 Expected: FAIL
 
-- [ ] **Step 3: Implement `RollbackLast`**
+- [x] **Step 3: Implement `RollbackLast`**
 
 ```go
 func RollbackLast(db *sql.DB, migrations fs.FS, dir string) (string, error) {
@@ -1087,7 +1100,7 @@ case "rollback":
 	return c.cmdDBRollback()
 ```
 
-- [ ] **Step 4: Run tests and commit**
+- [x] **Step 4: Run tests and commit**
 
 Run: `go test ./pkg/cais/migrate/... ./internal/cli/... -v -run 'Rollback|cmdDB'`
 
@@ -1105,7 +1118,7 @@ git commit -m "feat(cli): add cais db rollback"
 - Modify: `internal/cli/db.go`
 - Modify: `internal/cli/db_test.go`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/cli/db_test.go`:
 
@@ -1115,7 +1128,7 @@ func TestCLI_DBPruneSessions(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2–5: Implement, test, commit**
+- [x] **Step 2–5: Implement, test, commit**
 
 Wire `session.NewSQLiteStore(db).PruneExpired()` in new `cmdDBPruneSessions`.
 
@@ -1137,11 +1150,11 @@ git commit -m "feat(cli): add cais db prune-sessions"
 - Modify: `AGENTS.md`
 - Modify: `README.md`
 
-- [ ] **Step 1: Update generated handler template to use `httpx.RenderPageOrPartial`**
-- [ ] **Step 2: Update auth scaffold for `CookieOptionsFromConfig` and flash**
-- [ ] **Step 3: Update `cais g auth` tests in `internal/cli/scaffold_auth_test.go`**
-- [ ] **Step 4: Document new env vars and commands in AGENTS.md**
-- [ ] **Step 5: Run `make ci` and commit**
+- [x] **Step 1: Update generated handler template to use `httpx.RenderPageOrPartial`**
+- [x] **Step 2: Update auth scaffold for `CookieOptionsFromConfig` and flash**
+- [x] **Step 3: Update `cais g auth` tests in `internal/cli/scaffold_auth_test.go`**
+- [x] **Step 4: Document new env vars and commands in AGENTS.md**
+- [x] **Step 5: Run `make ci` and commit**
 
 ```bash
 git commit -m "docs: sync scaffolds and AGENTS.md with framework improvements"
@@ -1151,11 +1164,11 @@ git commit -m "docs: sync scaffolds and AGENTS.md with framework improvements"
 
 ## Verification Checklist (before merge)
 
-- [ ] `make test` — all packages green with `-race`
-- [ ] `make lint` — no new golangci-lint issues
-- [ ] `make ci` — full pipeline passes
-- [ ] Manual smoke: `make dev` → login → contact form HTMX → logout flash
-- [ ] Production smoke: `ENV=production ADMIN_TOKEN=x APP_URL=https://example.com make build && ./bin/server` boots without error
+- [x] `make test` — all packages green with `-race`
+- [x] `make lint` — no new golangci-lint issues
+- [x] `make ci` — full pipeline passes
+- [ ] Manual smoke: `make dev` → login → contact form HTMX → logout flash (not automated)
+- [ ] Production smoke: `ENV=production ADMIN_TOKEN=x APP_URL=https://example.com make build && ./bin/server` boots without error (not automated)
 
 ---
 
@@ -1177,10 +1190,13 @@ git commit -m "docs: sync scaffolds and AGENTS.md with framework improvements"
 
 **Gaps deferred to follow-up plans:**
 
-- Resource pagination/search (`2026-07-01-cais-resource-pagination.md`)
-- Structured JSON production logging
-- `cais routes` command
-- Password reset / user registration
+- [x] Resource pagination (`cais g resource --paginate`, `pkg/cais/pagination`) — shipped
+- [x] `cais routes` command (+ `--verbose`) — shipped
+- [x] `cais destroy`, `forms.FieldData`, `validate.MinLength`/`MaxLength` — shipped (see framework-roadmap plan)
+- [ ] Structured JSON production logging
+- [ ] Password reset / user registration
+- [ ] Test coverage targets (console, devlog, pwa.FS panic fix)
+- [ ] AST route patch wired to production generators
 
 ---
 

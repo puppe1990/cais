@@ -192,12 +192,12 @@ func TestRollbackLast_removesLastAppliedMigration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	version, err := RollbackLast(db, migrations, "migrations")
+	result, err := RollbackLast(db, migrations, "migrations")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if version != "002_posts" {
-		t.Errorf("RollbackLast version = %q, want 002_posts", version)
+	if result.Version != "002_posts" {
+		t.Errorf("RollbackLast version = %q, want 002_posts", result.Version)
 	}
 
 	var count int
@@ -309,12 +309,15 @@ DROP TABLE posts;`),
 		t.Fatalf("posts table should exist before rollback: %v", err)
 	}
 
-	version, err := RollbackLast(db, migrations, "migrations")
+	result, err := RollbackLast(db, migrations, "migrations")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if version != "001_posts" {
-		t.Errorf("RollbackLast version = %q, want 001_posts", version)
+	if result.Version != "001_posts" {
+		t.Errorf("RollbackLast version = %q, want 001_posts", result.Version)
+	}
+	if !result.RanDownSQL {
+		t.Error("expected RanDownSQL true when -- down section present")
 	}
 
 	err = db.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name='posts'").Scan(&name)
@@ -343,12 +346,15 @@ func TestRollbackLast_withoutDownSection_removesRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	version, err := RollbackLast(db, migrations, "migrations")
+	result, err := RollbackLast(db, migrations, "migrations")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if version != "001_users" {
-		t.Errorf("RollbackLast version = %q, want 001_users", version)
+	if result.Version != "001_users" {
+		t.Errorf("RollbackLast version = %q, want 001_users", result.Version)
+	}
+	if result.RanDownSQL {
+		t.Error("expected RanDownSQL false without -- down section")
 	}
 
 	var count int

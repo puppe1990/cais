@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net"
 	"net/http"
 	"strings"
 
@@ -16,23 +17,45 @@ func ClientIP(r *http.Request, cfg cais.Config) string {
 			}
 			return strings.TrimSpace(xff)
 		}
+		if xri := strings.TrimSpace(r.Header.Get("X-Real-IP")); xri != "" {
+			return xri
+		}
 	}
 	return remote
 }
 
 func remoteAddrIP(r *http.Request) string {
-	if host := r.RemoteAddr; host != "" {
-		if i := strings.LastIndex(host, ":"); i >= 0 {
-			return host[:i]
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		if r.RemoteAddr != "" {
+			return strings.TrimPrefix(strings.TrimSuffix(r.RemoteAddr, "]"), "[")
 		}
-		return host
+		return "127.0.0.1"
 	}
-	return "127.0.0.1"
+	return host
 }
 
 func isTrustedProxy(ip string, trusted []string) bool {
+	parsed := net.ParseIP(ip)
+	if parsed == nil {
+		return false
+	}
 	for _, t := range trusted {
-		if ip == t {
+		t = strings.TrimSpace(t)
+		if t == "" {
+			continue
+		}
+		if strings.Contains(t, "/") {
+			_, network, err := net.ParseCIDR(t)
+			if err != nil {
+				continue
+			}
+			if network.Contains(parsed) {
+				return true
+			}
+			continue
+		}
+		if t == ip {
 			return true
 		}
 	}

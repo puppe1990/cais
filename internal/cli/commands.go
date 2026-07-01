@@ -15,6 +15,10 @@ const (
 	serverBin = "bin/server"
 )
 
+func frameworkVersion() string {
+	return boot.CaisVersion()
+}
+
 func (c *CLI) appDir() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {

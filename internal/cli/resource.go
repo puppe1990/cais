@@ -21,31 +21,19 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 	data.Paginate = opts.Paginate
 	data.AdminAuth = opts.AdminAuth
 
-	migrationsDir := filepath.Join(dir, "internal/store/migrations")
-	if !opts.dryRun {
-		if err := os.MkdirAll(migrationsDir, 0o755); err != nil {
-			return err
-		}
-	}
-	entries, err := os.ReadDir(migrationsDir)
+	migrationPath, migrationNum, err := nextMigrationFile(dir, data.Plural, opts.dryRun)
 	if err != nil {
 		return err
 	}
-	sqlCount := 0
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".sql") {
-			sqlCount++
-		}
-	}
-	data.MigrationNum = fmt.Sprintf("%03d", sqlCount+1)
+	data.MigrationNum = migrationNum
 
 	files := map[string]string{
-		filepath.Join("internal/models", data.Snake+".go"):                                   buildResourceModel(data),
-		filepath.Join("internal/handlers", "admin_"+data.Plural+".go"):                       buildResourceAdminHandler(data),
-		filepath.Join("internal/handlers", "admin_"+data.Plural+"_test.go"):                  buildResourceAdminTest(data),
-		filepath.Join("web/templates/pages", "admin_"+data.Plural+".html"):                   buildAdminIndexHTML(data),
-		filepath.Join("web/templates/pages", "admin_"+data.Snake+"_form.html"):               buildAdminFormHTML(data),
-		filepath.Join("internal/store/migrations", data.MigrationNum+"_"+data.Plural+".sql"): buildResourceMigration(data),
+		filepath.Join("internal/models", data.Snake+".go"):                     buildResourceModel(data),
+		filepath.Join("internal/handlers", "admin_"+data.Plural+".go"):         buildResourceAdminHandler(data),
+		filepath.Join("internal/handlers", "admin_"+data.Plural+"_test.go"):    buildResourceAdminTest(data),
+		filepath.Join("web/templates/pages", "admin_"+data.Plural+".html"):     buildAdminIndexHTML(data),
+		filepath.Join("web/templates/pages", "admin_"+data.Snake+"_form.html"): buildAdminFormHTML(data),
+		migrationPath: buildResourceMigration(data),
 	}
 
 	if data.Public {
@@ -61,14 +49,20 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 	for path, content := range files {
 		full := filepath.Join(dir, path)
 		if _, err := os.Stat(full); err == nil {
-			return fmt.Errorf("%s already exists", path)
+			if !opts.Force {
+				return fmt.Errorf("%s already exists (use --force to overwrite)", path)
+			}
+			if opts.dryRun {
+				printfScaffold("update", path)
+				continue
+			}
 		}
 		if err := writeScaffoldFile(full, []byte(content), 0o644, path, opts.dryRun); err != nil {
 			return err
 		}
 	}
 
-	if err := patchStoreForResource(dir, data, opts.dryRun); err != nil {
+	if err := patchStoreForResource(dir, data, opts.dryRun, opts.Force); err != nil {
 		return err
 	}
 	if err := patchStoreTestForResource(dir, data, opts.dryRun); err != nil {
@@ -79,6 +73,9 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 	}
 	var finalErr error
 	if data.Seed {
+		if err := patchSeedsForResource(dir, data, opts.dryRun); err != nil {
+			return err
+		}
 		finalErr = patchMainForSeed(dir, data, opts.dryRun)
 	} else {
 		finalErr = patchLayoutNav(dir, data, opts.dryRun)
@@ -225,7 +222,7 @@ func Test%sHandler_List(t *testing.T) {
 `, frameworkModule, data.PluralPascal, seedCall, data.PluralPascal, data.Plural, data.Plural)
 }
 
-func patchStoreForResource(dir string, data scaffoldData, dryRun bool) error {
+func patchStoreForResource(dir string, data scaffoldData, dryRun bool, force bool) error {
 	path := filepath.Join(dir, "internal/store/store.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -233,7 +230,10 @@ func patchStoreForResource(dir string, data scaffoldData, dryRun bool) error {
 	}
 	content := string(body)
 	if strings.Contains(content, "Insert"+data.Pascal) {
-		return nil
+		if !force {
+			return nil
+		}
+		content = removeStoreResourceMethods(content, data)
 	}
 
 	ifaceMarker := "\n\tClose() error"
@@ -270,6 +270,14 @@ func patchStoreForResource(dir string, data scaffoldData, dryRun bool) error {
 	}
 	if hasBoolField(data.Fields) && !strings.Contains(content, "func boolInt(") {
 		implInsert = "\nfunc boolInt(v bool) int {\n\tif v {\n\t\treturn 1\n\t}\n\treturn 0\n}\n" + implInsert
+	}
+	if data.Paginate && !strings.Contains(content, "pkg/cais/pagination") {
+		content = strings.Replace(content,
+			`"github.com/puppe1990/cais/pkg/cais/sqllog"`,
+			`"github.com/puppe1990/cais/pkg/cais/pagination"
+	"github.com/puppe1990/cais/pkg/cais/sqllog"`,
+			1,
+		)
 	}
 	content = strings.Replace(content, implMarker, implInsert+implMarker, 1)
 
@@ -443,6 +451,28 @@ func patchLayoutLogoHref(dir, content string, data scaffoldData) string {
 		fmt.Sprintf(`<a href="/%s" class="font-bold`, data.Plural),
 		1,
 	)
+}
+
+func patchSeedsForResource(dir string, data scaffoldData, dryRun bool) error {
+	path := filepath.Join(dir, "internal/db/seeds.go")
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	content := string(body)
+	if strings.Contains(content, "SeedDemo"+data.PluralPascal) {
+		return nil
+	}
+	marker := "\t// cais:seeds\n"
+	if !strings.Contains(content, marker) {
+		return fmt.Errorf("could not patch seeds.go — missing cais:seeds marker")
+	}
+	insert := fmt.Sprintf(`%s	if err := s.SeedDemo%s(); err != nil {
+		return err
+	}
+`, marker, data.PluralPascal)
+	content = strings.Replace(content, marker, insert, 1)
+	return updateScaffoldFile(path, []byte(content), "internal/db/seeds.go", dryRun)
 }
 
 func patchMainForSeed(dir string, data scaffoldData, dryRun bool) error {

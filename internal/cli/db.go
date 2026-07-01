@@ -27,13 +27,13 @@ func (c *CLI) cmdDB(args []string) error {
 	case "prune-sessions":
 		return c.cmdDBPruneSessions()
 	case "seed":
-		return c.cmdDBSeed()
+		return c.cmdDBSeed(args[1:])
 	default:
 		return fmt.Errorf("unknown db command %q (use migrate, status, rollback, prune-sessions, or seed)", args[0])
 	}
 }
 
-func (c *CLI) cmdDBSeed() error {
+func (c *CLI) cmdDBSeed(args []string) error {
 	dir, err := c.appDir()
 	if err != nil {
 		return err
@@ -41,6 +41,24 @@ func (c *CLI) cmdDBSeed() error {
 	seedsPath := filepath.Join(dir, "internal/db/seeds.go")
 	if _, err := os.Stat(seedsPath); err != nil {
 		return fmt.Errorf("internal/db/seeds.go not found")
+	}
+
+	for _, arg := range args {
+		if arg == "--list" {
+			items, err := listSeedsInDir(dir)
+			if err != nil {
+				return err
+			}
+			if len(items) == 0 {
+				_, _ = fmt.Fprintln(c.Out, "=> RunSeeds (no named seed helpers found)")
+				return nil
+			}
+			_, _ = fmt.Fprintln(c.Out, "=> Seeds:")
+			for _, item := range items {
+				_, _ = fmt.Fprintf(c.Out, "  - %s\n", item)
+			}
+			return nil
+		}
 	}
 	runnerPath := filepath.Join(dir, "internal/db/runseed_main.go")
 	if _, err := os.Stat(runnerPath); err != nil {
@@ -115,11 +133,14 @@ func (c *CLI) cmdDBRollback() error {
 	}
 	defer cleanup()
 
-	version, err := migrate.RollbackLastDir(db, migrationsDir)
+	result, err := migrate.RollbackLastDir(db, migrationsDir)
 	if err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintf(c.Out, "=> Rolled back %s\n", version)
+	_, _ = fmt.Fprintf(c.Out, "=> Rolled back %s\n", result.Version)
+	if !result.RanDownSQL {
+		_, _ = fmt.Fprintln(c.Out, "   Warning: no -- down section; only schema_migrations record was removed")
+	}
 	return nil
 }
 

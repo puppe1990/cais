@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 type modelOpts struct {
@@ -40,27 +39,15 @@ func scaffoldModel(dir, name string, opts modelOpts) error {
 	data.Fields = fields
 	data.Seed = false
 
-	migrationsDir := filepath.Join(dir, "internal/store/migrations")
-	if !opts.dryRun {
-		if err := os.MkdirAll(migrationsDir, 0o755); err != nil {
-			return err
-		}
-	}
-	entries, err := os.ReadDir(migrationsDir)
+	migrationPath, migrationNum, err := nextMigrationFile(dir, data.Plural, opts.dryRun)
 	if err != nil {
 		return err
 	}
-	sqlCount := 0
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".sql") {
-			sqlCount++
-		}
-	}
-	data.MigrationNum = fmt.Sprintf("%03d", sqlCount+1)
+	data.MigrationNum = migrationNum
 
 	files := map[string]string{
-		filepath.Join("internal/models", data.Snake+".go"):                                   buildResourceModel(data),
-		filepath.Join("internal/store/migrations", data.MigrationNum+"_"+data.Plural+".sql"): buildResourceMigration(data),
+		filepath.Join("internal/models", data.Snake+".go"): buildResourceModel(data),
+		migrationPath: buildResourceMigration(data),
 	}
 
 	for path, content := range files {
@@ -73,7 +60,7 @@ func scaffoldModel(dir, name string, opts modelOpts) error {
 		}
 	}
 
-	if err := patchStoreForResource(dir, data, opts.dryRun); err != nil {
+	if err := patchStoreForResource(dir, data, opts.dryRun, false); err != nil {
 		return err
 	}
 	if opts.dryRun {

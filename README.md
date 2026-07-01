@@ -33,32 +33,39 @@ make install-cli
 export PATH="$HOME/go/bin:$PATH"
 ```
 
-| Command                                                                                                                  | Description                                                |
-| ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| `cais new <app> [dir]`                                                                                                   | Scaffold a new app (home, contact, dashboard)              |
-| `cais new <app> [dir] --minimal`                                                                                         | Slim app (home only)                                       |
-| `cais new <app> [dir] --blank`                                                                                           | Empty app (no starter content)                             |
-| `cais new <app> [dir] --module <path>`                                                                                   | Override Go module path                                    |
-| `cais g [--dry-run] handler <name>`                                                                                      | Handler + test + page + route                              |
-| `cais g [--dry-run] resource <name> [--fields ...] [--public] [--paginate] [--no-seed] [--admin-auth session or bearer]` | Full CRUD + optional public page                           |
-| `cais g [--dry-run] model <name> [--fields ...]`                                                                         | Model + migration + store (no handlers/UI)                 |
-| `cais g [--dry-run] page <name>`                                                                                         | Page template only                                         |
-| `cais g [--dry-run] migration <name>`                                                                                    | SQL migration file (`-- up` / `-- down`)                   |
-| `cais g [--dry-run] auth`                                                                                                | Add login/logout + protect dashboard                       |
-| `cais g console`                                                                                                         | Scaffold `cmd/console/main.go`                             |
-| `cais install`                                                                                                           | `npm install` + `go mod tidy`                              |
-| `cais css`                                                                                                               | Build Tailwind CSS                                         |
-| `cais dev`                                                                                                               | Hot reload (`air` + tailwind watch)                        |
-| `cais build`                                                                                                             | Build `bin/server`                                         |
-| `cais server`                                                                                                            | Run `go run ./cmd/server`                                  |
-| `cais test`                                                                                                              | Run `go test ./...`                                        |
-| `cais console`                                                                                                           | Interactive REPL (store, cfg, db + SQL)                    |
-| `cais routes`                                                                                                            | List HTTP routes from `internal/app/routes.go`             |
-| `cais db migrate`                                                                                                        | Run pending SQL migrations                                 |
-| `cais db status`                                                                                                         | List applied/pending migrations                            |
-| `cais db rollback`                                                                                                       | Roll back last migration (runs `-- down` SQL when present) |
-| `cais db prune-sessions`                                                                                                 | Delete expired login sessions from SQLite                  |
-| `cais doctor`                                                                                                            | Check htmx, air, go.mod, CSS                               |
+| Command                                                                                                                            | Description                                                |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `cais new <app> [dir]`                                                                                                             | Scaffold a new app (home, contact, dashboard)              |
+| `cais new <app> [dir] --minimal`                                                                                                   | Slim app (home only)                                       |
+| `cais new <app> [dir] --blank`                                                                                                     | Empty app (no starter content)                             |
+| `cais new <app> [dir] --module <path>`                                                                                             | Override Go module path                                    |
+| `cais g [--dry-run] handler <name>`                                                                                                | Handler + test + page + route                              |
+| `cais g [--dry-run] resource <name> [--fields ...] [--public] [--paginate] [--no-seed] [--force] [--admin-auth session or bearer]` | Full CRUD + optional public page                           |
+| `cais destroy [--dry-run] resource\|handler\|model <name>`                                                                         | Remove generated files + unpatch routes/store/seeds        |
+| `cais destroy [--dry-run] auth`                                                                                                    | Remove login/auth files + revert session middleware        |
+| `cais destroy [--dry-run] migration <name>`                                                                                        | Remove `*_<name>.sql` migration file                       |
+| `cais g [--dry-run] model <name> [--fields ...]`                                                                                   | Model + migration + store (no handlers/UI)                 |
+| `cais g [--dry-run] page <name>`                                                                                                   | Page template only                                         |
+| `cais g [--dry-run] migration <name>`                                                                                              | SQL migration file (`-- up` / `-- down`)                   |
+| `cais g [--dry-run] auth`                                                                                                          | Add login/logout + protect dashboard                       |
+| `cais g [--dry-run] console`                                                                                                       | Scaffold `cmd/console/main.go`                             |
+| `cais g [--dry-run] ci`                                                                                                            | Add GitHub Actions CI, pre-commit, lint, Prettier          |
+| `cais install`                                                                                                                     | `npm install` + `go mod tidy`                              |
+| `cais css`                                                                                                                         | Build Tailwind CSS                                         |
+| `cais dev`                                                                                                                         | Hot reload (`air` + tailwind watch)                        |
+| `cais build`                                                                                                                       | Build `bin/server`                                         |
+| `cais server`                                                                                                                      | Run `go run ./cmd/server`                                  |
+| `cais test`                                                                                                                        | Run `go test ./...`                                        |
+| `cais console`                                                                                                                     | Interactive REPL (store, cfg, db + SQL)                    |
+| `cais routes [--verbose]`                                                                                                          | List HTTP routes from `internal/app/routes.go`             |
+| `cais db migrate`                                                                                                                  | Run pending SQL migrations                                 |
+| `cais db status`                                                                                                                   | List applied/pending migrations                            |
+| `cais db rollback`                                                                                                                 | Roll back last migration (runs `-- down` SQL when present) |
+| `cais db prune-sessions`                                                                                                           | Delete expired login sessions from SQLite                  |
+| `cais db seed`                                                                                                                     | Run `internal/db/seeds.go` (idempotent demo data)          |
+| `cais db seed --list`                                                                                                              | List seed helpers referenced in `seeds.go`                 |
+| `cais version`                                                                                                                     | Print Cais framework version                               |
+| `cais doctor`                                                                                                                      | Check htmx, air, go.mod, CSS                               |
 
 Field types: `string`, `text`, `url`, `bool`, `int`, `date`. Suffix `?` for optional.
 
@@ -100,7 +107,7 @@ pkg/cais/devlog/   → /logs viewer + log buffer
 pkg/cais/sqllog/   → SQL query logging wrapper
 pkg/cais/console/  → interactive REPL (yaegi)
 pkg/cais/httpx/    → render and redirect helpers
-pkg/cais/forms/    → template helpers (csrfField, fieldError)
+pkg/cais/forms/    → template helpers (csrfField, fieldError, makeField, fieldInput)
 pkg/cais/i18n/     → locale catalogs (LOCALE env)
 pkg/cais/pwa/      → PWA asset generator
 internal/app/      → bootstrap and routes
@@ -168,15 +175,21 @@ Use `--paginate` on `cais g resource` for admin index pagination (25 items per p
 **Form helpers** — `pkg/cais/forms` template funcs (registered on the renderer):
 
 ```html
-{{ csrfField .CSRFToken }} {{ fieldError .Errors "email" }}
+{{ csrfField .CSRFToken }} {{ fieldError .Errors "email" }} {{ fieldInput (makeField "email" "Email"
+.Email "email" true .Errors) }}
 ```
 
-**Validation** — collect per-field errors with `validate.FieldErrors`:
+`makeField` builds a `forms.FieldData` struct (name, label, value, HTML type, required, error). `fieldInput` renders a labeled input, textarea, or checkbox with error text. Generated admin forms use `fieldInput`/`makeField` by default.
+
+**Validation** — single-field helpers (`validate.Email`, `validate.URL`, `validate.Required`, `validate.MinLength`, `validate.MaxLength`) and `validate.FieldErrors` for forms:
 
 ```go
 var errs validate.FieldErrors
 if name == "" {
   errs.Add("name", "Name is required")
+}
+if err := validate.MinLength(name, 2); err != nil {
+  errs.Add("name", err.Error())
 }
 if err := validate.Email(email); err != nil {
   errs.Add("email", "Enter a valid email")

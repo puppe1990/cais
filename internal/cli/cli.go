@@ -51,7 +51,11 @@ func (c *CLI) Run(args []string) error {
 	case "db":
 		return c.cmdDB(args[1:])
 	case "routes":
-		return c.cmdRoutes()
+		return c.cmdRoutes(args[1:])
+	case "destroy", "d":
+		return c.cmdDestroy(args[1:])
+	case "version", "-v", "--version":
+		return c.cmdVersion()
 	case "help", "-h", "--help":
 		c.printHelp()
 		return nil
@@ -70,12 +74,13 @@ Usage:
   cais new <app> [dir] --blank     Empty app (no starter content)
   cais new <app> [dir] --module <path>   Override go module path
   cais g [--dry-run] handler <name>      Generate handler + test + page template
-  cais g [--dry-run] resource <name> [--fields title:string,url:url] [--public] [--paginate] [--no-seed] [--admin-auth session|bearer]
+  cais g [--dry-run] resource <name> [--fields title:string,url:url] [--public] [--paginate] [--no-seed] [--force] [--admin-auth session|bearer]
   cais g [--dry-run] model <name> [--fields title:string,url:url]
   cais g [--dry-run] page <name>         Generate page template only
   cais g [--dry-run] migration <name>    Generate SQL migration file
   cais g [--dry-run] auth                Add login/logout and protect dashboard
-  cais g ci                  Add GitHub Actions CI, pre-commit, lint, Prettier
+  cais g [--dry-run] console             Scaffold cmd/console/main.go
+  cais g [--dry-run] ci                  Add GitHub Actions CI, pre-commit, lint, Prettier
   cais install               npm install + go mod tidy
   cais css                   Build Tailwind CSS
   cais dev                   Hot reload (air + tailwind watch)
@@ -89,7 +94,12 @@ Usage:
   cais db rollback           Roll back last migration (runs -- down SQL when present)
   cais db prune-sessions     Delete expired login sessions from SQLite
   cais db seed               Run internal/db/seeds.go
-  cais routes                List HTTP routes from internal/app/routes.go
+  cais routes [--verbose]    List HTTP routes from internal/app/routes.go
+  cais destroy [--dry-run] resource|handler|model <name>
+                             Remove generated resource, handler, or model files
+  cais destroy [--dry-run] auth             Remove login/auth scaffolding
+  cais destroy [--dry-run] migration <name> Remove a generated SQL migration file
+  cais version               Print Cais framework version
   cais help                  Show this help
 
 Aliases:
@@ -190,6 +200,7 @@ func (c *CLI) cmdGenerate(args []string) error {
 		filtered = append(filtered, arg)
 	}
 	args = filtered
+	setScaffoldOut(c.Out)
 
 	if len(args) < 1 {
 		return fmt.Errorf("usage: cais g [--dry-run] <handler|page|migration|resource|model|console|auth|ci> [name]")
@@ -208,13 +219,14 @@ func (c *CLI) cmdGenerate(args []string) error {
 		return fmt.Errorf("not a Cais app (missing go.mod with github.com/puppe1990/cais as a dependency)")
 	}
 
+	var genErr error
 	switch kind {
 	case "console":
-		return scaffoldConsole(cwd)
+		genErr = scaffoldConsole(cwd, dryRun)
 	case "auth":
-		return scaffoldAuth(cwd, scaffoldData{AppName: filepath.Base(cwd), ModulePath: moduleFromDir(cwd)}, dryRun)
+		genErr = scaffoldAuth(cwd, scaffoldData{AppName: filepath.Base(cwd), ModulePath: moduleFromDir(cwd)}, dryRun)
 	case "ci":
-		return scaffoldCI(cwd, scaffoldData{AppName: filepath.Base(cwd), ModulePath: moduleFromDir(cwd)})
+		genErr = scaffoldCI(cwd, scaffoldData{AppName: filepath.Base(cwd), ModulePath: moduleFromDir(cwd)}, dryRun)
 	case "handler", "page", "migration", "resource", "model":
 		if len(args) < 2 {
 			return fmt.Errorf("usage: cais g %s <name>", kind)
@@ -222,29 +234,50 @@ func (c *CLI) cmdGenerate(args []string) error {
 		name := args[1]
 		switch kind {
 		case "handler":
-			return scaffoldHandler(cwd, name, dryRun)
+			genErr = scaffoldHandler(cwd, name, dryRun)
 		case "page":
-			return scaffoldPage(cwd, name, dryRun)
+			genErr = scaffoldPage(cwd, name, dryRun)
 		case "migration":
-			return scaffoldMigration(cwd, name, dryRun)
+			genErr = scaffoldMigration(cwd, name, dryRun)
 		case "resource":
-			opts, err := parseResourceOpts(args[2:])
-			if err != nil {
-				return err
+			opts, parseErr := parseResourceOpts(args[2:])
+			if parseErr != nil {
+				return parseErr
 			}
 			opts.dryRun = dryRun
-			return scaffoldResource(cwd, name, opts)
+			genErr = scaffoldResource(cwd, name, opts)
 		case "model":
-			opts, err := parseModelOpts(args[2:])
-			if err != nil {
-				return err
+			opts, parseErr := parseModelOpts(args[2:])
+			if parseErr != nil {
+				return parseErr
 			}
 			opts.dryRun = dryRun
-			return scaffoldModel(cwd, name, opts)
+			genErr = scaffoldModel(cwd, name, opts)
 		}
 	default:
 		return fmt.Errorf("unknown generator %q (use handler, page, migration, resource, model, auth, ci, or console)", kind)
 	}
+	if genErr != nil {
+		return genErr
+	}
+	if !dryRun {
+		printGenerateNextSteps(c.Out, kind)
+	}
+	return nil
+}
+
+func printGenerateNextSteps(w io.Writer, kind string) {
+	_, _ = fmt.Fprintln(w)
+	switch kind {
+	case "resource", "model", "migration", "auth":
+		_, _ = fmt.Fprintln(w, "=> Next: cais db migrate && cais test")
+	default:
+		_, _ = fmt.Fprintln(w, "=> Next: cais test")
+	}
+}
+
+func (c *CLI) cmdVersion() error {
+	_, _ = fmt.Fprintln(c.Out, frameworkVersion())
 	return nil
 }
 
