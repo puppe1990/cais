@@ -306,11 +306,11 @@ func TestScaffoldResource_BlankAppLogoLinksToPublicList(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(layout)
-	if strings.Contains(body, `<a href="/" class="font-bold`) {
-		t.Error("blank app with public resource should not keep logo href=/ (no home route)")
+	if !strings.Contains(body, `<a href="/" class="font-bold`) {
+		t.Error("blank app logo should link to welcome screen at /")
 	}
-	if !strings.Contains(body, `<a href="/books" class="font-bold`) {
-		t.Error("logo should link to public resource list on blank apps")
+	if !strings.Contains(body, `href="/books"`) {
+		t.Error("layout nav should include public books list link")
 	}
 }
 
@@ -471,6 +471,38 @@ func TestPatchGoModReplace_CaisAppsLayout(t *testing.T) {
 	}
 }
 
+func TestPatchGoModReplace_RemoteAppDirFromCwd(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	root := t.TempDir()
+	caisDir := filepath.Join(root, "Cais")
+	appsDir := filepath.Join(root, "Cais-apps")
+	appDir := filepath.Join(root, "remote", "testapp")
+	for _, d := range []string{caisDir, appsDir, filepath.Dir(appDir)} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(caisDir, "go.mod"), []byte("module github.com/puppe1990/cais\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(appsDir)
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "testapp",
+		ModulePath: "github.com/puppe1990/testapp",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	mod, err := os.ReadFile(filepath.Join(appDir, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantRel := filepath.Join("..", "..", "Cais")
+	want := "replace github.com/puppe1990/cais => " + wantRel
+	if !strings.Contains(string(mod), want) {
+		t.Errorf("go.mod missing Cais replace from cwd layout:\nwant substring %q\ngot:\n%s", want, mod)
+	}
+}
+
 func TestParseFields(t *testing.T) {
 	fields, err := parseFields("title:string,url:url,notes:text?")
 	if err != nil {
@@ -543,13 +575,17 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 	for _, path := range []string{
 		"go.mod",
 		"cmd/server/main.go",
+		"internal/i18n/en.go",
+		"internal/i18n/pt.go",
+		".env.example",
 		"internal/handlers/dashboard.go",
 		"web/templates/pages/dashboard.html",
 		"web/static/manifest.webmanifest",
 		"web/static/js/sw.js",
 		"web/static/js/cais.js",
+		"web/static/img/go-on-cais.jpg",
 		"web/static/og.png",
-		"web/static/icons/icon-192.png",
+		"web/static/icons/icon.png",
 	} {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
 			t.Errorf("missing %s: %v", path, err)
@@ -675,11 +711,20 @@ func TestCLI_NewBlankCreatesEmptyApp(t *testing.T) {
 
 	for _, path := range []string{
 		"internal/handlers/home.go",
+		"web/templates/pages/home.html",
+		"web/templates/layouts/welcome.html",
+		"web/templates/partials/cais_logo.html",
+	} {
+		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
+			t.Errorf("blank app missing welcome screen file %s: %v", path, err)
+		}
+	}
+
+	for _, path := range []string{
 		"internal/handlers/contact.go",
 		"internal/handlers/dashboard.go",
 		"internal/models/contact.go",
 		"internal/store/migrations/001_contacts.sql",
-		"web/templates/pages/home.html",
 		"web/templates/pages/contact.html",
 		"web/templates/pages/dashboard.html",
 	} {
@@ -692,8 +737,8 @@ func TestCLI_NewBlankCreatesEmptyApp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(routesBody), "home") {
-		t.Error("blank app routes should not reference home handler")
+	if !strings.Contains(string(routesBody), "home.ServeHTTP") {
+		t.Error("blank app routes should register welcome home handler")
 	}
 }
 
