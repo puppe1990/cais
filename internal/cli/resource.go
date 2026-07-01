@@ -405,7 +405,23 @@ func patchLayoutNav(dir string, data scaffoldData) error {
     </header>`,
 		1,
 	)
+	content = patchLayoutLogoHref(dir, content, data)
 	return os.WriteFile(path, []byte(content), 0o644)
+}
+
+func patchLayoutLogoHref(dir, content string, data scaffoldData) string {
+	routes, err := os.ReadFile(filepath.Join(dir, "internal/app/routes.go"))
+	if err != nil {
+		return content
+	}
+	if strings.Contains(string(routes), `r.Get("/", home`) {
+		return content
+	}
+	return strings.Replace(content,
+		`<a href="/" class="font-bold`,
+		fmt.Sprintf(`<a href="/%s" class="font-bold`, data.Plural),
+		1,
+	)
 }
 
 func patchMainForSeed(dir string, data scaffoldData) error {

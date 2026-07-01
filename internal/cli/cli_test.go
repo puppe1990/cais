@@ -284,6 +284,36 @@ func TestScaffoldResource_IntFields(t *testing.T) {
 	}
 }
 
+func TestScaffoldResource_BlankAppLogoLinksToPublicList(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "library")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "library",
+		ModulePath: "github.com/puppe1990/library",
+	}, false, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "book", resourceOpts{
+		Fields: "title:string,url:url,pages:int,read:bool",
+		Public: true,
+		Seed:   true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	layout, err := os.ReadFile(filepath.Join(appDir, "web/templates/layouts/base.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(layout)
+	if strings.Contains(body, `<a href="/" class="font-bold`) {
+		t.Error("blank app with public resource should not keep logo href=/ (no home route)")
+	}
+	if !strings.Contains(body, `<a href="/books" class="font-bold`) {
+		t.Error("logo should link to public resource list on blank apps")
+	}
+}
+
 func TestScaffoldHandler_AfterResourceRoutesCompile(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "menu")
