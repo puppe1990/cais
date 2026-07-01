@@ -13,7 +13,7 @@ func TestDoctor_AllOK(t *testing.T) {
 	if err := scaffoldNewApp(dir, scaffoldData{
 		AppName:    "ok",
 		ModulePath: "github.com/puppe1990/ok",
-	}, true); err != nil {
+	}, true, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -35,7 +35,7 @@ func TestDoctor_AirOptionalWhenMissing(t *testing.T) {
 	if err := scaffoldNewApp(dir, scaffoldData{
 		AppName:    "ok",
 		ModulePath: "github.com/puppe1990/ok",
-	}, true); err != nil {
+	}, true, false); err != nil {
 		t.Fatal(err)
 	}
 

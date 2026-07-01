@@ -11,7 +11,7 @@ import (
 	"github.com/puppe1990/cais/pkg/cais/pwa"
 )
 
-func scaffoldNewApp(dir string, data scaffoldData, minimal bool) error {
+func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) error {
 	files := map[string]string{
 		"go.mod":                                      tplGoMod,
 		"cmd/server/main.go":                          tplMain,
@@ -47,7 +47,30 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool) error {
 		"README.md":                                   tplREADME,
 	}
 
-	if minimal {
+	if blank {
+		files = map[string]string{
+			"go.mod":                             tplGoMod,
+			"cmd/server/main.go":                 tplMainBlank,
+			"internal/app/app.go":                tplAppBlank,
+			"internal/app/routes.go":             tplRoutesBlank,
+			"internal/handlers/helpers_test.go":  tplHelpersTest,
+			"internal/store/store.go":            tplStoreMinimal,
+			"internal/store/store_test.go":       tplStoreTestMinimal,
+			"internal/store/migrations.go":       tplMigrations,
+			"internal/store/migrations/.gitkeep": "",
+			"web/embed.go":                       tplWebEmbed,
+			"web/templates/layouts/base.html":    tplLayoutBlank,
+			"web/static/js/.gitkeep":             "",
+			"web/static/css/styles.css":          tplEmptyCSS,
+			"input.css":                          tplInputCSS,
+			"tailwind.config.js":                 tplTailwind,
+			"package.json":                       tplPackageJSON,
+			"Makefile":                           tplMakefile,
+			".gitignore":                         tplGitignore,
+			".air.toml":                          tplAir,
+			"README.md":                          tplREADMEBlank,
+		}
+	} else if minimal {
 		delete(files, "internal/handlers/contact.go")
 		delete(files, "internal/handlers/contact_test.go")
 		delete(files, "internal/handlers/dashboard.go")

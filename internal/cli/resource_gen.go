@@ -146,18 +146,7 @@ func buildResourceSeed(data scaffoldData) string {
 	}
 	var inserts []string
 	for _, f := range data.Fields {
-		switch f.GoType {
-		case "bool":
-			inserts = append(inserts, fmt.Sprintf("%s: false", f.Pascal))
-		case "int64":
-			inserts = append(inserts, fmt.Sprintf("%s: 30", f.Pascal))
-		default:
-			if f.HTMLType == "url" {
-				inserts = append(inserts, fmt.Sprintf("%s: \"https://example.com\"", f.Pascal))
-			} else {
-				inserts = append(inserts, fmt.Sprintf("%s: \"Demo %s\"", f.Pascal, f.Pascal))
-			}
-		}
+		inserts = append(inserts, fmt.Sprintf("%s: %s", f.Pascal, seedValueForField(f)))
 	}
 	body := fmt.Sprintf("models.%s{%s}", data.Pascal, strings.Join(inserts, ", "))
 	return fmt.Sprintf(`
@@ -179,6 +168,69 @@ func (s *SQLiteStore) count%s() (int64, error) {
 	return count, err
 }
 `, data.PluralPascal, data.PluralPascal, data.Pascal, body, data.PluralPascal, data.Plural)
+}
+
+func seedValueForField(f FieldDef) string {
+	name := strings.ToLower(f.Name)
+	switch f.GoType {
+	case "bool":
+		if strings.Contains(name, "active") || strings.Contains(name, "enabled") {
+			return "true"
+		}
+		return "false"
+	case "int64":
+		if strings.Contains(name, "count") || strings.Contains(name, "total") {
+			return "10"
+		}
+		if strings.Contains(name, "price") || strings.Contains(name, "amount") {
+			return "99"
+		}
+		if strings.Contains(name, "age") || strings.Contains(name, "year") {
+			return "25"
+		}
+		if strings.Contains(name, "rating") || strings.Contains(name, "score") {
+			return "5"
+		}
+		if strings.Contains(name, "minute") || strings.Contains(name, "hour") || strings.Contains(name, "second") || strings.Contains(name, "duration") {
+			return "30"
+		}
+		if strings.Contains(name, "quantity") || strings.Contains(name, "qty") || strings.Contains(name, "servings") {
+			return "4"
+		}
+		return "1"
+	default:
+		if f.HTMLType == "url" {
+			if strings.Contains(name, "github") {
+				return `"https://github.com/example"`
+			}
+			if strings.Contains(name, "twitter") || strings.Contains(name, "x") {
+				return `"https://twitter.com/example"`
+			}
+			return `"https://example.com"`
+		}
+		if f.Widget == "textarea" {
+			if strings.Contains(name, "description") {
+				return `"A detailed description of this item."`
+			}
+			if strings.Contains(name, "notes") || strings.Contains(name, "comment") {
+				return `"Some notes about this entry."`
+			}
+			return `"Lorem ipsum dolor sit amet, consectetur adipiscing elit."`
+		}
+		if strings.Contains(name, "email") {
+			return `"user@example.com"`
+		}
+		if strings.Contains(name, "name") || strings.Contains(name, "title") {
+			return `"Sample Item"`
+		}
+		if strings.Contains(name, "status") {
+			return `"active"`
+		}
+		if strings.Contains(name, "category") {
+			return `"general"`
+		}
+		return `"Sample"`
+	}
 }
 
 func insertColumns(fields []FieldDef) (cols, placeholders string) {
@@ -287,19 +339,19 @@ func buildAdminParseForm(data scaffoldData) string {
 	if raw%s == "" {
 		return models.%s{}, fmt.Errorf(%q)
 	}
-	%s, err := strconv.ParseInt(raw%s, 10, 64)
+	%sVal, err := strconv.ParseInt(raw%s, 10, 64)
 	if err != nil {
 		return models.%s{}, fmt.Errorf(%q)
 	}
-	item.%s = %s`, f.Pascal, f.Name, f.Pascal, data.Pascal, f.Name+" is required", f.Pascal, f.Pascal, data.Pascal, f.Name+" must be a number", f.Pascal, f.Pascal))
+	item.%s = %sVal`, f.Pascal, f.Name, f.Pascal, data.Pascal, f.Name+" is required", f.Name, f.Pascal, data.Pascal, f.Name+" must be a number", f.Pascal, f.Name))
 			} else {
 				after = append(after, fmt.Sprintf(`if raw%s := strings.TrimSpace(r.FormValue(%q)); raw%s != "" {
-		%s, err := strconv.ParseInt(raw%s, 10, 64)
+		%sVal, err := strconv.ParseInt(raw%s, 10, 64)
 		if err != nil {
 			return models.%s{}, fmt.Errorf(%q)
 		}
-		item.%s = %s
-	}`, f.Pascal, f.Name, f.Pascal, f.Pascal, f.Pascal, data.Pascal, f.Name+" must be a number", f.Pascal, f.Pascal))
+		item.%s = %sVal
+	}`, f.Pascal, f.Name, f.Pascal, f.Name, f.Pascal, data.Pascal, f.Name+" must be a number", f.Pascal, f.Name))
 			}
 		default:
 			literal = append(literal, fmt.Sprintf("%s: strings.TrimSpace(r.FormValue(%q))", f.Pascal, f.Name))
@@ -341,26 +393,28 @@ func needsValidate(fields []FieldDef) bool {
 	return false
 }
 
+func boolImport(cond bool, s string) string {
+	if cond {
+		return s
+	}
+	return ""
+}
+
 func buildResourceAdminHandler(data scaffoldData) string {
 	parse := buildAdminParseForm(data)
-	extraImports := ""
-	if needsValidate(data.Fields) {
-		extraImports += "\n\t\"" + frameworkModule + "/pkg/cais/validate\""
-	}
-	if needsStrconv(data.Fields) {
-		extraImports += "\n\t\"strconv\""
-	}
+	hasValidate := needsValidate(data.Fields)
+	hasStrconv := needsStrconv(data.Fields)
 	return fmt.Sprintf(`package handlers
 
 import (
 	"fmt"
 	"net/http"
-	"strings"
-
+%s	"strings"
+%s
 	"%s/internal/models"
 	"%s/internal/store"
 	"%s/pkg/cais"
-	"%s/pkg/cais/httpx"%s
+	"%s/pkg/cais/httpx"
 )
 
 type Admin%sHandler struct {
@@ -444,8 +498,10 @@ func (h *Admin%sHandler) parseForm(r *http.Request) (models.%s, error) {
 	}
 	%s
 }
-`,
-		data.ModulePath, data.ModulePath, frameworkModule, frameworkModule, extraImports,
+	`,
+		boolImport(hasStrconv, "\t\"strconv\"\n"),
+		boolImport(hasValidate, "\t\""+frameworkModule+"/pkg/cais/validate\"\n"),
+		data.ModulePath, data.ModulePath, frameworkModule, frameworkModule,
 		data.PluralPascal,
 		data.PluralPascal, data.Pascal,
 		data.Pascal, data.Pascal,

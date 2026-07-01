@@ -47,7 +47,7 @@ func TestCLI_NewMinimalCreatesSlimApp(t *testing.T) {
 	if err := scaffoldNewApp(appDir, scaffoldData{
 		AppName:    "slim",
 		ModulePath: "github.com/puppe1990/slim",
-	}, true); err != nil {
+	}, true, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -77,7 +77,7 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 	if err := scaffoldNewApp(appDir, scaffoldData{
 		AppName:    "shop",
 		ModulePath: "github.com/puppe1990/shop",
-	}, true); err != nil {
+	}, true, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -115,6 +115,9 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 	if !strings.Contains(string(routesBody), "r.Group(middleware.TokenAuth") {
 		t.Error("routes.go missing r.Group(middleware.TokenAuth")
 	}
+	if strings.Contains(string(routesBody), "\n\n\n") {
+		t.Error("routes.go has triple newlines (formatting issue)")
+	}
 }
 
 func TestScaffoldResource_PublicWithFields(t *testing.T) {
@@ -123,7 +126,7 @@ func TestScaffoldResource_PublicWithFields(t *testing.T) {
 	if err := scaffoldNewApp(appDir, scaffoldData{
 		AppName:    "links",
 		ModulePath: "github.com/puppe1990/links",
-	}, true); err != nil {
+	}, true, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -156,7 +159,7 @@ func TestScaffoldResource_PluralPascal_ListAllMethod(t *testing.T) {
 	if err := scaffoldNewApp(appDir, scaffoldData{
 		AppName:    "recipes",
 		ModulePath: "github.com/puppe1990/recipes",
-	}, true); err != nil {
+	}, true, false); err != nil {
 		t.Fatal(err)
 	}
 	if err := scaffoldResource(appDir, "recipe", resourceOpts{Public: true}); err != nil {
@@ -188,7 +191,7 @@ func TestCLI_NewIncludesHTMXAndAir(t *testing.T) {
 	if err := scaffoldNewApp(appDir, scaffoldData{
 		AppName:    "full",
 		ModulePath: "github.com/puppe1990/full",
-	}, false); err != nil {
+	}, false, false); err != nil {
 		t.Fatal(err)
 	}
 	for _, path := range []string{
@@ -207,7 +210,7 @@ func TestScaffoldResource_IntFields(t *testing.T) {
 	if err := scaffoldNewApp(appDir, scaffoldData{
 		AppName:    "menu",
 		ModulePath: "github.com/puppe1990/menu",
-	}, true); err != nil {
+	}, true, false); err != nil {
 		t.Fatal(err)
 	}
 	if err := scaffoldResource(appDir, "meal", resourceOpts{
@@ -228,6 +231,38 @@ func TestScaffoldResource_IntFields(t *testing.T) {
 	if strings.Contains(adminBody, `PrepMinutes: strings.TrimSpace`) {
 		t.Error("admin handler should not assign int field from string TrimSpace")
 	}
+	if strings.Contains(adminBody, "PrepMinutes, err := strconv.ParseInt") {
+		t.Error("admin handler should use lowercase variable name for strconv result, not PascalCase")
+	}
+	if !strings.Contains(adminBody, "prep_minutesVal") {
+		t.Error("admin handler should use camelCase variable name for strconv result")
+	}
+	if !strings.Contains(adminBody, `"strconv"`) {
+		t.Error("admin handler missing strconv import")
+	}
+	lines := strings.Split(adminBody, "\n")
+	var stdlibImports []string
+	inImport := false
+	for _, line := range lines {
+		if strings.HasPrefix(line, "import (") {
+			inImport = true
+			continue
+		}
+		if inImport {
+			if strings.HasPrefix(line, ")") {
+				break
+			}
+			trimmed := strings.TrimSpace(line)
+			if trimmed != "" && !strings.HasPrefix(trimmed, `"github.com`) && !strings.HasPrefix(trimmed, `"modernc.org`) {
+				stdlibImports = append(stdlibImports, trimmed)
+			}
+		}
+	}
+	for i := 0; i < len(stdlibImports)-1; i++ {
+		if stdlibImports[i] > stdlibImports[i+1] {
+			t.Errorf("stdlib imports not sorted: %q > %q", stdlibImports[i], stdlibImports[i+1])
+		}
+	}
 
 	store, err := os.ReadFile(filepath.Join(appDir, "internal/store/store.go"))
 	if err != nil {
@@ -235,6 +270,9 @@ func TestScaffoldResource_IntFields(t *testing.T) {
 	}
 	if !strings.Contains(string(store), "PrepMinutes: 30") {
 		t.Error("seed data should use numeric literal for int fields")
+	}
+	if strings.Contains(string(store), "Demo ") {
+		t.Error("seed data should use realistic values, not 'Demo X' pattern")
 	}
 
 	adminTest, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/admin_meals_test.go"))
@@ -252,7 +290,7 @@ func TestScaffoldResource_PublicListRichFields(t *testing.T) {
 	if err := scaffoldNewApp(appDir, scaffoldData{
 		AppName:    "tasks",
 		ModulePath: "github.com/puppe1990/tasks",
-	}, true); err != nil {
+	}, true, false); err != nil {
 		t.Fatal(err)
 	}
 	if err := scaffoldResource(appDir, "task", resourceOpts{
@@ -291,7 +329,7 @@ func TestScaffoldResource_DishPluralization(t *testing.T) {
 	if err := scaffoldNewApp(appDir, scaffoldData{
 		AppName:    "menu",
 		ModulePath: "github.com/puppe1990/menu",
-	}, true); err != nil {
+	}, true, false); err != nil {
 		t.Fatal(err)
 	}
 	if err := scaffoldResource(appDir, "dish", resourceOpts{Public: true}); err != nil {
@@ -312,7 +350,7 @@ func TestScaffoldResource_BoolFields(t *testing.T) {
 	if err := scaffoldNewApp(appDir, scaffoldData{
 		AppName:    "tasks",
 		ModulePath: "github.com/puppe1990/tasks",
-	}, true); err != nil {
+	}, true, false); err != nil {
 		t.Fatal(err)
 	}
 	if err := scaffoldResource(appDir, "task", resourceOpts{
@@ -357,7 +395,7 @@ func TestPatchGoModReplace_CaisAppsLayout(t *testing.T) {
 	if err := scaffoldNewApp(appsDir, scaffoldData{
 		AppName:    "demo",
 		ModulePath: "github.com/puppe1990/demo",
-	}, true); err != nil {
+	}, true, false); err != nil {
 		t.Fatal(err)
 	}
 	mod, err := os.ReadFile(filepath.Join(appsDir, "go.mod"))
@@ -396,7 +434,7 @@ func TestPatchGoModReplace(t *testing.T) {
 	if err := scaffoldNewApp(appDir, scaffoldData{
 		AppName:    "demo",
 		ModulePath: "github.com/puppe1990/demo",
-	}, true); err != nil {
+	}, true, false); err != nil {
 		t.Fatal(err)
 	}
 	body, err := os.ReadFile(filepath.Join(appDir, "go.mod"))
@@ -415,7 +453,7 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 	if err := scaffoldNewApp(appDir, scaffoldData{
 		AppName:    "myapp",
 		ModulePath: "github.com/puppe1990/myapp",
-	}, false); err != nil {
+	}, false, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -431,5 +469,51 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
 			t.Errorf("missing %s: %v", path, err)
 		}
+	}
+}
+
+func TestCLI_NewBlankCreatesEmptyApp(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "empty")
+
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "empty",
+		ModulePath: "github.com/puppe1990/empty",
+	}, false, true); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, path := range []string{
+		"go.mod",
+		"cmd/server/main.go",
+		"internal/app/app.go",
+		"internal/app/routes.go",
+	} {
+		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
+			t.Errorf("missing %s: %v", path, err)
+		}
+	}
+
+	for _, path := range []string{
+		"internal/handlers/home.go",
+		"internal/handlers/contact.go",
+		"internal/handlers/dashboard.go",
+		"internal/models/contact.go",
+		"internal/store/migrations/001_contacts.sql",
+		"web/templates/pages/home.html",
+		"web/templates/pages/contact.html",
+		"web/templates/pages/dashboard.html",
+	} {
+		if _, err := os.Stat(filepath.Join(appDir, path)); err == nil {
+			t.Errorf("blank app should not have %s", path)
+		}
+	}
+
+	routesBody, err := os.ReadFile(filepath.Join(appDir, "internal/app/routes.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(routesBody), "home") {
+		t.Error("blank app routes should not reference home handler")
 	}
 }
