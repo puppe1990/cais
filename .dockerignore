@@ -1,0 +1,8 @@
+bin/
+tmp/
+data/
+node_modules/
+.git/
+.air/
+*.db
+.DS_Store
