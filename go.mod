@@ -1,4 +1,4 @@
-module github.com/matheuspuppe/cais
+module github.com/puppe1990/cais
 
 go 1.26.4
 

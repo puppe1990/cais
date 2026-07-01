@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/matheuspuppe/cais/internal/store"
-	"github.com/matheuspuppe/cais/pkg/cais"
+	"github.com/puppe1990/cais/internal/store"
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 func projectRoot(t *testing.T) string {

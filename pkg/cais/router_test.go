@@ -113,3 +113,68 @@ func TestRouter_PostRoute(t *testing.T) {
 		t.Errorf("status = %d, want %d", rr.Code, http.StatusCreated)
 	}
 }
+
+func TestRouter_Group_AppliesMiddleware(t *testing.T) {
+	r := NewRouter()
+	publicCalled := false
+	adminCalled := false
+
+	r.Get("/public", func(w http.ResponseWriter, req *http.Request) {
+		publicCalled = true
+		w.WriteHeader(http.StatusOK)
+	})
+
+	block := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			http.Error(w, "blocked", http.StatusForbidden)
+		})
+	}
+
+	r.Group(block, func(g *Router) {
+		g.Get("/admin", func(w http.ResponseWriter, req *http.Request) {
+			adminCalled = true
+		})
+	})
+
+	pub := httptest.NewRequest(http.MethodGet, "/public", nil)
+	pubRR := httptest.NewRecorder()
+	r.ServeHTTP(pubRR, pub)
+
+	if !publicCalled {
+		t.Error("public handler not called")
+	}
+	if pubRR.Code != http.StatusOK {
+		t.Errorf("public status = %d", pubRR.Code)
+	}
+
+	adm := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	admRR := httptest.NewRecorder()
+	r.ServeHTTP(admRR, adm)
+
+	if adminCalled {
+		t.Error("admin handler should not run behind block middleware")
+	}
+	if admRR.Code != http.StatusForbidden {
+		t.Errorf("admin status = %d, want 403", admRR.Code)
+	}
+}
+
+func TestRouter_Use_AppliesGlobally(t *testing.T) {
+	r := NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			w.Header().Set("X-Test", "1")
+			next.ServeHTTP(w, req)
+		})
+	})
+	r.Get("/ok", func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/ok", nil))
+
+	if rr.Header().Get("X-Test") != "1" {
+		t.Error("global middleware not applied")
+	}
+}

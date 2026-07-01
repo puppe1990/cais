@@ -7,9 +7,17 @@ import (
 	"strings"
 )
 
-func scaffoldResource(dir, name string) error {
+func scaffoldResource(dir, name string, opts resourceOpts) error {
+	fields, err := parseFields(opts.Fields)
+	if err != nil {
+		return err
+	}
+
 	data := dataForResource(name)
 	data.ModulePath = readModulePath(dir)
+	data.Fields = fields
+	data.Public = opts.Public
+	data.Seed = opts.Seed
 
 	migrationsDir := filepath.Join(dir, "internal/store/migrations")
 	if err := os.MkdirAll(migrationsDir, 0o755); err != nil {
@@ -28,12 +36,18 @@ func scaffoldResource(dir, name string) error {
 	data.MigrationNum = fmt.Sprintf("%03d", sqlCount+1)
 
 	files := map[string]string{
-		filepath.Join("internal/models", data.Snake+".go"):                                   tplResourceModel,
-		filepath.Join("internal/handlers", "admin_"+data.Plural+".go"):                       tplResourceAdminHandler,
-		filepath.Join("internal/handlers", "admin_"+data.Plural+"_test.go"):                  tplResourceAdminTest,
-		filepath.Join("web/templates/pages", "admin_"+data.Plural+".html"):                   tplResourceAdminIndex,
-		filepath.Join("web/templates/pages", "admin_"+data.Snake+"_form.html"):               tplResourceAdminForm,
-		filepath.Join("internal/store/migrations", data.MigrationNum+"_"+data.Plural+".sql"): tplResourceMigration,
+		filepath.Join("internal/models", data.Snake+".go"):                                   buildResourceModel(data),
+		filepath.Join("internal/handlers", "admin_"+data.Plural+".go"):                       buildResourceAdminHandler(data),
+		filepath.Join("internal/handlers", "admin_"+data.Plural+"_test.go"):                  buildResourceAdminTest(data),
+		filepath.Join("web/templates/pages", "admin_"+data.Plural+".html"):                   buildAdminIndexHTML(data),
+		filepath.Join("web/templates/pages", "admin_"+data.Snake+"_form.html"):               buildAdminFormHTML(data),
+		filepath.Join("internal/store/migrations", data.MigrationNum+"_"+data.Plural+".sql"): buildResourceMigration(data),
+	}
+
+	if data.Public {
+		files[filepath.Join("internal/handlers", data.Plural+".go")] = buildResourcePublicHandler(data)
+		files[filepath.Join("internal/handlers", data.Plural+"_test.go")] = buildResourcePublicTest(data)
+		files[filepath.Join("web/templates/pages", data.Plural+".html")] = buildPublicListHTML(data)
 	}
 
 	for path, content := range files {
@@ -41,7 +55,10 @@ func scaffoldResource(dir, name string) error {
 		if _, err := os.Stat(full); err == nil {
 			return fmt.Errorf("%s already exists", path)
 		}
-		if err := writeTemplate(full, content, data); err != nil {
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
 			return err
 		}
 		_, _ = fmt.Printf("  create %s\n", path)
@@ -53,7 +70,128 @@ func scaffoldResource(dir, name string) error {
 	if err := patchStoreTestForResource(dir, data); err != nil {
 		return err
 	}
-	return patchRoutesForResource(dir, data)
+	if err := patchRoutesForResource(dir, data); err != nil {
+		return err
+	}
+	if data.Seed {
+		return patchMainForSeed(dir, data)
+	}
+	return patchLayoutNav(dir, data)
+}
+
+func buildResourceAdminTest(data scaffoldData) string {
+	first := data.Fields[0]
+	formBody := first.Name + "=Demo"
+	if first.HTMLType == "url" {
+		formBody = "title=Demo&url=https%3A%2F%2Fexample.com"
+		for _, f := range data.Fields {
+			if f.Name == "title" {
+				formBody = f.Name + "=Demo"
+			}
+			if f.HTMLType == "url" {
+				formBody += "&" + f.Name + "=https%3A%2F%2Fexample.com"
+			}
+		}
+	}
+	return fmt.Sprintf(`package handlers
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"%s/internal/models"
+	"%s/pkg/cais/testutil"
+)
+
+func TestAdmin%sHandler_Index(t *testing.T) {
+	s := setupTestStore(t)
+	h := NewAdmin%sHandler(setupTestRenderer(t), s)
+	rr := httptest.NewRecorder()
+	h.Index(rr, httptest.NewRequest(http.MethodGet, "/admin/%s", nil))
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %%d", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "admin-%s") {
+		t.Error("missing admin table")
+	}
+}
+
+func TestAdmin%sHandler_Create(t *testing.T) {
+	s := setupTestStore(t)
+	h := NewAdmin%sHandler(setupTestRenderer(t), s)
+	req := httptest.NewRequest(http.MethodPost, "/admin/%s", strings.NewReader(%q))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	h.Create(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("status = %%d", rr.Code)
+	}
+}
+
+func TestAdmin%sHandler_Delete(t *testing.T) {
+	s := setupTestStore(t)
+	id, err := s.Insert%s(models.%s{%s: "x"%s})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := NewAdmin%sHandler(setupTestRenderer(t), s)
+	rr := httptest.NewRecorder()
+	h.Delete(rr, testutil.NewRequest(http.MethodPost, "/admin/%s/1/delete", testutil.PathValue("id", "1")), id)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("status = %%d", rr.Code)
+	}
+}
+`,
+		data.ModulePath, frameworkModule,
+		data.PluralPascal, data.PluralPascal, data.Plural, data.Plural,
+		data.PluralPascal, data.PluralPascal, data.Plural, formBody,
+		data.PluralPascal, data.Pascal, data.Pascal, first.Pascal, urlFieldTestExtra(data),
+		data.PluralPascal, data.Plural,
+	)
+}
+
+func urlFieldTestExtra(data scaffoldData) string {
+	for _, f := range data.Fields {
+		if f.HTMLType == "url" {
+			return fmt.Sprintf(", %s: \"https://example.com\"", f.Pascal)
+		}
+	}
+	return ""
+}
+
+func buildResourcePublicTest(data scaffoldData) string {
+	seedCall := ""
+	if data.Seed {
+		seedCall = `
+	if err := s.SeedDemo` + data.PluralPascal + `(); err != nil {
+		t.Fatal(err)
+	}`
+	}
+	return fmt.Sprintf(`package handlers
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+func Test%sHandler_List(t *testing.T) {
+	s := setupTestStore(t)
+	%s
+	h := New%sHandler(setupTestRenderer(t), s)
+	rr := httptest.NewRecorder()
+	h.List(rr, httptest.NewRequest(http.MethodGet, "/%s", nil))
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %%d", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "%s-list") {
+		t.Error("missing public list")
+	}
+}
+`, data.PluralPascal, seedCall, data.PluralPascal, data.Plural, data.Plural)
 }
 
 func patchStoreForResource(dir string, data scaffoldData) error {
@@ -79,15 +217,15 @@ func patchStoreForResource(dir string, data scaffoldData) error {
 		data.Pascal, data.Pascal,
 		data.PluralPascal, data.Pascal,
 	)
+	if data.Seed {
+		ifaceInsert += fmt.Sprintf("\n\tSeedDemo%s() error", data.PluralPascal)
+	}
 	content = strings.Replace(content, ifaceMarker, ifaceInsert+ifaceMarker, 1)
 
 	implMarker := "\nfunc (s *SQLiteStore) Close()"
-	if !strings.Contains(content, implMarker) {
-		return fmt.Errorf("could not patch store implementation")
-	}
-	implInsert, err := renderSnippet(tplResourceStoreMethods, data)
-	if err != nil {
-		return err
+	implInsert := buildResourceStoreMethods(data)
+	if data.Seed {
+		implInsert += buildResourceSeed(data)
 	}
 	content = strings.Replace(content, implMarker, implInsert+implMarker, 1)
 
@@ -119,10 +257,29 @@ func patchStoreTestForResource(dir string, data scaffoldData) error {
 		return nil
 	}
 
-	insert, err := renderSnippet(tplResourceStoreTest, data)
-	if err != nil {
-		return err
+	first := data.Fields[0]
+	insertArgs := first.Pascal + ": \"Sample\""
+	if first.HTMLType == "url" {
+		insertArgs = first.Pascal + ": \"Demo\", "
+		for _, f := range data.Fields {
+			if f.HTMLType == "url" {
+				insertArgs = buildInsertTestLiteral(data.Fields)
+			}
+		}
 	}
+	insert := fmt.Sprintf(`
+func TestStore_Insert%s(t *testing.T) {
+	s := newTestStore(t)
+	id, err := s.Insert%s(models.%s{%s})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id == 0 {
+		t.Error("id = 0")
+	}
+}
+`, data.Pascal, data.Pascal, data.Pascal, insertArgs)
+
 	if !strings.Contains(content, data.ModulePath+"/internal/models") {
 		content = strings.Replace(content,
 			`import "testing"`,
@@ -135,11 +292,19 @@ func patchStoreTestForResource(dir string, data scaffoldData) error {
 		)
 	}
 	content = strings.TrimRight(content, "\n") + "\n" + insert
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		return err
+	return os.WriteFile(path, []byte(content), 0o644)
+}
+
+func buildInsertTestLiteral(fields []FieldDef) string {
+	var parts []string
+	for _, f := range fields {
+		if f.HTMLType == "url" {
+			parts = append(parts, f.Pascal+`: "https://example.com"`)
+		} else if f.GoType != "bool" {
+			parts = append(parts, f.Pascal+`: "Sample"`)
+		}
 	}
-	_, _ = fmt.Println("  update internal/store/store_test.go")
-	return nil
+	return strings.Join(parts, ", ")
 }
 
 func patchRoutesForResource(dir string, data scaffoldData) error {
@@ -153,42 +318,97 @@ func patchRoutesForResource(dir string, data scaffoldData) error {
 		return nil
 	}
 
-	if !strings.Contains(content, "github.com/matheuspuppe/cais/pkg/cais/middleware") {
+	if !strings.Contains(content, frameworkModule+"/pkg/cais/middleware") {
 		content = strings.Replace(content,
-			`"github.com/matheuspuppe/cais/pkg/cais"`,
-			`"github.com/matheuspuppe/cais/pkg/cais"
-	"github.com/matheuspuppe/cais/pkg/cais/middleware"`,
+			`"`+frameworkModule+`/pkg/cais"`,
+			`"`+frameworkModule+`/pkg/cais"
+	"`+frameworkModule+`/pkg/cais/middleware"`,
 			1,
 		)
 	}
 
-	insert := fmt.Sprintf(`
-	admin%s := handlers.NewAdmin%sHandler(deps.Renderer, deps.Store)
-	r.Get("/admin/%s", middleware.Protect(admin%s.Index))
-	r.Get("/admin/%s/new", middleware.Protect(admin%s.New))
-	r.Post("/admin/%s", middleware.Protect(admin%s.Create))
-	r.Get("/admin/%s/{id}/edit", middleware.Protect(cais.IntParam("id", admin%s.Edit)))
-	r.Post("/admin/%s/{id}", middleware.Protect(cais.IntParam("id", admin%s.Update)))
-	r.Post("/admin/%s/{id}/delete", middleware.Protect(cais.IntParam("id", admin%s.Delete)))
-`,
-		data.PluralPascal, data.PluralPascal,
-		data.Plural, data.PluralCamel,
-		data.Plural, data.PluralCamel,
-		data.Plural, data.PluralCamel,
-		data.Plural, data.PluralCamel,
-		data.Plural, data.PluralCamel,
-		data.Plural, data.PluralCamel,
-	)
+	adminVar := "admin" + data.PluralPascal
+	var insert strings.Builder
+	if data.Public {
+		pubVar := lowerFirst(data.PluralPascal)
+		fmt.Fprintf(&insert, "\n\t%s := handlers.New%sHandler(deps.Renderer, deps.Store)\n", pubVar, data.PluralPascal)
+		fmt.Fprintf(&insert, "\tr.Get(\"/%s\", %s.List)\n", data.Plural, pubVar)
+	}
+	fmt.Fprintf(&insert, "\n\t%s := handlers.NewAdmin%sHandler(deps.Renderer, deps.Store)\n", adminVar, data.PluralPascal)
+	fmt.Fprintf(&insert, "\tr.Group(middleware.Protect, func(g *cais.Router) {\n")
+	fmt.Fprintf(&insert, "\t\tg.Get(\"/admin/%s\", %s.Index)\n", data.Plural, adminVar)
+	fmt.Fprintf(&insert, "\t\tg.Get(\"/admin/%s/new\", %s.New)\n", data.Plural, adminVar)
+	fmt.Fprintf(&insert, "\t\tg.Post(\"/admin/%s\", %s.Create)\n", data.Plural, adminVar)
+	fmt.Fprintf(&insert, "\t\tg.Get(\"/admin/%s/{id}/edit\", cais.IntParam(\"id\", %s.Edit))\n", data.Plural, adminVar)
+	fmt.Fprintf(&insert, "\t\tg.Post(\"/admin/%s/{id}\", cais.IntParam(\"id\", %s.Update))\n", data.Plural, adminVar)
+	fmt.Fprintf(&insert, "\t\tg.Post(\"/admin/%s/{id}/delete\", cais.IntParam(\"id\", %s.Delete))\n", data.Plural, adminVar)
+	fmt.Fprintf(&insert, "\t})\n")
 
 	marker := "\n}\n"
 	idx := strings.LastIndex(content, marker)
 	if idx == -1 {
 		return fmt.Errorf("could not patch routes.go")
 	}
-	content = content[:idx] + insert + content[idx:]
+	content = content[:idx] + insert.String() + content[idx:]
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return err
 	}
 	_, _ = fmt.Println("  update internal/app/routes.go")
-	return nil
+	return patchLayoutNav(dir, data)
+}
+
+func patchLayoutNav(dir string, data scaffoldData) error {
+	if !data.Public {
+		return nil
+	}
+	path := filepath.Join(dir, "web/templates/layouts/base.html")
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	content := string(body)
+	if strings.Contains(content, "/"+data.Plural+`"`) {
+		return nil
+	}
+	nav := fmt.Sprintf(`        <nav class="flex items-center gap-6 text-sm font-medium">
+          <a href="/%s" class="text-slate-600 hover:text-indigo-600 transition">%s</a>
+          <a href="/admin/%s" class="text-slate-600 hover:text-indigo-600 transition">Admin</a>
+        </nav>
+`, data.Plural, data.Title, data.Plural)
+	content = strings.Replace(content,
+		`</div>
+    </header>`,
+		nav+`      </div>
+    </header>`,
+		1,
+	)
+	return os.WriteFile(path, []byte(content), 0o644)
+}
+
+func patchMainForSeed(dir string, data scaffoldData) error {
+	path := filepath.Join(dir, "cmd/server/main.go")
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	content := string(body)
+	if strings.Contains(content, "SeedDemo"+data.PluralPascal) {
+		return patchLayoutNav(dir, data)
+	}
+	marker := "\n\tstaticDir, err := findWebDir(\"static\")"
+	seed := fmt.Sprintf(`
+	if err := s.SeedDemo%s(); err != nil {
+		_ = s.Close()
+		return nil, fmt.Errorf("seed: %%w", err)
+	}
+`, data.PluralPascal)
+	if !strings.Contains(content, marker) {
+		return fmt.Errorf("could not patch main.go for seed")
+	}
+	content = strings.Replace(content, marker, seed+marker, 1)
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		return err
+	}
+	_, _ = fmt.Println("  update cmd/server/main.go")
+	return patchLayoutNav(dir, data)
 }

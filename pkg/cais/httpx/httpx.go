@@ -3,7 +3,7 @@ package httpx
 import (
 	"net/http"
 
-	"github.com/matheuspuppe/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 // RenderPage renders a full HTML page with layout.

@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/matheuspuppe/cais/pkg/cais/pwa"
+	"github.com/puppe1990/cais/pkg/cais/pwa"
 )
 
 func main() {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/matheuspuppe/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 func projectRoot(t *testing.T) string {

@@ -81,7 +81,7 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := scaffoldResource(appDir, "product"); err != nil {
+	if err := scaffoldResource(appDir, "product", resourceOpts{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -112,8 +112,99 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 	if !strings.Contains(string(routesBody), "/admin/products") {
 		t.Error("routes.go missing /admin/products")
 	}
-	if !strings.Contains(string(routesBody), "middleware.Protect") {
-		t.Error("routes.go missing middleware.Protect")
+	if !strings.Contains(string(routesBody), "r.Group(middleware.Protect") {
+		t.Error("routes.go missing r.Group(middleware.Protect")
+	}
+}
+
+func TestScaffoldResource_PublicWithFields(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "links")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "links",
+		ModulePath: "github.com/puppe1990/links",
+	}, true); err != nil {
+		t.Fatal(err)
+	}
+
+	opts := resourceOpts{Fields: "title:string,url:url,notes:text?", Public: true, Seed: true}
+	if err := scaffoldResource(appDir, "bookmark", opts); err != nil {
+		t.Fatal(err)
+	}
+
+	model, err := os.ReadFile(filepath.Join(appDir, "internal/models/bookmark.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(model), "URL") {
+		t.Error("model missing URL field")
+	}
+
+	if _, err := os.Stat(filepath.Join(appDir, "internal/handlers/bookmarks.go")); err != nil {
+		t.Error("missing public handler")
+	}
+
+	routes, _ := os.ReadFile(filepath.Join(appDir, "internal/app/routes.go"))
+	if !strings.Contains(string(routes), `r.Get("/bookmarks"`) {
+		t.Error("routes missing public list")
+	}
+}
+
+func TestCLI_NewIncludesHTMXAndAir(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "full")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "full",
+		ModulePath: "github.com/puppe1990/full",
+	}, false); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{
+		"web/static/js/htmx.min.js",
+		".air.toml",
+	} {
+		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
+			t.Errorf("missing %s: %v", path, err)
+		}
+	}
+}
+
+func TestParseFields(t *testing.T) {
+	fields, err := parseFields("title:string,url:url,notes:text?")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fields) != 3 {
+		t.Fatalf("len = %d", len(fields))
+	}
+	if fields[2].Required {
+		t.Error("notes should be optional")
+	}
+}
+
+func TestPatchGoModReplace(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	parent := t.TempDir()
+	appDir := filepath.Join(parent, "demo")
+	caisDir := filepath.Join(parent, "Cais")
+	if err := os.MkdirAll(caisDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(caisDir, "go.mod"), []byte("module github.com/puppe1990/cais\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "demo",
+		ModulePath: "github.com/puppe1990/demo",
+	}, true); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(appDir, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "replace github.com/puppe1990/cais => ../Cais") {
+		t.Errorf("go.mod missing replace: %s", body)
 	}
 }
 

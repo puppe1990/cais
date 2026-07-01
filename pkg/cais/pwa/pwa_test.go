@@ -33,6 +33,7 @@ func TestWriteStatic(t *testing.T) {
 
 	for _, path := range []string{
 		"web/static/js/sw.js",
+		"web/static/js/htmx.min.js",
 		"web/static/offline.html",
 		"web/static/icons/icon.svg",
 		"web/static/icons/icon-192.png",

@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/matheuspuppe/cais/internal/models"
-	"github.com/matheuspuppe/cais/internal/store"
-	"github.com/matheuspuppe/cais/pkg/cais"
-	"github.com/matheuspuppe/cais/pkg/cais/httpx"
+	"github.com/puppe1990/cais/internal/models"
+	"github.com/puppe1990/cais/internal/store"
+	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/httpx"
 )
 
 type ContactHandler struct {

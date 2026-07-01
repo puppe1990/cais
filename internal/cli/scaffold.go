@@ -8,7 +8,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/matheuspuppe/cais/pkg/cais/pwa"
+	"github.com/puppe1990/cais/pkg/cais/pwa"
 )
 
 func scaffoldNewApp(dir string, data scaffoldData, minimal bool) error {
@@ -37,11 +37,13 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool) error {
 		"web/templates/partials/contact_errors.html":  tplPartialErrors,
 		"web/templates/partials/contact_success.html": tplPartialSuccess,
 		"web/static/js/.gitkeep":                      "",
+		"web/static/css/styles.css":                   tplEmptyCSS,
 		"input.css":                                   tplInputCSS,
 		"tailwind.config.js":                          tplTailwind,
 		"package.json":                                tplPackageJSON,
 		"Makefile":                                    tplMakefile,
 		".gitignore":                                  tplGitignore,
+		".air.toml":                                   tplAir,
 		"README.md":                                   tplREADME,
 	}
 
@@ -60,6 +62,7 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool) error {
 		files["internal/store/store.go"] = tplStoreMinimal
 		files["internal/store/store_test.go"] = tplStoreTestMinimal
 		files["web/templates/layouts/base.html"] = tplLayoutMinimal
+		files["web/templates/pages/home.html"] = tplPageHomeMinimal
 		files["internal/store/migrations/.gitkeep"] = ""
 	}
 
@@ -71,6 +74,10 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool) error {
 
 	if err := pwa.InstallTo(dir, data.AppName); err != nil {
 		return fmt.Errorf("pwa assets: %w", err)
+	}
+
+	if err := patchGoModReplace(dir); err != nil {
+		return err
 	}
 
 	if os.Getenv("CAIS_SKIP_TIDY") == "1" {
@@ -167,18 +174,6 @@ func patchRoutes(dir string, data scaffoldData) error {
 	}
 	_, _ = fmt.Println("  update internal/app/routes.go")
 	return nil
-}
-
-func renderSnippet(tpl string, data scaffoldData) (string, error) {
-	t, err := template.New("snippet").Parse(tpl)
-	if err != nil {
-		return "", err
-	}
-	var buf strings.Builder
-	if err := t.Execute(&buf, data); err != nil {
-		return "", err
-	}
-	return buf.String(), nil
 }
 
 func writeTemplate(path, tpl string, data scaffoldData) error {

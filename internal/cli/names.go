@@ -17,6 +17,9 @@ type scaffoldData struct {
 	PluralPascal string
 	PluralCamel  string
 	MigrationNum string
+	Fields       []FieldDef
+	Public       bool
+	Seed         bool
 }
 
 func dataForHandler(name string) scaffoldData {

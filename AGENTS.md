@@ -26,11 +26,13 @@ Before writing production code:
 | `pkg/cais/pwa/`      | Default PWA assets generator                            |
 | `cmd/server/`        | Entry point                                             |
 
-## Router path params
+## Router path params and groups
 
 ```go
 r.Get("/blog/{slug}", cais.StringParam("slug", blog.Show))
-r.Post("/admin/items/{id}", cais.IntParam("id", admin.Update))
+r.Group(middleware.Protect, func(g *cais.Router) {
+  g.Post("/admin/items/{id}", cais.IntParam("id", admin.Update))
+})
 ```
 
 ## Admin protection
@@ -60,10 +62,13 @@ Set `ADMIN_TOKEN` in production. Use `middleware.Protect` on admin routes — no
 ## CLI generators
 
 ```bash
-cais new myapp --minimal       # home only
-cais g resource product        # model + migration + admin CRUD
-cais g handler settings        # handler + page + route
+cais new myapp --minimal
+cais g resource bookmark --fields title:string,url:url,notes:text? --public
+cais doctor                    # verify htmx, air, go.mod
+cais g handler settings
 ```
+
+Field types: `string`, `text`, `url`, `bool`, `int`. Suffix `?` for optional.
 
 ## Commands
 

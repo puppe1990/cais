@@ -3,8 +3,8 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/matheuspuppe/cais/pkg/cais"
-	"github.com/matheuspuppe/cais/pkg/cais/httpx"
+	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/httpx"
 )
 
 type PageData struct {

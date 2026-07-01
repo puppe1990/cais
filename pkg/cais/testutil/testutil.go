@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/matheuspuppe/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 // ProjectRoot walks up from cwd to find go.mod.

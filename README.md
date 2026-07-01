@@ -30,16 +30,17 @@ make install-cli
 export PATH="$HOME/go/bin:$PATH"
 ```
 
-| Command                          | Description                                   |
-| -------------------------------- | --------------------------------------------- |
-| `cais new <app> [dir]`           | Scaffold a new app (home, contact, dashboard) |
-| `cais new <app> [dir] --minimal` | Slim app (home only)                          |
-| `cais g handler <name>`          | Handler + test + page + route                 |
-| `cais g resource <name>`         | Model + migration + store + admin CRUD        |
-| `cais g page <name>`             | Page template only                            |
-| `cais g migration <name>`        | SQL migration file                            |
-| `cais server`                    | Run `go run ./cmd/server`                     |
-| `cais test`                      | Run `go test ./...`                           |
+| Command                                                                         | Description                                   |
+| ------------------------------------------------------------------------------- | --------------------------------------------- |
+| `cais new <app> [dir]`                                                          | Scaffold a new app (home, contact, dashboard) |
+| `cais new <app> [dir] --minimal`                                                | Slim app (home only)                          |
+| `cais g handler <name>`                                                         | Handler + test + page + route                 |
+| `cais g resource <name> [--fields title:string,url:url] [--public] [--no-seed]` | Full CRUD + optional public page              |
+| `cais g page <name>`                                                            | Page template only                            |
+| `cais g migration <name>`                                                       | SQL migration file                            |
+| `cais doctor`                                                                   | Check htmx, air, go.mod, CSS                  |
+| `cais server`                                                                   | Run `go run ./cmd/server`                     |
+| `cais test`                                                                     | Run `go test ./...`                           |
 
 ```bash
 cais new dashboard ../dashboard
@@ -73,12 +74,14 @@ cmd/server/        → entry point
 
 ## Framework APIs
 
-**Router** — path params without manual closures:
+**Router** — path params and route groups:
 
 ```go
 r.Get("/blog/{slug}", cais.StringParam("slug", blog.Show))
-r.Get("/admin/items/{id}/edit", cais.IntParam("id", admin.Edit))
-r.Delete("/items/{id}", cais.IntParam("id", items.Delete))
+r.Group(middleware.Protect, func(g *cais.Router) {
+  g.Get("/admin/items", admin.Index)
+  g.Get("/admin/items/{id}/edit", cais.IntParam("id", admin.Edit))
+})
 ```
 
 **httpx** — less render boilerplate:

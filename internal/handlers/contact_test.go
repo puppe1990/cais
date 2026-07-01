@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/matheuspuppe/cais/internal/store"
+	"github.com/puppe1990/cais/internal/store"
 )
 
 func setupTestStore(t *testing.T) store.Store {

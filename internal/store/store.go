@@ -8,7 +8,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"github.com/matheuspuppe/cais/internal/models"
+	"github.com/puppe1990/cais/internal/models"
 )
 
 type Store interface {

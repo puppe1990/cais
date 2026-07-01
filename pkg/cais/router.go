@@ -25,20 +25,29 @@ func (r *Router) Use(mw Middleware) {
 	r.middlewares = append(r.middlewares, mw)
 }
 
+// Group registers routes with extra middleware (e.g. admin auth).
+func (r *Router) Group(mw Middleware, fn func(*Router)) {
+	child := &Router{
+		mux:         r.mux,
+		middlewares: append(append([]Middleware{}, r.middlewares...), mw),
+	}
+	fn(child)
+}
+
 func (r *Router) Get(pattern string, handler http.HandlerFunc) {
-	r.mux.HandleFunc("GET "+pattern, handler)
+	r.register("GET", pattern, handler)
 }
 
 func (r *Router) Post(pattern string, handler http.HandlerFunc) {
-	r.mux.HandleFunc("POST "+pattern, handler)
+	r.register("POST", pattern, handler)
 }
 
 func (r *Router) Delete(pattern string, handler http.HandlerFunc) {
-	r.mux.HandleFunc("DELETE "+pattern, handler)
+	r.register("DELETE", pattern, handler)
 }
 
 func (r *Router) Handle(pattern string, handler http.Handler) {
-	r.mux.Handle(pattern, handler)
+	r.mux.Handle(pattern, r.wrap(handler))
 }
 
 func (r *Router) Static(prefix, dir string) {
@@ -46,12 +55,20 @@ func (r *Router) Static(prefix, dir string) {
 	r.mux.Handle("GET "+prefix+"/", http.StripPrefix(prefix, fs))
 }
 
-func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	handler := http.Handler(r.mux)
+func (r *Router) register(method, pattern string, handler http.HandlerFunc) {
+	r.mux.Handle(method+" "+pattern, r.wrap(handler))
+}
+
+func (r *Router) wrap(handler http.Handler) http.Handler {
+	h := handler
 	for i := len(r.middlewares) - 1; i >= 0; i-- {
-		handler = r.middlewares[i](handler)
+		h = r.middlewares[i](h)
 	}
-	handler.ServeHTTP(w, req)
+	return h
+}
+
+func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	r.mux.ServeHTTP(w, req)
 }
 
 // IntParam wraps a handler that receives a parsed int64 path parameter.

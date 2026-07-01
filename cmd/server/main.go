@@ -7,10 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/matheuspuppe/cais/internal/app"
-	"github.com/matheuspuppe/cais/internal/store"
-	"github.com/matheuspuppe/cais/pkg/cais"
-	"github.com/matheuspuppe/cais/web"
+	"github.com/puppe1990/cais/internal/app"
+	"github.com/puppe1990/cais/internal/store"
+	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/web"
 )
 
 func main() {

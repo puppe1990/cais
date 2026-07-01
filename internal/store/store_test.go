@@ -3,7 +3,7 @@ package store
 import (
 	"testing"
 
-	"github.com/matheuspuppe/cais/internal/models"
+	"github.com/puppe1990/cais/internal/models"
 )
 
 func newTestStore(t *testing.T) *SQLiteStore {

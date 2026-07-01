@@ -37,6 +37,8 @@ func (c *CLI) Run(args []string) error {
 		return c.cmdServer()
 	case "test":
 		return c.cmdTest()
+	case "doctor":
+		return c.cmdDoctor()
 	case "help", "-h", "--help":
 		c.printHelp()
 		return nil
@@ -52,9 +54,10 @@ Usage:
   cais new <app> [dir]       Create a new app (default dir: ./<app>)
   cais new <app> [dir] --minimal   Slim app (home only)
   cais g handler <name>      Generate handler + test + page template
-  cais g resource <name>     Generate model + migration + admin CRUD
+  cais g resource <name> [--fields title:string,url:url] [--public] [--no-seed]
   cais g page <name>         Generate page template only
   cais g migration <name>    Generate SQL migration file
+  cais doctor                Check app setup (htmx, air, go.mod)
   cais server                Run the app (go run ./cmd/server)
   cais test                  Run tests (go test ./...)
   cais help                  Show this help
@@ -127,7 +130,7 @@ func (c *CLI) cmdGenerate(args []string) error {
 	}
 
 	if !isCaisApp(cwd) {
-		return fmt.Errorf("not a Cais app (missing go.mod with github.com/matheuspuppe/cais)")
+		return fmt.Errorf("not a Cais app (missing go.mod with github.com/puppe1990/cais)")
 	}
 
 	switch kind {
@@ -138,7 +141,11 @@ func (c *CLI) cmdGenerate(args []string) error {
 	case "migration":
 		return scaffoldMigration(cwd, name)
 	case "resource":
-		return scaffoldResource(cwd, name)
+		opts, err := parseResourceOpts(args[2:])
+		if err != nil {
+			return err
+		}
+		return scaffoldResource(cwd, name, opts)
 	default:
 		return fmt.Errorf("unknown generator %q (use handler, page, migration, or resource)", kind)
 	}
@@ -158,6 +165,17 @@ func (c *CLI) cmdServer() error {
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	return cmd.Run()
+}
+
+func (c *CLI) cmdDoctor() error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	if !isCaisApp(cwd) {
+		return fmt.Errorf("not a Cais app")
+	}
+	return runDoctor(c.Out, cwd)
 }
 
 func (c *CLI) cmdTest() error {
@@ -182,5 +200,5 @@ func isCaisApp(dir string) bool {
 	if err != nil {
 		return false
 	}
-	return strings.Contains(string(data), "github.com/matheuspuppe/cais")
+	return strings.Contains(string(data), "github.com/puppe1990/cais")
 }
