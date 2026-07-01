@@ -998,6 +998,7 @@ const tplLayout = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}
     <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
     <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />
     <script src="/static/js/htmx.min.js" defer></script>
+    <script src="/static/js/cais.js" defer></script>
   </head>
   <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
     <header class="bg-white border-b border-slate-200 p-4 shadow-sm">
@@ -1014,14 +1015,6 @@ const tplLayout = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}
     <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
       {{.AppName}} — powered by Cais
     </footer>
-    <script>
-      document.body.addEventListener("htmx:configRequest", function (evt) {
-        var el = document.querySelector('meta[name="csrf-token"]');
-        if (el && el.content) {
-          evt.detail.headers["X-CSRF-Token"] = el.content;
-        }
-      });
-    </script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/static/js/sw.js");
@@ -1049,7 +1042,14 @@ const tplPageHome = `{{"{{"}} define "title" {{"}}"}}Página Inicial{{"{{"}} end
 const tplPageContact = `{{"{{"}} define "title" {{"}}"}}Contato{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto mt-10">
   <h2 class="text-2xl font-bold text-slate-800 mb-4">Fale conosco</h2>
-  <form id="contact-form" hx-post="/contact" hx-target="#form-errors" hx-swap="innerHTML">
+  <form
+    id="contact-form"
+    hx-post="/contact"
+    hx-target="#form-errors"
+    hx-swap="innerHTML swap:150ms"
+    hx-indicator="#contact-spinner"
+    hx-disabled-elt="button[type='submit']"
+  >
     <div id="form-errors"></div>
     <label class="block mb-2 text-sm font-medium text-slate-700" for="name">Nome</label>
     <input
@@ -1071,7 +1071,8 @@ const tplPageContact = `{{"{{"}} define "title" {{"}}"}}Contato{{"{{"}} end {{"}
       class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition"
       type="submit"
     >
-      Enviar
+      <span class="htmx-indicator" id="contact-spinner">Enviando…</span>
+      <span class="htmx-request-hide">Enviar</span>
     </button>
   </form>
 </div>
@@ -1127,6 +1128,34 @@ const tplPartialSuccess = `{{"{{- "}}define "contact_success" -{{"}}"}}
 const tplInputCSS = `@tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .htmx-swapping {
+    opacity: 0;
+    transition: opacity 150ms ease-out;
+  }
+
+  .htmx-settling {
+    opacity: 1;
+    transition: opacity 150ms ease-in;
+  }
+
+  form.htmx-request button[type="submit"] {
+    @apply opacity-60 pointer-events-none;
+  }
+
+  .htmx-indicator {
+    @apply hidden;
+  }
+
+  .htmx-request .htmx-indicator {
+    @apply inline-block;
+  }
+
+  .htmx-request .htmx-request-hide {
+    @apply hidden;
+  }
+}
 `
 
 const tplTailwind = `/** @type {import('tailwindcss').Config} */
@@ -1626,6 +1655,7 @@ const tplLayoutMinimal = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} e
     <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
     <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />
     <script src="/static/js/htmx.min.js" defer></script>
+    <script src="/static/js/cais.js" defer></script>
   </head>
   <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
     <header class="bg-white border-b border-slate-200 p-4 shadow-sm">
@@ -1637,14 +1667,6 @@ const tplLayoutMinimal = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} e
     <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
       {{.AppName}} — powered by Cais
     </footer>
-    <script>
-      document.body.addEventListener("htmx:configRequest", function (evt) {
-        var el = document.querySelector('meta[name="csrf-token"]');
-        if (el && el.content) {
-          evt.detail.headers["X-CSRF-Token"] = el.content;
-        }
-      });
-    </script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/static/js/sw.js");
@@ -1894,6 +1916,7 @@ const tplLayoutBlank = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end
     <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
     <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />
     <script src="/static/js/htmx.min.js" defer></script>
+    <script src="/static/js/cais.js" defer></script>
   </head>
   <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
     <header class="bg-white border-b border-slate-200 p-4 shadow-sm">
@@ -1905,14 +1928,6 @@ const tplLayoutBlank = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end
     <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
       {{.AppName}} — powered by Cais
     </footer>
-    <script>
-      document.body.addEventListener("htmx:configRequest", function (evt) {
-        var el = document.querySelector('meta[name="csrf-token"]');
-        if (el && el.content) {
-          evt.detail.headers["X-CSRF-Token"] = el.content;
-        }
-      });
-    </script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/static/js/sw.js");

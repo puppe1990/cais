@@ -29,6 +29,7 @@
     <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
     <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />
     <script src="/static/js/htmx.min.js" defer></script>
+    <script src="/static/js/cais.js" defer></script>
   </head>
   <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
     <header class="bg-white border-b border-slate-200 p-4 shadow-sm">
@@ -40,14 +41,6 @@
     <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
       Rodando leve no Lightsail
     </footer>
-    <script>
-      document.body.addEventListener("htmx:configRequest", function (evt) {
-        var el = document.querySelector('meta[name="csrf-token"]');
-        if (el && el.content) {
-          evt.detail.headers["X-CSRF-Token"] = el.content;
-        }
-      });
-    </script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/static/js/sw.js");

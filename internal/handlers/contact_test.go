@@ -29,8 +29,19 @@ func TestContactHandler_Get_ReturnsForm(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
 	}
-	if !strings.Contains(rr.Body.String(), "contact-form") {
-		t.Errorf("body missing form, got: %s", rr.Body.String())
+	body := rr.Body.String()
+	if !strings.Contains(body, "contact-form") {
+		t.Errorf("body missing form, got: %s", body)
+	}
+	for _, needle := range []string{
+		"hx-indicator",
+		"hx-disabled-elt",
+		"swap:150ms",
+		"contact-spinner",
+	} {
+		if !strings.Contains(body, needle) {
+			t.Errorf("body missing %q", needle)
+		}
 	}
 }
 
