@@ -2,7 +2,7 @@
 {{ define "description" }}{{ if .AppName }}{{ .AppName }}{{ else }}Cais{{ end }} — powered by Cais{{ end }}
 {{ define "base" }}
 <!doctype html>
-<html lang="pt-BR">
+<html lang="{{ htmlLang }}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -14,7 +14,7 @@
     <meta property="og:title" content="{{ template "title" . }}" />
     <meta property="og:description" content="{{ template "description" . }}" />
     <meta property="og:image" content="{{ absURL .AppURL "/static/og.png" }}" />
-    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:locale" content="{{ ogLocale }}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="{{ template "title" . }}" />
     <meta name="twitter:description" content="{{ template "description" . }}" />
@@ -26,8 +26,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Cais" />
-    <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
-    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/static/icons/icon.png" />
+    <link rel="icon" href="/static/icons/icon.png" type="image/png" />
     <script src="/static/js/htmx.min.js" defer></script>
     <script src="/static/js/cais.js" defer></script>
   </head>
@@ -49,7 +49,7 @@
     {{ end }}
     <main class="flex-grow max-w-5xl w-full mx-auto p-6">{{ template "content" . }}</main>
     <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
-      Rodando leve no Lightsail
+      {{ t "layout.footer" }}
     </footer>
     <script>
       if ("serviceWorker" in navigator) {
