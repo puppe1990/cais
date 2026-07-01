@@ -435,6 +435,7 @@ import (
 %s	"strings"
 %s
 	"%s/pkg/cais"
+	"%s/pkg/cais/csrf"
 	"%s/pkg/cais/httpx"
 	"%s/internal/models"
 	"%s/internal/store"
@@ -446,12 +447,14 @@ type Admin%sHandler struct {
 }
 
 type Admin%sIndexData struct {
-	Items []models.%s
+	CSRFToken string
+	Items     []models.%s
 }
 
 type Admin%sFormData struct {
-	Item  models.%s
-	IsNew bool
+	CSRFToken string
+	Item      models.%s
+	IsNew     bool
 }
 
 func NewAdmin%sHandler(renderer *cais.Renderer, s store.Store) *Admin%sHandler {
@@ -464,11 +467,11 @@ func (h *Admin%sHandler) Index(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	httpx.RenderOrError(w, h.renderer, "base", "admin_%s", Admin%sIndexData{Items: items})
+	httpx.RenderOrError(w, h.renderer, "base", "admin_%s", Admin%sIndexData{CSRFToken: csrf.TokenFromRequest(r), Items: items})
 }
 
 func (h *Admin%sHandler) New(w http.ResponseWriter, r *http.Request) {
-	httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", Admin%sFormData{IsNew: true})
+	httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", Admin%sFormData{CSRFToken: csrf.TokenFromRequest(r), IsNew: true})
 }
 
 func (h *Admin%sHandler) Edit(w http.ResponseWriter, r *http.Request, id int64) {
@@ -477,7 +480,7 @@ func (h *Admin%sHandler) Edit(w http.ResponseWriter, r *http.Request, id int64) 
 		http.NotFound(w, r)
 		return
 	}
-	httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", Admin%sFormData{Item: item})
+	httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", Admin%sFormData{CSRFToken: csrf.TokenFromRequest(r), Item: item})
 }
 
 func (h *Admin%sHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -524,7 +527,7 @@ func (h *Admin%sHandler) parseForm(r *http.Request) (models.%s, error) {
 `,
 		boolImport(hasStrconv, "\t\"strconv\"\n"),
 		boolImport(hasValidate, "\t\""+frameworkModule+"/pkg/cais/validate\"\n"),
-		frameworkModule, frameworkModule, data.ModulePath, data.ModulePath,
+		frameworkModule, frameworkModule, frameworkModule, data.ModulePath, data.ModulePath,
 		data.PluralPascal,
 		data.PluralPascal, data.Pascal,
 		data.Pascal, data.Pascal,
@@ -582,6 +585,7 @@ import (
 	"net/http"
 
 	"%s/pkg/cais"
+	"%s/pkg/cais/csrf"
 	"%s/pkg/cais/httpx"
 	"%s/internal/models"
 	"%s/internal/store"
@@ -593,7 +597,8 @@ type %sHandler struct {
 }
 
 type %sListData struct {
-	Items []models.%s%s
+	CSRFToken string
+	Items     []models.%s%s
 }
 
 func New%sHandler(renderer *cais.Renderer, s store.Store) *%sHandler {
@@ -606,10 +611,10 @@ func (h *%sHandler) List(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}%s
-	httpx.RenderOrError(w, h.renderer, "base", "%s", %sListData{Items: items%s})
+	httpx.RenderOrError(w, h.renderer, "base", "%s", %sListData{CSRFToken: csrf.TokenFromRequest(r), Items: items%s})
 }
 %s`,
-		frameworkModule, frameworkModule, data.ModulePath, data.ModulePath,
+		frameworkModule, frameworkModule, frameworkModule, data.ModulePath, data.ModulePath,
 		data.PluralPascal,
 		data.PluralPascal, data.Pascal, listDataExtra,
 		data.PluralPascal, data.PluralPascal, data.PluralPascal,
@@ -680,6 +685,7 @@ func buildAdminFormHTML(data scaffoldData) string {
   <h1 class="text-3xl font-bold text-slate-900 mb-6">{{ if .IsNew }}New %s{{ else }}Edit %s{{ end }}</h1>
   <form class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4" method="post"
     action="{{ if .IsNew }}/admin/%s{{ else }}/admin/%s/{{ .Item.ID }}{{ end }}">
+    <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}" />
 %s
     <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition">
       {{ if .IsNew }}Create{{ else }}Save{{ end }}
@@ -714,6 +720,7 @@ func buildAdminIndexHTML(data scaffoldData) string {
           <td class="px-6 py-4 text-right space-x-3">
             <a href="/admin/%s/{{ .ID }}/edit" class="text-slate-600 hover:underline">Edit</a>
             <form class="inline" method="post" action="/admin/%s/{{ .ID }}/delete" onsubmit="return confirm('Delete?')">
+              <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}" />
               <button type="submit" class="text-red-600 hover:underline">Delete</button>
             </form>
           </td>

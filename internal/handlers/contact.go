@@ -26,7 +26,7 @@ func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site) *
 }
 
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
-	httpx.RenderOrError(w, h.renderer, "base", "contact", h.site)
+	httpx.RenderOrError(w, h.renderer, "base", "contact", meta.WithCSRF(h.site, r))
 }
 
 func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {

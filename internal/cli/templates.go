@@ -219,6 +219,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	}
 
 	r := cais.NewRouter()
+	r.Use(middleware.CSRF)
 	buf := devlog.Prepare(cfg.Env)
 	if buf != nil {
 		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))
@@ -323,7 +324,7 @@ func NewHomeHandler(renderer *cais.Renderer, site meta.Site) *HomeHandler {
 
 func (h *HomeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "home", PageData{Site: h.site, Nome: "{{.AppName}}"}); err != nil {
+	if err := h.renderer.Render(w, "base", "home", PageData{Site: meta.WithCSRF(h.site, r), Nome: "{{.AppName}}"}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -451,7 +452,7 @@ func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site) *
 
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "contact", h.site); err != nil {
+	if err := h.renderer.Render(w, "base", "contact", meta.WithCSRF(h.site, r)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -492,7 +493,7 @@ func (h *ContactHandler) renderContactResponse(w http.ResponseWriter, r *http.Re
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "contact", h.site); err != nil {
+	if err := h.renderer.Render(w, "base", "contact", meta.WithCSRF(h.site, r)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -607,7 +608,7 @@ func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := DashboardData{
-		Site:          h.site,
+		Site:          meta.WithCSRF(h.site, r),
 		TotalContacts: count,
 		Env:           cais.Load().Env,
 	}
@@ -921,6 +922,7 @@ const tplLayout = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    {{"{{"}} if .CSRFToken {{"}}"}}<meta name="csrf-token" content="{{"{{"}} .CSRFToken {{"}}"}}" />{{"{{"}} end {{"}}"}}
     <title>{{"{{"}} template "title" . {{"}}"}}</title>
     <meta name="description" content="{{"{{"}} template "description" . {{"}}"}}" />
     <meta property="og:type" content="website" />
@@ -959,6 +961,14 @@ const tplLayout = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}
     <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
       {{.AppName}} — powered by Cais
     </footer>
+    <script>
+      document.body.addEventListener("htmx:configRequest", function (evt) {
+        var el = document.querySelector('meta[name="csrf-token"]');
+        if (el && el.content) {
+          evt.detail.headers["X-CSRF-Token"] = el.content;
+        }
+      });
+    </script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/static/js/sw.js");
@@ -1343,6 +1353,7 @@ const tplLayoutMinimal = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} e
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    {{"{{"}} if .CSRFToken {{"}}"}}<meta name="csrf-token" content="{{"{{"}} .CSRFToken {{"}}"}}" />{{"{{"}} end {{"}}"}}
     <title>{{"{{"}} template "title" . {{"}}"}}</title>
     <meta name="description" content="{{"{{"}} template "description" . {{"}}"}}" />
     <meta property="og:type" content="website" />
@@ -1376,6 +1387,14 @@ const tplLayoutMinimal = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} e
     <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
       {{.AppName}} — powered by Cais
     </footer>
+    <script>
+      document.body.addEventListener("htmx:configRequest", function (evt) {
+        var el = document.querySelector('meta[name="csrf-token"]');
+        if (el && el.content) {
+          evt.detail.headers["X-CSRF-Token"] = el.content;
+        }
+      });
+    </script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/static/js/sw.js");
@@ -1524,6 +1543,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	}
 
 	r := cais.NewRouter()
+	r.Use(middleware.CSRF)
 	buf := devlog.Prepare(cfg.Env)
 	if buf != nil {
 		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))
@@ -1598,6 +1618,7 @@ const tplLayoutBlank = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    {{"{{"}} if .CSRFToken {{"}}"}}<meta name="csrf-token" content="{{"{{"}} .CSRFToken {{"}}"}}" />{{"{{"}} end {{"}}"}}
     <title>{{"{{"}} template "title" . {{"}}"}}</title>
     <meta name="description" content="{{"{{"}} template "description" . {{"}}"}}" />
     <meta property="og:type" content="website" />
@@ -1631,6 +1652,14 @@ const tplLayoutBlank = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end
     <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
       {{.AppName}} — powered by Cais
     </footer>
+    <script>
+      document.body.addEventListener("htmx:configRequest", function (evt) {
+        var el = document.querySelector('meta[name="csrf-token"]');
+        if (el && el.content) {
+          evt.detail.headers["X-CSRF-Token"] = el.content;
+        }
+      });
+    </script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/static/js/sw.js");

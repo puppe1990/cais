@@ -141,6 +141,13 @@ req := testutil.NewRequest(http.MethodGet, "/items/1", testutil.PathValue("id", 
 r.Get("/admin/products", middleware.Protect(admin.Index))
 ```
 
+**CSRF** — double-submit cookie on all mutations (enabled by default):
+
+```go
+r.Use(middleware.CSRF)
+site := meta.WithCSRF(meta.SiteFrom("MyApp", cfg.AppURL), r)
+```
+
 **Session auth** — cookie-based sessions for user-facing apps:
 
 ```go

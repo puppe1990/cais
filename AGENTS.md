@@ -23,6 +23,7 @@ Before writing production code:
 | `pkg/cais/devlog/`   | Development log buffer + `/logs` viewer                 |
 | `pkg/cais/sqllog/`   | SQL query logging wrapper (`Wrap`, `EnabledForEnv`)     |
 | `pkg/cais/console/`  | Interactive REPL (yaegi + SQL)                          |
+| `pkg/cais/csrf/`     | CSRF tokens (double-submit cookie)                      |
 | `pkg/cais/validate/` | Form field validation helpers                           |
 | `pkg/cais/testutil/` | Test helpers (`NewRenderer`, `NewRequest`, path values) |
 | `pkg/cais/pwa/`      | Default PWA assets generator (manifest, icons, og.png)  |
@@ -68,6 +69,13 @@ session.SignOut(w, store, r)
 4. Register the route in `internal/app/app.go`
 
 Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap so layouts render correct OG/Twitter tags (`absURL` template func).
+
+## CSRF
+
+- `middleware.CSRF` on the router (validates POST/PUT/DELETE/PATCH)
+- Pass `meta.WithCSRF(site, r)` in page data — layout renders `<meta name="csrf-token">` + HTMX header script
+- HTML forms: `<input type="hidden" name="csrf_token" value="{{ .CSRFToken }}" />`
+- Integration tests: GET page first (cookie), then POST with matching token
 
 ## HTMX interactions
 
