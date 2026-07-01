@@ -242,6 +242,9 @@ func patchStoreForResource(dir string, data scaffoldData) error {
 	if data.Seed {
 		implInsert += buildResourceSeed(data)
 	}
+	if hasBoolField(data.Fields) && !strings.Contains(content, "func boolInt(") {
+		implInsert = "\nfunc boolInt(v bool) int {\n\tif v {\n\t\treturn 1\n\t}\n\treturn 0\n}\n" + implInsert
+	}
 	content = strings.Replace(content, implMarker, implInsert+implMarker, 1)
 
 	if !strings.Contains(content, data.ModulePath+"/internal/models") {
@@ -364,7 +367,7 @@ func patchRoutesForResource(dir string, data scaffoldData) error {
 	if idx == -1 {
 		return fmt.Errorf("could not patch routes.go")
 	}
-	content = content[:idx] + insert.String() + content[idx:]
+	content = content[:idx+1] + insert.String() + content[idx+1:]
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return err
 	}

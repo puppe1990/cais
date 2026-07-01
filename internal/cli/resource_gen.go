@@ -60,13 +60,6 @@ func buildResourceStoreMethods(data scaffoldData) string {
 	sel := selectColumns(data.Fields)
 
 	return fmt.Sprintf(`
-func boolInt(v bool) int {
-	if v {
-		return 1
-	}
-	return 0
-}
-
 func (s *SQLiteStore) Insert%s(c models.%s) (int64, error) {
 	result, err := s.db.Exec(
 		"INSERT INTO %s (%s) VALUES (%s)",
@@ -378,6 +371,15 @@ func buildAdminParseForm(data scaffoldData) string {
 func needsStrconv(fields []FieldDef) bool {
 	for _, f := range fields {
 		if f.GoType == "int64" {
+			return true
+		}
+	}
+	return false
+}
+
+func hasBoolField(fields []FieldDef) bool {
+	for _, f := range fields {
+		if f.GoType == "bool" {
 			return true
 		}
 	}
