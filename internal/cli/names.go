@@ -6,24 +6,47 @@ import (
 )
 
 type scaffoldData struct {
-	AppName    string
-	ModulePath string
-	Handler    string
-	Pascal     string
-	Camel      string
-	Snake      string
-	Title      string
+	AppName      string
+	ModulePath   string
+	Handler      string
+	Pascal       string
+	Camel        string
+	Snake        string
+	Title        string
+	Plural       string
+	PluralPascal string
+	PluralCamel  string
+	MigrationNum string
 }
 
 func dataForHandler(name string) scaffoldData {
 	pascal := toPascal(name)
+	plural := toPlural(toSnake(name))
+	pluralPascal := toPascal(plural)
 	return scaffoldData{
-		Handler: name,
-		Pascal:  pascal,
-		Camel:   lowerFirst(pascal),
-		Snake:   toSnake(name),
-		Title:   toTitle(name),
+		Handler:      name,
+		Pascal:       pascal,
+		Camel:        lowerFirst(pascal),
+		Snake:        toSnake(name),
+		Title:        toTitle(name),
+		Plural:       plural,
+		PluralPascal: pluralPascal,
+		PluralCamel:  lowerFirst(pluralPascal),
 	}
+}
+
+func dataForResource(name string) scaffoldData {
+	return dataForHandler(name)
+}
+
+func toPlural(snake string) string {
+	if strings.HasSuffix(snake, "s") {
+		return snake
+	}
+	if strings.HasSuffix(snake, "y") && len(snake) > 1 {
+		return snake[:len(snake)-1] + "ies"
+	}
+	return snake + "s"
 }
 
 func toPascal(s string) string {

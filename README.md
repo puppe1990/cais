@@ -30,14 +30,16 @@ make install-cli
 export PATH="$HOME/go/bin:$PATH"
 ```
 
-| Command                   | Description                   |
-| ------------------------- | ----------------------------- |
-| `cais new <app> [dir]`    | Scaffold a new app            |
-| `cais g handler <name>`   | Handler + test + page + route |
-| `cais g page <name>`      | Page template only            |
-| `cais g migration <name>` | SQL migration file            |
-| `cais server`             | Run `go run ./cmd/server`     |
-| `cais test`               | Run `go test ./...`           |
+| Command                          | Description                                   |
+| -------------------------------- | --------------------------------------------- |
+| `cais new <app> [dir]`           | Scaffold a new app (home, contact, dashboard) |
+| `cais new <app> [dir] --minimal` | Slim app (home only)                          |
+| `cais g handler <name>`          | Handler + test + page + route                 |
+| `cais g resource <name>`         | Model + migration + store + admin CRUD        |
+| `cais g page <name>`             | Page template only                            |
+| `cais g migration <name>`        | SQL migration file                            |
+| `cais server`                    | Run `go run ./cmd/server`                     |
+| `cais test`                      | Run `go test ./...`                           |
 
 ```bash
 cais new dashboard ../dashboard
@@ -69,13 +71,45 @@ web/static/        → CSS + JS
 cmd/server/        → entry point
 ```
 
+## Framework APIs
+
+**Router** — path params without manual closures:
+
+```go
+r.Get("/blog/{slug}", cais.StringParam("slug", blog.Show))
+r.Get("/admin/items/{id}/edit", cais.IntParam("id", admin.Edit))
+r.Delete("/items/{id}", cais.IntParam("id", items.Delete))
+```
+
+**httpx** — less render boilerplate:
+
+```go
+httpx.RenderOrError(w, renderer, "base", "home", data)
+httpx.RenderPartial(w, renderer, "errors", data)
+httpx.SeeOther(w, r, "/admin")
+```
+
+**testutil** — shared test helpers for scaffolded apps:
+
+```go
+renderer := testutil.NewRenderer(t)
+req := testutil.NewRequest(http.MethodGet, "/items/1", testutil.PathValue("id", "1"))
+```
+
+**Admin auth** — opt-in via `ADMIN_TOKEN` env (no-op when unset):
+
+```go
+r.Get("/admin/products", middleware.Protect(admin.Index))
+```
+
 ## Environment variables
 
-| Variable  | Default         | Description      |
-| --------- | --------------- | ---------------- |
-| `PORT`    | `:8080`         | Server port      |
-| `DB_PATH` | `./data/app.db` | SQLite file path |
-| `ENV`     | `development`   | Environment      |
+| Variable      | Default         | Description                         |
+| ------------- | --------------- | ----------------------------------- |
+| `PORT`        | `:8080`         | Server port                         |
+| `DB_PATH`     | `./data/app.db` | SQLite file path                    |
+| `ENV`         | `development`   | Environment                         |
+| `ADMIN_TOKEN` | _(empty)_       | Bearer/query token for admin routes |
 
 ## Deploy (Lightsail)
 

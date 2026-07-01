@@ -7,6 +7,7 @@ import (
 	"github.com/matheuspuppe/cais/internal/models"
 	"github.com/matheuspuppe/cais/internal/store"
 	"github.com/matheuspuppe/cais/pkg/cais"
+	"github.com/matheuspuppe/cais/pkg/cais/httpx"
 )
 
 type ContactHandler struct {
@@ -23,10 +24,7 @@ func NewContactHandler(renderer *cais.Renderer, s store.Store) *ContactHandler {
 }
 
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "contact", nil); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	httpx.RenderOrError(w, h.renderer, "base", "contact", nil)
 }
 
 func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
@@ -57,15 +55,11 @@ func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
 func (h *ContactHandler) renderContactResponse(w http.ResponseWriter, r *http.Request, status int, tmpl string, data any) {
 	w.WriteHeader(status)
 	if cais.IsHTMX(r) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := h.renderer.RenderPartial(w, tmpl, data); err != nil {
+		if err := httpx.RenderPartial(w, h.renderer, tmpl, data); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "contact", nil); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	httpx.RenderOrError(w, h.renderer, "base", "contact", nil)
 }

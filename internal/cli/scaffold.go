@@ -11,7 +11,7 @@ import (
 	"github.com/matheuspuppe/cais/pkg/cais/pwa"
 )
 
-func scaffoldNewApp(dir string, data scaffoldData) error {
+func scaffoldNewApp(dir string, data scaffoldData, minimal bool) error {
 	files := map[string]string{
 		"go.mod":                                      tplGoMod,
 		"cmd/server/main.go":                          tplMain,
@@ -43,6 +43,24 @@ func scaffoldNewApp(dir string, data scaffoldData) error {
 		"Makefile":                                    tplMakefile,
 		".gitignore":                                  tplGitignore,
 		"README.md":                                   tplREADME,
+	}
+
+	if minimal {
+		delete(files, "internal/handlers/contact.go")
+		delete(files, "internal/handlers/contact_test.go")
+		delete(files, "internal/handlers/dashboard.go")
+		delete(files, "internal/handlers/dashboard_test.go")
+		delete(files, "internal/models/contact.go")
+		delete(files, "internal/store/migrations/001_contacts.sql")
+		delete(files, "web/templates/pages/contact.html")
+		delete(files, "web/templates/pages/dashboard.html")
+		delete(files, "web/templates/partials/contact_errors.html")
+		delete(files, "web/templates/partials/contact_success.html")
+		files["internal/app/routes.go"] = tplRoutesMinimal
+		files["internal/store/store.go"] = tplStoreMinimal
+		files["internal/store/store_test.go"] = tplStoreTestMinimal
+		files["web/templates/layouts/base.html"] = tplLayoutMinimal
+		files["internal/store/migrations/.gitkeep"] = ""
 	}
 
 	for path, content := range files {
@@ -149,6 +167,18 @@ func patchRoutes(dir string, data scaffoldData) error {
 	}
 	_, _ = fmt.Println("  update internal/app/routes.go")
 	return nil
+}
+
+func renderSnippet(tpl string, data scaffoldData) (string, error) {
+	t, err := template.New("snippet").Parse(tpl)
+	if err != nil {
+		return "", err
+	}
+	var buf strings.Builder
+	if err := t.Execute(&buf, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 func writeTemplate(path, tpl string, data scaffoldData) error {

@@ -5,11 +5,9 @@ const tplGoMod = `module {{.ModulePath}}
 go 1.26
 
 require (
-	github.com/matheuspuppe/cais v0.0.0
+	github.com/matheuspuppe/cais v0.1.0
 	modernc.org/sqlite v1.53.0
 )
-
-replace github.com/matheuspuppe/cais => ../Cais
 `
 
 const tplMain = `package main
@@ -355,19 +353,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"{{.ModulePath}}/internal/store"
 )
-
-func setupTestStore(t *testing.T) store.Store {
-	t.Helper()
-	s, err := store.NewSQLiteStore(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = s.Close() })
-	return s
-}
 
 func TestContactHandler_Get_ReturnsForm(t *testing.T) {
 	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t))
@@ -514,39 +500,26 @@ func TestDashboardHandler_ContainsDashboard(t *testing.T) {
 const tplHelpersTest = `package handlers
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
+	"{{.ModulePath}}/internal/store"
 	"github.com/matheuspuppe/cais/pkg/cais"
+	"github.com/matheuspuppe/cais/pkg/cais/testutil"
 )
-
-func projectRoot(t *testing.T) string {
-	t.Helper()
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for {
-		if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
-			return wd
-		}
-		parent := filepath.Dir(wd)
-		if parent == wd {
-			t.Fatal("go.mod not found")
-		}
-		wd = parent
-	}
-}
 
 func setupTestRenderer(t *testing.T) *cais.Renderer {
 	t.Helper()
-	templatesDir := filepath.Join(projectRoot(t), "web", "templates")
-	r, err := cais.NewRendererFromDir(templatesDir)
+	return testutil.NewRenderer(t)
+}
+
+func setupTestStore(t *testing.T) store.Store {
+	t.Helper()
+	s, err := store.NewSQLiteStore(":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
-	return r
+	t.Cleanup(func() { _ = s.Close() })
+	return s
 }
 `
 
@@ -799,7 +772,7 @@ const tplLayout = `{{"{{"}} define "base" {{"}}"}}
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{"{{"}} block "title" . {{"}}"}}}{{.AppName}}{{"{{"}} end {{"}}"}}</title>
+    <title>{{"{{"}} block "title" . {{"}}"}}{{.AppName}}{{"{{"}} end {{"}}"}}</title>
     <link rel="stylesheet" href="/static/css/styles.css" />
     <link rel="manifest" href="/static/manifest.webmanifest" />
     <meta name="theme-color" content="#4f46e5" />
@@ -1009,6 +982,7 @@ const tplREADME = "# {{.AppName}}\n\n" +
 	"This app was scaffolded with the Cais CLI. Useful commands:\n\n" +
 	"```bash\n" +
 	"cais g handler <name>      # handler + test + page template\n" +
+	"cais g resource <name>     # model + migration + admin CRUD\n" +
 	"cais g page <name>         # page template only\n" +
 	"cais g migration <name>    # SQL migration file\n" +
 	"cais server                # go run ./cmd/server\n" +
@@ -1094,6 +1068,452 @@ const tplGenericPage = `{{"{{"}} define "title" {{"}}"}}{{.Title}}{{"{{"}} end {
 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto mt-10">
   <h2 class="text-2xl font-bold text-slate-800 mb-2">{{.Title}}</h2>
   <p class="text-slate-600">{{.Title}} page — customize this template.</p>
+</div>
+{{"{{"}} end {{"}}"}}
+`
+
+const tplRoutesMinimal = `package app
+
+import (
+	"{{.ModulePath}}/internal/handlers"
+	"github.com/matheuspuppe/cais/pkg/cais"
+)
+
+func registerRoutes(r *cais.Router, deps Deps) {
+	home := handlers.NewHomeHandler(deps.Renderer)
+	r.Get("/", home.ServeHTTP)
+}
+`
+
+const tplStoreMinimal = `package store
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+	"path/filepath"
+
+	_ "modernc.org/sqlite"
+)
+
+type Store interface {
+	Close() error
+}
+
+type SQLiteStore struct {
+	db *sql.DB
+}
+
+func NewSQLiteStore(dsn string) (*SQLiteStore, error) {
+	if dsn != ":memory:" {
+		dir := filepath.Dir(dsn)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return nil, fmt.Errorf("create db dir: %w", err)
+		}
+	}
+
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("open db: %w", err)
+	}
+
+	if err := applyMigrations(db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
+	return &SQLiteStore{db: db}, nil
+}
+
+func (s *SQLiteStore) Close() error {
+	return s.db.Close()
+}
+`
+
+const tplStoreTestMinimal = `package store
+
+import "testing"
+
+func newTestStore(t *testing.T) *SQLiteStore {
+	t.Helper()
+	s, err := NewSQLiteStore(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	return s
+}
+
+func TestStore_Migrations(t *testing.T) {
+	_ = newTestStore(t)
+}
+`
+
+const tplLayoutMinimal = `{{"{{"}} define "base" {{"}}"}}
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{"{{"}} block "title" . {{"}}"}}{{.AppName}}{{"{{"}} end {{"}}"}}</title>
+    <link rel="stylesheet" href="/static/css/styles.css" />
+    <link rel="manifest" href="/static/manifest.webmanifest" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="{{.AppName}}" />
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
+    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />
+    <script src="/static/js/htmx.min.js" defer></script>
+  </head>
+  <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+    <header class="bg-white border-b border-slate-200 p-4 shadow-sm">
+      <div class="max-w-5xl mx-auto flex justify-between items-center">
+        <a href="/" class="font-bold text-xl text-indigo-600 hover:text-indigo-700 transition">{{.AppName}}</a>
+      </div>
+    </header>
+    <main class="flex-grow max-w-5xl w-full mx-auto p-6">{{"{{"}} template "content" . {{"}}"}}</main>
+    <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
+      {{.AppName}} — powered by Cais
+    </footer>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/static/js/sw.js");
+      }
+    </script>
+  </body>
+</html>
+{{"{{"}} end {{"}}"}}
+`
+
+const tplResourceModel = `package models
+
+import "time"
+
+type {{.Pascal}} struct {
+	ID        int64
+	Name      string
+	CreatedAt time.Time
+}
+`
+
+const tplResourceMigration = `CREATE TABLE IF NOT EXISTS {{.Plural}} (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+`
+
+const tplResourceStoreMethods = `
+func (s *SQLiteStore) Insert{{.Pascal}}(c models.{{.Pascal}}) (int64, error) {
+	result, err := s.db.Exec("INSERT INTO {{.Plural}} (name) VALUES (?)", c.Name)
+	if err != nil {
+		return 0, fmt.Errorf("insert {{.Snake}}: %w", err)
+	}
+	return result.LastInsertId()
+}
+
+func (s *SQLiteStore) Update{{.Pascal}}(c models.{{.Pascal}}) error {
+	_, err := s.db.Exec("UPDATE {{.Plural}} SET name = ? WHERE id = ?", c.Name, c.ID)
+	if err != nil {
+		return fmt.Errorf("update {{.Snake}}: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStore) Delete{{.Pascal}}(id int64) error {
+	_, err := s.db.Exec("DELETE FROM {{.Plural}} WHERE id = ?", id)
+	if err != nil {
+		return fmt.Errorf("delete {{.Snake}}: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStore) Find{{.Pascal}}ByID(id int64) (models.{{.Pascal}}, error) {
+	var c models.{{.Pascal}}
+	err := s.db.QueryRow(
+		"SELECT id, name, created_at FROM {{.Plural}} WHERE id = ?",
+		id,
+	).Scan(&c.ID, &c.Name, &c.CreatedAt)
+	if err != nil {
+		return models.{{.Pascal}}{}, fmt.Errorf("find {{.Snake}}: %w", err)
+	}
+	return c, nil
+}
+
+func (s *SQLiteStore) ListAll{{.PluralPascal}}() ([]models.{{.Pascal}}, error) {
+	rows, err := s.db.Query("SELECT id, name, created_at FROM {{.Plural}} ORDER BY id DESC")
+	if err != nil {
+		return nil, fmt.Errorf("list {{.Plural}}: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var items []models.{{.Pascal}}
+	for rows.Next() {
+		var c models.{{.Pascal}}
+		if err := rows.Scan(&c.ID, &c.Name, &c.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan {{.Snake}}: %w", err)
+		}
+		items = append(items, c)
+	}
+	return items, rows.Err()
+}
+`
+
+const tplResourceStoreTest = `
+func TestStore_Insert{{.Pascal}}(t *testing.T) {
+	s := newTestStore(t)
+	id, err := s.Insert{{.Pascal}}(models.{{.Pascal}}{Name: "Sample"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id == 0 {
+		t.Error("id = 0, want non-zero")
+	}
+}
+
+func TestStore_ListAll{{.PluralPascal}}(t *testing.T) {
+	s := newTestStore(t)
+	items, err := s.ListAll{{.PluralPascal}}()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 0 {
+		t.Errorf("len = %d, want 0", len(items))
+	}
+}
+`
+
+const tplResourceAdminHandler = `package handlers
+
+import (
+	"fmt"
+	"net/http"
+	"strings"
+
+	"{{.ModulePath}}/internal/models"
+	"{{.ModulePath}}/internal/store"
+	"github.com/matheuspuppe/cais/pkg/cais"
+	"github.com/matheuspuppe/cais/pkg/cais/httpx"
+)
+
+type Admin{{.PluralPascal}}Handler struct {
+	renderer *cais.Renderer
+	store    store.Store
+}
+
+type Admin{{.PluralPascal}}IndexData struct {
+	Items []models.{{.Pascal}}
+}
+
+type Admin{{.Pascal}}FormData struct {
+	Item  models.{{.Pascal}}
+	IsNew bool
+}
+
+func NewAdmin{{.PluralPascal}}Handler(renderer *cais.Renderer, s store.Store) *Admin{{.PluralPascal}}Handler {
+	return &Admin{{.PluralPascal}}Handler{renderer: renderer, store: s}
+}
+
+func (h *Admin{{.PluralPascal}}Handler) Index(w http.ResponseWriter, r *http.Request) {
+	items, err := h.store.ListAll{{.PluralPascal}}()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	httpx.RenderOrError(w, h.renderer, "base", "admin_{{.Plural}}", Admin{{.PluralPascal}}IndexData{Items: items})
+}
+
+func (h *Admin{{.PluralPascal}}Handler) New(w http.ResponseWriter, r *http.Request) {
+	httpx.RenderOrError(w, h.renderer, "base", "admin_{{.Snake}}_form", Admin{{.Pascal}}FormData{IsNew: true})
+}
+
+func (h *Admin{{.PluralPascal}}Handler) Edit(w http.ResponseWriter, r *http.Request, id int64) {
+	item, err := h.store.Find{{.Pascal}}ByID(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	httpx.RenderOrError(w, h.renderer, "base", "admin_{{.Snake}}_form", Admin{{.Pascal}}FormData{Item: item})
+}
+
+func (h *Admin{{.PluralPascal}}Handler) Create(w http.ResponseWriter, r *http.Request) {
+	item, err := h.parseForm(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if _, err := h.store.Insert{{.Pascal}}(item); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	httpx.SeeOther(w, r, "/admin/{{.Plural}}")
+}
+
+func (h *Admin{{.PluralPascal}}Handler) Update(w http.ResponseWriter, r *http.Request, id int64) {
+	item, err := h.parseForm(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	item.ID = id
+	if err := h.store.Update{{.Pascal}}(item); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	httpx.SeeOther(w, r, "/admin/{{.Plural}}")
+}
+
+func (h *Admin{{.PluralPascal}}Handler) Delete(w http.ResponseWriter, r *http.Request, id int64) {
+	if err := h.store.Delete{{.Pascal}}(id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	httpx.SeeOther(w, r, "/admin/{{.Plural}}")
+}
+
+func (h *Admin{{.PluralPascal}}Handler) parseForm(r *http.Request) (models.{{.Pascal}}, error) {
+	if err := r.ParseForm(); err != nil {
+		return models.{{.Pascal}}{}, err
+	}
+	name := strings.TrimSpace(r.FormValue("name"))
+	if name == "" {
+		return models.{{.Pascal}}{}, fmt.Errorf("name is required")
+	}
+	return models.{{.Pascal}}{Name: name}, nil
+}
+`
+
+const tplResourceAdminTest = `package handlers
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"{{.ModulePath}}/internal/models"
+	"github.com/matheuspuppe/cais/pkg/cais/testutil"
+)
+
+func TestAdmin{{.PluralPascal}}Handler_Index(t *testing.T) {
+	s := setupTestStore(t)
+	h := NewAdmin{{.PluralPascal}}Handler(setupTestRenderer(t), s)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/{{.Plural}}", nil)
+	rr := httptest.NewRecorder()
+	h.Index(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "admin-{{.Plural}}") {
+		t.Error("missing admin table")
+	}
+}
+
+func TestAdmin{{.PluralPascal}}Handler_Create(t *testing.T) {
+	s := setupTestStore(t)
+	h := NewAdmin{{.PluralPascal}}Handler(setupTestRenderer(t), s)
+
+	req := httptest.NewRequest(http.MethodPost, "/admin/{{.Plural}}", strings.NewReader("name=Widget"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	h.Create(rr, req)
+
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("status = %d, want 303", rr.Code)
+	}
+
+	items, err := s.ListAll{{.PluralPascal}}()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 || items[0].Name != "Widget" {
+		t.Errorf("items = %+v, want Widget", items)
+	}
+}
+
+func TestAdmin{{.PluralPascal}}Handler_Delete(t *testing.T) {
+	s := setupTestStore(t)
+	id, err := s.Insert{{.Pascal}}(models.{{.Pascal}}{Name: "Remove me"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := NewAdmin{{.PluralPascal}}Handler(setupTestRenderer(t), s)
+
+	req := testutil.NewRequest(http.MethodPost, "/admin/{{.Plural}}/1/delete", testutil.PathValue("id", "1"))
+	rr := httptest.NewRecorder()
+	h.Delete(rr, req, id)
+
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("status = %d", rr.Code)
+	}
+}
+`
+
+const tplResourceAdminIndex = `{{"{{"}} define "title" {{"}}"}}Admin — {{.Title}}{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
+<div class="max-w-3xl mx-auto">
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-bold text-slate-900">{{.Title}}</h1>
+      <p class="text-slate-600 mt-1">Manage {{.Plural}}</p>
+    </div>
+    <a href="/admin/{{.Plural}}/new" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition shadow-sm">
+      + New
+    </a>
+  </div>
+
+  <div id="admin-{{.Plural}}" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 border-b border-slate-200">
+        <tr>
+          <th class="px-6 py-3 font-semibold text-slate-700">Name</th>
+          <th class="px-6 py-3 font-semibold text-slate-700 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {{"{{"}} range .Items {{"}}"}}
+        <tr class="hover:bg-slate-50">
+          <td class="px-6 py-4 font-medium text-slate-800">{{"{{"}} .Name {{"}}"}}</td>
+          <td class="px-6 py-4 text-right space-x-3">
+            <a href="/admin/{{.Plural}}/{{"{{"}} .ID {{"}}"}}/edit" class="text-slate-600 hover:underline">Edit</a>
+            <form class="inline" method="post" action="/admin/{{.Plural}}/{{"{{"}} .ID {{"}}"}}/delete" onsubmit="return confirm('Delete?')">
+              <button type="submit" class="text-red-600 hover:underline">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {{"{{"}} else {{"}}"}}
+        <tr>
+          <td colspan="2" class="px-6 py-8 text-center text-slate-500">No {{.Plural}} yet.</td>
+        </tr>
+        {{"{{"}} end {{"}}"}}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{"{{"}} end {{"}}"}}
+`
+
+const tplResourceAdminForm = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} if .IsNew {{"}}"}}New {{.Title}}{{"{{"}} else {{"}}"}}Edit {{.Title}}{{"{{"}} end {{"}}"}}{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
+<div class="max-w-md mx-auto">
+  <a href="/admin/{{.Plural}}" class="text-sm text-indigo-600 hover:underline mb-4 inline-block">← Back</a>
+  <h1 class="text-3xl font-bold text-slate-900 mb-6">{{"{{"}} if .IsNew {{"}}"}}New {{.Title}}{{"{{"}} else {{"}}"}}Edit {{.Title}}{{"{{"}} end {{"}}"}}</h1>
+
+  <form
+    class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4"
+    method="post"
+    action="{{"{{"}} if .IsNew {{"}}"}}/admin/{{.Plural}}{{"{{"}} else {{"}}"}}/admin/{{.Plural}}/{{"{{"}} .Item.ID {{"}}"}}{{"{{"}} end {{"}}"}}"
+  >
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="name">Name</label>
+      <input class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" type="text" id="name" name="name" value="{{"{{"}} .Item.Name {{"}}"}}" required />
+    </div>
+    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition">
+      {{"{{"}} if .IsNew {{"}}"}}Create{{"{{"}} else {{"}}"}}Save{{"{{"}} end {{"}}"}}
+    </button>
+  </form>
 </div>
 {{"{{"}} end {{"}}"}}
 `

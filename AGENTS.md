@@ -13,16 +13,29 @@ Before writing production code:
 
 ## Structure
 
-| Directory            | Responsibility                                      |
-| -------------------- | --------------------------------------------------- |
-| `pkg/cais/`          | Framework: config, router, render, htmx, middleware |
-| `internal/app/`      | Bootstrap: route and dependency wiring              |
-| `internal/handlers/` | HTTP handlers                                       |
-| `internal/store/`    | SQLite persistence                                  |
-| `web/templates/`     | HTML templates (layouts, pages, partials)           |
-| `web/static/`        | Tailwind CSS, HTMX, PWA (manifest, sw.js, icons)    |
-| `pkg/cais/pwa/`      | Default PWA assets generator                        |
-| `cmd/server/`        | Entry point                                         |
+| Directory            | Responsibility                                          |
+| -------------------- | ------------------------------------------------------- |
+| `pkg/cais/`          | Framework: config, router, render, htmx, middleware     |
+| `pkg/cais/httpx/`    | Render and redirect helpers for handlers                |
+| `pkg/cais/testutil/` | Test helpers (`NewRenderer`, `NewRequest`, path values) |
+| `internal/app/`      | Bootstrap: route and dependency wiring                  |
+| `internal/handlers/` | HTTP handlers                                           |
+| `internal/store/`    | SQLite persistence                                      |
+| `web/templates/`     | HTML templates (layouts, pages, partials)               |
+| `web/static/`        | Tailwind CSS, HTMX, PWA (manifest, sw.js, icons)        |
+| `pkg/cais/pwa/`      | Default PWA assets generator                            |
+| `cmd/server/`        | Entry point                                             |
+
+## Router path params
+
+```go
+r.Get("/blog/{slug}", cais.StringParam("slug", blog.Show))
+r.Post("/admin/items/{id}", cais.IntParam("id", admin.Update))
+```
+
+## Admin protection
+
+Set `ADMIN_TOKEN` in production. Use `middleware.Protect` on admin routes — no-op when env is empty.
 
 ## New page
 
@@ -43,6 +56,14 @@ Before writing production code:
 1. Store test with `":memory:"` before the migration
 2. SQL in `internal/store/migrations/NNN_name.sql`
 3. Methods on the `store.Store` interface
+
+## CLI generators
+
+```bash
+cais new myapp --minimal       # home only
+cais g resource product        # model + migration + admin CRUD
+cais g handler settings        # handler + page + route
+```
 
 ## Commands
 

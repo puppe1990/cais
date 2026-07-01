@@ -50,7 +50,9 @@ func (c *CLI) printHelp() {
 
 Usage:
   cais new <app> [dir]       Create a new app (default dir: ./<app>)
+  cais new <app> [dir] --minimal   Slim app (home only)
   cais g handler <name>      Generate handler + test + page template
+  cais g resource <name>     Generate model + migration + admin CRUD
   cais g page <name>         Generate page template only
   cais g migration <name>    Generate SQL migration file
   cais server                Run the app (go run ./cmd/server)
@@ -69,13 +71,26 @@ Examples:
 
 func (c *CLI) cmdNew(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: cais new <app> [dir]")
+		return fmt.Errorf("usage: cais new <app> [dir] [--minimal]")
 	}
 
-	name := args[0]
+	minimal := false
+	positional := make([]string, 0, len(args))
+	for _, arg := range args {
+		if arg == "--minimal" {
+			minimal = true
+			continue
+		}
+		positional = append(positional, arg)
+	}
+	if len(positional) == 0 {
+		return fmt.Errorf("usage: cais new <app> [dir] [--minimal]")
+	}
+
+	name := positional[0]
 	dir := name
-	if len(args) > 1 {
-		dir = args[1]
+	if len(positional) > 1 {
+		dir = positional[1]
 	}
 
 	abs, err := filepath.Abs(dir)
@@ -91,7 +106,7 @@ func (c *CLI) cmdNew(args []string) error {
 	if err := scaffoldNewApp(abs, scaffoldData{
 		AppName:    name,
 		ModulePath: module,
-	}); err != nil {
+	}, minimal); err != nil {
 		return err
 	}
 
@@ -101,7 +116,7 @@ func (c *CLI) cmdNew(args []string) error {
 
 func (c *CLI) cmdGenerate(args []string) error {
 	if len(args) < 2 {
-		return fmt.Errorf("usage: cais g <handler|page|migration> <name>")
+		return fmt.Errorf("usage: cais g <handler|page|migration|resource> <name>")
 	}
 
 	kind := args[0]
@@ -122,8 +137,10 @@ func (c *CLI) cmdGenerate(args []string) error {
 		return scaffoldPage(cwd, name)
 	case "migration":
 		return scaffoldMigration(cwd, name)
+	case "resource":
+		return scaffoldResource(cwd, name)
 	default:
-		return fmt.Errorf("unknown generator %q (use handler, page, or migration)", kind)
+		return fmt.Errorf("unknown generator %q (use handler, page, migration, or resource)", kind)
 	}
 }
 

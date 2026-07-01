@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/matheuspuppe/cais/pkg/cais"
+	"github.com/matheuspuppe/cais/pkg/cais/httpx"
 )
 
 type PageData struct {
@@ -19,8 +20,5 @@ func NewHomeHandler(renderer *cais.Renderer) *HomeHandler {
 }
 
 func (h *HomeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "home", PageData{Nome: "Desenvolvedor"}); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	httpx.RenderOrError(w, h.renderer, "base", "home", PageData{Nome: "Desenvolvedor"})
 }
