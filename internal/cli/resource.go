@@ -275,16 +275,7 @@ func patchStoreTestForResource(dir string, data scaffoldData) error {
 		return nil
 	}
 
-	first := data.Fields[0]
-	insertArgs := first.Pascal + ": \"Sample\""
-	if first.HTMLType == "url" {
-		insertArgs = first.Pascal + ": \"Demo\", "
-		for _, f := range data.Fields {
-			if f.HTMLType == "url" {
-				insertArgs = buildInsertTestLiteral(data.Fields)
-			}
-		}
-	}
+	insertArgs := buildInsertTestLiteral(data.Fields)
 	insert := fmt.Sprintf(`
 func TestStore_Insert%s(t *testing.T) {
 	s := newTestStore(t)
@@ -316,11 +307,13 @@ func TestStore_Insert%s(t *testing.T) {
 func buildInsertTestLiteral(fields []FieldDef) string {
 	var parts []string
 	for _, f := range fields {
-		if f.HTMLType == "url" {
-			parts = append(parts, f.Pascal+`: "https://example.com"`)
-		} else if f.GoType != "bool" {
-			parts = append(parts, f.Pascal+`: "Sample"`)
+		if !f.Required {
+			continue
 		}
+		parts = append(parts, f.Pascal+": "+seedValueForField(f))
+	}
+	if len(parts) == 0 && len(fields) > 0 {
+		return fields[0].Pascal + ": " + seedValueForField(fields[0])
 	}
 	return strings.Join(parts, ", ")
 }

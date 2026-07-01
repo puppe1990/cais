@@ -181,7 +181,7 @@ func patchRoutes(dir string, data scaffoldData) error {
 	}
 
 	insert := fmt.Sprintf(
-		"\t%s := handlers.New%sHandler(deps.Renderer)\n\tr.Get(\"/%s\", %s.ServeHTTP)\n",
+		"\n\t%s := handlers.New%sHandler(deps.Renderer)\n\tr.Get(\"/%s\", %s.ServeHTTP)\n",
 		data.Camel, data.Pascal, data.Snake, data.Camel,
 	)
 
