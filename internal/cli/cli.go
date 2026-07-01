@@ -82,6 +82,7 @@ Usage:
   cais db migrate            Run pending SQL migrations
   cais db status             List migration status
   cais db rollback           Remove last applied migration record (no SQL down)
+  cais db prune-sessions     Delete expired login sessions from SQLite
   cais help                  Show this help
 
 Aliases:
