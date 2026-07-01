@@ -225,6 +225,41 @@ func TestRollbackLast_removesLastAppliedMigration(t *testing.T) {
 	}
 }
 
+func TestApply_rollsBackOnRecordFailure(t *testing.T) {
+	migrations := fstest.MapFS{
+		"migrations/001_users.sql": &fstest.MapFile{
+			Data: []byte(`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);`),
+		},
+	}
+
+	db := testDB(t)
+	if _, err := db.Exec(`CREATE TABLE schema_migrations (
+		version TEXT PRIMARY KEY NOT NULL,
+		applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+	);`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`CREATE TRIGGER block_migration_insert
+		BEFORE INSERT ON schema_migrations
+		WHEN NEW.version = '001_users'
+		BEGIN
+			SELECT RAISE(ABORT, 'blocked');
+		END;`); err != nil {
+		t.Fatal(err)
+	}
+
+	err := Apply(db, migrations, "migrations")
+	if err == nil {
+		t.Fatal("expected error when migration record insert fails")
+	}
+
+	var name string
+	err = db.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").Scan(&name)
+	if err == nil {
+		t.Fatal("users table should not exist after failed transactional migration")
+	}
+}
+
 func TestRollbackLast_errorsWhenNoAppliedMigrations(t *testing.T) {
 	migrations := fstest.MapFS{
 		"migrations/001_users.sql": &fstest.MapFile{

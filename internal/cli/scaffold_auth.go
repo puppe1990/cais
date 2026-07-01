@@ -112,8 +112,8 @@ func patchAppForAuth(dir string) error {
 			)
 		}
 		content = strings.Replace(content,
-			"r.Use(middleware.CSRF)\n",
-			"r.Use(middleware.CSRF)\n\tr.Use(middleware.LoadSession(deps.Store.Sessions()))\n\tr.Use(middleware.Flash)\n",
+			"r.Use(middleware.CSRF(cfg))\n",
+			"r.Use(middleware.CSRF(cfg))\n\tr.Use(middleware.LoadSession(deps.Store.Sessions()))\n\tr.Use(middleware.Flash)\n",
 			1,
 		)
 		changed = true
@@ -282,11 +282,11 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := session.SignIn(w, h.sessions, user.ID, session.CookieOptionsFromConfig(h.cfg)); err != nil {
+	if err := session.SignIn(w, h.sessions, r, user.ID, session.CookieOptionsFromConfig(h.cfg)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	flash.Set(w, "notice", "Bem-vindo!")
+	flash.Set(w, "notice", "Bem-vindo!", h.cfg.CookieSecure())
 	httpx.SeeOther(w, r, "/dashboard")
 }
 

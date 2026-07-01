@@ -6,12 +6,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/csrf"
 )
 
 func TestCSRF_safeMethod_setsCookie(t *testing.T) {
 	called := false
-	h := CSRF(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := CSRF(cais.Config{})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 		if csrf.TokenFromRequest(r) == "" {
 			t.Error("expected token in request context")
@@ -40,7 +41,7 @@ func TestCSRF_safeMethod_setsCookie(t *testing.T) {
 }
 
 func TestCSRF_unsafeMethod_rejectsMissingToken(t *testing.T) {
-	h := CSRF(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := CSRF(cais.Config{})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Error("handler should not be called")
 	}))
 
@@ -56,7 +57,7 @@ func TestCSRF_unsafeMethod_rejectsMissingToken(t *testing.T) {
 
 func TestCSRF_unsafeMethod_acceptsValidToken(t *testing.T) {
 	called := false
-	h := CSRF(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := CSRF(cais.Config{})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 	}))
 
@@ -77,7 +78,7 @@ func TestCSRF_unsafeMethod_acceptsValidToken(t *testing.T) {
 
 func TestCSRF_skipsHealthAndStatic(t *testing.T) {
 	called := false
-	h := CSRF(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := CSRF(cais.Config{})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 	}))
 

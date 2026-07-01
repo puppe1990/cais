@@ -12,7 +12,7 @@ import (
 func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config, site meta.Site) {
 	home := handlers.NewHomeHandler(deps.Renderer, site)
 	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, site)
-	dashboard := handlers.NewDashboardHandler(deps.Renderer, deps.Store, site)
+	dashboard := handlers.NewDashboardHandler(deps.Renderer, deps.Store, site, cfg)
 	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, site, deps.Store.Sessions(), cfg)
 
 	loginLimit := middleware.NewRateLimiter(10)

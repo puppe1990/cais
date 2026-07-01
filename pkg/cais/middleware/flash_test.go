@@ -10,7 +10,7 @@ import (
 
 func TestFlash_PutsMessageInContext(t *testing.T) {
 	rr := httptest.NewRecorder()
-	flash.Set(rr, "notice", "Bem-vindo!")
+	flash.Set(rr, "notice", "Bem-vindo!", false)
 
 	res := rr.Result()
 	defer func() { _ = res.Body.Close() }()

@@ -62,6 +62,23 @@ func TestContactHandler_Post_MalformedEmail_Returns422(t *testing.T) {
 	}
 }
 
+func TestContactHandler_Post_MissingName_Returns422(t *testing.T) {
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite())
+
+	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=&email=alice@example.com"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	rr := httptest.NewRecorder()
+	h.Post(rr, req)
+
+	if rr.Code != http.StatusUnprocessableEntity {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusUnprocessableEntity)
+	}
+	if !strings.Contains(rr.Body.String(), "nome") {
+		t.Errorf("body missing name validation: %s", rr.Body.String())
+	}
+}
+
 func TestContactHandler_Post_InvalidEmail_Returns422(t *testing.T) {
 	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite())
 

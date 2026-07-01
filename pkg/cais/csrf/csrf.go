@@ -51,7 +51,7 @@ func Valid(r *http.Request) bool {
 }
 
 // EnsureToken sets the CSRF cookie when missing and returns the active token.
-func EnsureToken(w http.ResponseWriter, r *http.Request) (string, error) {
+func EnsureToken(w http.ResponseWriter, r *http.Request, secure bool) (string, error) {
 	if cookie, err := r.Cookie(CookieName); err == nil && cookie.Value != "" {
 		return cookie.Value, nil
 	}
@@ -68,6 +68,7 @@ func EnsureToken(w http.ResponseWriter, r *http.Request) (string, error) {
 		MaxAge:   CookieMaxAge,
 		SameSite: http.SameSiteLaxMode,
 		HttpOnly: false,
+		Secure:   secure,
 	})
 	return token, nil
 }
