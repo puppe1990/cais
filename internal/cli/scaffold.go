@@ -11,6 +11,16 @@ import (
 	"github.com/puppe1990/cais/pkg/cais/pwa"
 )
 
+func qualityToolingFiles() map[string]string {
+	return map[string]string{
+		".github/workflows/ci.yml": tplCIWorkflow,
+		".pre-commit-config.yaml":  tplPreCommitConfig,
+		".golangci.yml":            tplGolangci,
+		".prettierrc.json":         tplPrettierrc,
+		".prettierignore":          tplPrettierignore,
+	}
+}
+
 func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) error {
 	files := map[string]string{
 		"go.mod":                                      tplGoMod,
@@ -52,6 +62,9 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		".air.toml":                                   tplAir,
 		"README.md":                                   tplREADME,
 	}
+	for path, content := range qualityToolingFiles() {
+		files[path] = content
+	}
 
 	if blank {
 		files = map[string]string{
@@ -76,6 +89,9 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 			".gitignore":                         tplGitignore,
 			".air.toml":                          tplAir,
 			"README.md":                          tplREADMEBlank,
+		}
+		for path, content := range qualityToolingFiles() {
+			files[path] = content
 		}
 	} else if minimal {
 		delete(files, "internal/handlers/contact.go")
