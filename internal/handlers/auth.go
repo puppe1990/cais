@@ -16,6 +16,7 @@ type AuthHandler struct {
 	store    store.Store
 	site     meta.Site
 	sessions session.Store
+	cfg      cais.Config
 }
 
 type loginData struct {
@@ -23,8 +24,8 @@ type loginData struct {
 	Error string
 }
 
-func NewAuthHandler(renderer *cais.Renderer, s store.Store, site meta.Site, sessions session.Store) *AuthHandler {
-	return &AuthHandler{renderer: renderer, store: s, site: site, sessions: sessions}
+func NewAuthHandler(renderer *cais.Renderer, s store.Store, site meta.Site, sessions session.Store, cfg cais.Config) *AuthHandler {
+	return &AuthHandler{renderer: renderer, store: s, site: site, sessions: sessions, cfg: cfg}
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -52,7 +53,7 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := session.SignIn(w, h.sessions, user.ID, session.CookieOptions{}); err != nil {
+	if err := session.SignIn(w, h.sessions, user.ID, session.CookieOptionsFromConfig(h.cfg)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

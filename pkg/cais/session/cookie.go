@@ -3,6 +3,8 @@ package session
 import (
 	"net/http"
 	"time"
+
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 const DefaultCookieName = "cais_session"
@@ -11,6 +13,10 @@ const defaultMaxAge = 7 * 24 * 60 * 60 // 7 days
 
 type CookieOptions struct {
 	Secure bool
+}
+
+func CookieOptionsFromConfig(cfg cais.Config) CookieOptions {
+	return CookieOptions{Secure: cfg.CookieSecure()}
 }
 
 func SetCookie(w http.ResponseWriter, token string, opts CookieOptions) {

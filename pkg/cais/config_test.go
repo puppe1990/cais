@@ -86,3 +86,17 @@ func TestConfig_Validate_allowsEmptyTokenInDevelopment(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestConfig_CookieSecure_trueInProduction(t *testing.T) {
+	cfg := Config{Env: "production"}
+	if !cfg.CookieSecure() {
+		t.Error("CookieSecure() = false, want true in production")
+	}
+}
+
+func TestConfig_CookieSecure_falseInDevelopment(t *testing.T) {
+	cfg := Config{Env: "development"}
+	if cfg.CookieSecure() {
+		t.Error("CookieSecure() = true, want false in development")
+	}
+}

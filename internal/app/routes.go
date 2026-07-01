@@ -11,7 +11,7 @@ func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config, site meta.Site) 
 	home := handlers.NewHomeHandler(deps.Renderer, site)
 	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, site)
 	dashboard := handlers.NewDashboardHandler(deps.Renderer, deps.Store, site)
-	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, site, deps.Store.Sessions())
+	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, site, deps.Store.Sessions(), cfg)
 
 	r.Get("/", home.ServeHTTP)
 	r.Get("/contact", contact.Get)
