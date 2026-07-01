@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/puppe1990/cais/pkg/cais/logtime"
 )
 
 type Config struct {
@@ -42,21 +44,21 @@ func (d *DB) Close() error {
 func (d *DB) Exec(query string, args ...any) (sql.Result, error) {
 	start := time.Now()
 	result, err := d.inner.Exec(query, args...)
-	d.log(query, args, time.Since(start), err)
+	d.log(query, args, start, time.Since(start), err)
 	return result, err
 }
 
 func (d *DB) Query(query string, args ...any) (*sql.Rows, error) {
 	start := time.Now()
 	rows, err := d.inner.Query(query, args...)
-	d.log(query, args, time.Since(start), err)
+	d.log(query, args, start, time.Since(start), err)
 	return rows, err
 }
 
 func (d *DB) QueryRow(query string, args ...any) *sql.Row {
 	start := time.Now()
 	row := d.inner.QueryRow(query, args...)
-	d.log(query, args, time.Since(start), nil)
+	d.log(query, args, start, time.Since(start), nil)
 	return row
 }
 
@@ -71,21 +73,21 @@ func (d *DB) Begin() (*Tx, error) {
 func (t *Tx) Exec(query string, args ...any) (sql.Result, error) {
 	start := time.Now()
 	result, err := t.inner.Exec(query, args...)
-	t.log(query, args, time.Since(start), err)
+	t.log(query, args, start, time.Since(start), err)
 	return result, err
 }
 
 func (t *Tx) Query(query string, args ...any) (*sql.Rows, error) {
 	start := time.Now()
 	rows, err := t.inner.Query(query, args...)
-	t.log(query, args, time.Since(start), err)
+	t.log(query, args, start, time.Since(start), err)
 	return rows, err
 }
 
 func (t *Tx) QueryRow(query string, args ...any) *sql.Row {
 	start := time.Now()
 	row := t.inner.QueryRow(query, args...)
-	t.log(query, args, time.Since(start), nil)
+	t.log(query, args, start, time.Since(start), nil)
 	return row
 }
 
@@ -97,24 +99,24 @@ func (t *Tx) Rollback() error {
 	return t.inner.Rollback()
 }
 
-func (d *DB) log(query string, args []any, elapsed time.Duration, err error) {
+func (d *DB) log(query string, args []any, at time.Time, elapsed time.Duration, err error) {
 	if !d.config.Enabled {
 		return
 	}
-	writeLog(d.config.Writer, query, args, elapsed, err)
+	writeLog(d.config.Writer, query, args, at, elapsed, err)
 }
 
-func (t *Tx) log(query string, args []any, elapsed time.Duration, err error) {
+func (t *Tx) log(query string, args []any, at time.Time, elapsed time.Duration, err error) {
 	if !t.config.Enabled {
 		return
 	}
-	writeLog(t.config.Writer, query, args, elapsed, err)
+	writeLog(t.config.Writer, query, args, at, elapsed, err)
 }
 
-func writeLog(w io.Writer, query string, args []any, elapsed time.Duration, err error) {
+func writeLog(w io.Writer, query string, args []any, at time.Time, elapsed time.Duration, err error) {
 	query = strings.Join(strings.Fields(query), " ")
 	label := operationLabel(query)
-	line := fmt.Sprintf("  %s (%s)  %s  %s", label, formatDuration(elapsed), query, formatArgs(args))
+	line := fmt.Sprintf("  %s (%s)  %s  %s  at %s", label, formatDuration(elapsed), query, formatArgs(args), logtime.Format(at))
 	if err != nil {
 		line += fmt.Sprintf("  ERROR: %v", err)
 	}

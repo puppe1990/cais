@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/puppe1990/cais/pkg/cais/logtime"
 )
 
 func Logger(next http.Handler) http.Handler {
@@ -22,16 +24,17 @@ func LoggerWithWriter(w io.Writer, next http.Handler) http.Handler {
 
 		start := time.Now()
 		remote := clientIP(r)
-		_, _ = fmt.Fprintf(w, "Started %s %q for %s\n", r.Method, r.URL.Path, remote)
+		_, _ = fmt.Fprintf(w, "Started %s %q for %s at %s\n", r.Method, r.URL.Path, remote, logtime.Format(start))
 
 		rec := &statusRecorder{ResponseWriter: rw, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
 
 		_, _ = fmt.Fprintf(
 			w,
-			"Completed %s in %s\n",
+			"Completed %s in %s at %s\n",
 			statusLabel(rec.status),
 			formatDuration(time.Since(start)),
+			logtime.Now(),
 		)
 	})
 }

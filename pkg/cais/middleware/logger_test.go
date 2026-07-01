@@ -21,11 +21,11 @@ func TestLogger_RailsStyleRequestLog(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	out := buf.String()
-	if !strings.Contains(out, "Started GET \"/login\" for 127.0.0.1") {
-		t.Errorf("missing Started line, got:\n%s", out)
+	if !strings.Contains(out, "Started GET \"/login\" for 127.0.0.1 at ") {
+		t.Errorf("missing Started line with timestamp, got:\n%s", out)
 	}
-	if !strings.Contains(out, "Completed 200 OK in") {
-		t.Errorf("missing Completed line, got:\n%s", out)
+	if !strings.Contains(out, "Completed 200 OK in") || !strings.Contains(out, " at ") {
+		t.Errorf("missing Completed line with timestamp, got:\n%s", out)
 	}
 }
 
