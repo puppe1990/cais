@@ -69,6 +69,7 @@ Usage:
   cais new <app> [dir] --module <path>   Override go module path
   cais g [--dry-run] handler <name>      Generate handler + test + page template
   cais g [--dry-run] resource <name> [--fields title:string,url:url] [--public] [--no-seed] [--admin-auth session|bearer]
+  cais g [--dry-run] model <name> [--fields title:string,url:url]
   cais g [--dry-run] page <name>         Generate page template only
   cais g [--dry-run] migration <name>    Generate SQL migration file
   cais g [--dry-run] auth                Add login/logout and protect dashboard
@@ -187,7 +188,7 @@ func (c *CLI) cmdGenerate(args []string) error {
 	args = filtered
 
 	if len(args) < 1 {
-		return fmt.Errorf("usage: cais g [--dry-run] <handler|page|migration|resource|console|auth|ci> [name]")
+		return fmt.Errorf("usage: cais g [--dry-run] <handler|page|migration|resource|model|console|auth|ci> [name]")
 	}
 
 	kind := args[0]
@@ -210,7 +211,7 @@ func (c *CLI) cmdGenerate(args []string) error {
 		return scaffoldAuth(cwd, scaffoldData{AppName: filepath.Base(cwd), ModulePath: moduleFromDir(cwd)}, dryRun)
 	case "ci":
 		return scaffoldCI(cwd, scaffoldData{AppName: filepath.Base(cwd), ModulePath: moduleFromDir(cwd)})
-	case "handler", "page", "migration", "resource":
+	case "handler", "page", "migration", "resource", "model":
 		if len(args) < 2 {
 			return fmt.Errorf("usage: cais g %s <name>", kind)
 		}
@@ -229,9 +230,16 @@ func (c *CLI) cmdGenerate(args []string) error {
 			}
 			opts.dryRun = dryRun
 			return scaffoldResource(cwd, name, opts)
+		case "model":
+			opts, err := parseModelOpts(args[2:])
+			if err != nil {
+				return err
+			}
+			opts.dryRun = dryRun
+			return scaffoldModel(cwd, name, opts)
 		}
 	default:
-		return fmt.Errorf("unknown generator %q (use handler, page, migration, resource, auth, ci, or console)", kind)
+		return fmt.Errorf("unknown generator %q (use handler, page, migration, resource, model, auth, ci, or console)", kind)
 	}
 	return nil
 }
