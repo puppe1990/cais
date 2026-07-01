@@ -148,11 +148,16 @@ func buildAdminTestFormBody(fields []FieldDef) string {
 			continue
 		}
 		val := "Demo"
-		if f.HTMLType == "url" {
-			val = "https://example.com"
-		}
-		if f.Widget == "textarea" {
-			val = "Sample " + f.Pascal
+		switch f.GoType {
+		case "int64":
+			val = "30"
+		default:
+			if f.HTMLType == "url" {
+				val = "https://example.com"
+			}
+			if f.Widget == "textarea" {
+				val = "Sample " + f.Pascal
+			}
 		}
 		parts = append(parts, f.Name+"="+val)
 	}

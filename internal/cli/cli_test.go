@@ -201,6 +201,51 @@ func TestCLI_NewIncludesHTMXAndAir(t *testing.T) {
 	}
 }
 
+func TestScaffoldResource_IntFields(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "menu")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "menu",
+		ModulePath: "github.com/puppe1990/menu",
+	}, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "meal", resourceOpts{
+		Fields: "title:string,prep_minutes:int,servings:int?",
+		Seed:   true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	admin, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/admin_meals.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	adminBody := string(admin)
+	if !strings.Contains(adminBody, "strconv.ParseInt") {
+		t.Error("admin handler missing strconv.ParseInt for int fields")
+	}
+	if strings.Contains(adminBody, `PrepMinutes: strings.TrimSpace`) {
+		t.Error("admin handler should not assign int field from string TrimSpace")
+	}
+
+	store, err := os.ReadFile(filepath.Join(appDir, "internal/store/store.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(store), "PrepMinutes: 30") {
+		t.Error("seed data should use numeric literal for int fields")
+	}
+
+	adminTest, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/admin_meals_test.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(adminTest), "prep_minutes=30") {
+		t.Error("admin test form body should use numeric value for int fields")
+	}
+}
+
 func TestParseFields(t *testing.T) {
 	fields, err := parseFields("title:string,url:url,notes:text?")
 	if err != nil {
