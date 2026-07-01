@@ -8,6 +8,7 @@ import (
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/flash"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
+	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/session"
 )
@@ -18,6 +19,7 @@ type AuthHandler struct {
 	site     meta.Site
 	sessions session.Store
 	cfg      cais.Config
+	catalog  *i18n.Catalog
 }
 
 type loginData struct {
@@ -25,8 +27,8 @@ type loginData struct {
 	Error string
 }
 
-func NewAuthHandler(renderer *cais.Renderer, s store.Store, site meta.Site, sessions session.Store, cfg cais.Config) *AuthHandler {
-	return &AuthHandler{renderer: renderer, store: s, site: site, sessions: sessions, cfg: cfg}
+func NewAuthHandler(renderer *cais.Renderer, s store.Store, site meta.Site, sessions session.Store, cfg cais.Config, catalog *i18n.Catalog) *AuthHandler {
+	return &AuthHandler{renderer: renderer, store: s, site: site, sessions: sessions, cfg: cfg, catalog: catalog}
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +51,7 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil || !session.VerifyPassword(user.PasswordHash, password) {
 		httpx.RenderOrError(w, h.renderer, "base", "login", loginData{
 			Site:  meta.ForRequest(h.site, r),
-			Error: "Email ou senha inválidos.",
+			Error: h.catalog.T("auth.invalid_credentials"),
 		})
 		return
 	}
@@ -58,7 +60,7 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	flash.Set(w, "notice", "Bem-vindo!", h.cfg.CookieSecure())
+	flash.Set(w, "notice", h.catalog.T("auth.welcome"), h.cfg.CookieSecure())
 	httpx.SeeOther(w, r, "/dashboard")
 }
 

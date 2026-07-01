@@ -11,6 +11,7 @@ import (
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/boot"
+	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/web"
 )
@@ -58,7 +59,8 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 		return nil, fmt.Errorf("templates: %w", err)
 	}
 
-	renderer, err := cais.NewRenderer(tmplFS)
+	catalog := i18n.NewCatalog(cfg.Locale)
+	renderer, err := cais.NewRenderer(tmplFS, catalog)
 	if err != nil {
 		return nil, fmt.Errorf("renderer: %w", err)
 	}
@@ -79,6 +81,7 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 		Store:     s,
 		StaticDir: staticDir,
 		Site:      meta.SiteFrom("Cais", cfg.AppURL),
+		Catalog:   catalog,
 	})
 }
 

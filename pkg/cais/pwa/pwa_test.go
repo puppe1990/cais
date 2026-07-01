@@ -39,9 +39,8 @@ func TestWriteStatic(t *testing.T) {
 		"web/static/js/htmx.min.js",
 		"web/static/js/cais.js",
 		"web/static/offline.html",
-		"web/static/icons/icon.svg",
-		"web/static/icons/icon-192.png",
-		"web/static/icons/icon-512.png",
+		"web/static/icons/icon.png",
+		"web/static/img/go-on-cais.jpg",
 		"web/static/og.png",
 	} {
 		if _, err := os.Stat(filepath.Join(dir, path)); err != nil {

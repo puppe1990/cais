@@ -38,7 +38,7 @@ func DefaultPreview(name string) Preview {
 		Description: name + " — powered by Cais",
 		SiteName:    name,
 		Image:       DefaultImagePath,
-		Locale:      "pt_BR",
+		Locale:      "en_US",
 		Type:        "website",
 	}
 }
@@ -87,7 +87,7 @@ func PreviewHTML(p Preview) string {
 		p.Type = "website"
 	}
 	if p.Locale == "" {
-		p.Locale = "pt_BR"
+		p.Locale = "en_US"
 	}
 	if p.Image == "" {
 		p.Image = DefaultImagePath

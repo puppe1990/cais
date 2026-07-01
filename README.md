@@ -1,5 +1,7 @@
 # Cais
 
+![Go on Cais](web/static/img/go-on-cais.jpg)
+
 Full-stack Go framework for mini apps on Lightsail: server-side HTML, HTMX, Tailwind, and SQLite.
 
 ## Stack

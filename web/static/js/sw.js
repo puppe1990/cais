@@ -5,9 +5,7 @@ const PRECACHE = [
   "/static/js/htmx.min.js",
   "/static/js/cais.js",
   "/static/manifest.webmanifest",
-  "/static/icons/icon.svg",
-  "/static/icons/icon-192.png",
-  "/static/icons/icon-512.png",
+  "/static/icons/icon.png",
   "/static/offline.html",
 ];
 

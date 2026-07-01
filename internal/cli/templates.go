@@ -45,6 +45,7 @@ import (
 	"github.com/puppe1990/cais/pkg/cais/boot"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"{{.ModulePath}}/internal/app"
+	appi18n "{{.ModulePath}}/internal/i18n"
 	"{{.ModulePath}}/internal/store"
 	"{{.ModulePath}}/web"
 )
@@ -91,7 +92,8 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 		return nil, fmt.Errorf("templates: %w", err)
 	}
 
-	renderer, err := cais.NewRenderer(tmplFS)
+	catalog := appi18n.NewCatalog(cfg.Locale)
+	renderer, err := cais.NewRenderer(tmplFS, catalog)
 	if err != nil {
 		return nil, fmt.Errorf("renderer: %w", err)
 	}
@@ -112,6 +114,7 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 		Store:     s,
 		StaticDir: staticDir,
 		Site:      meta.SiteFrom("{{.AppName}}", cfg.AppURL),
+		Catalog:   catalog,
 	})
 }
 
@@ -195,6 +198,7 @@ import (
 
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/devlog"
+	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/middleware"
 	"{{.ModulePath}}/internal/store"
@@ -205,6 +209,7 @@ type Deps struct {
 	Store     store.Store
 	StaticDir string
 	Site      meta.Site
+	Catalog   *i18n.Catalog
 }
 
 type App struct {
@@ -321,10 +326,10 @@ import (
 )
 
 func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
-	home := handlers.NewHomeHandler(deps.Renderer, deps.Site)
-	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, deps.Site)
+	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog)
+	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, deps.Site, deps.Catalog)
 	dashboard := handlers.NewDashboardHandler(deps.Renderer, deps.Store, deps.Site, cfg)
-	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions(), cfg)
+	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions(), cfg, deps.Catalog)
 
 	loginLimit := middleware.NewRateLimiter(10)
 	contactLimit := middleware.NewRateLimiter(20)
@@ -346,6 +351,7 @@ import (
 
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
+	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 )
 
@@ -357,14 +363,17 @@ type PageData struct {
 type HomeHandler struct {
 	renderer *cais.Renderer
 	site     meta.Site
+	catalog  *i18n.Catalog
 }
 
-func NewHomeHandler(renderer *cais.Renderer, site meta.Site) *HomeHandler {
-	return &HomeHandler{renderer: renderer, site: site}
+func NewHomeHandler(renderer *cais.Renderer, site meta.Site, catalog *i18n.Catalog) *HomeHandler {
+	return &HomeHandler{renderer: renderer, site: site, catalog: catalog}
 }
 
 func (h *HomeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	httpx.RenderOrError(w, h.renderer, "base", "home", PageData{Site: meta.ForRequest(h.site, r), Nome: "{{.AppName}}"})
+	httpx.RenderOrError(w, h.renderer, "welcome", "home", PageData{
+		Site: meta.ForRequest(h.site, r),
+	})
 }
 `
 
@@ -375,10 +384,11 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
 )
 
 func TestHomeHandler_Returns200(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -390,19 +400,19 @@ func TestHomeHandler_Returns200(t *testing.T) {
 }
 
 func TestHomeHandler_ContainsWelcome(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
-	if !strings.Contains(rr.Body.String(), "Bem-vindo, {{.AppName}}!") {
+	if !strings.Contains(rr.Body.String(), "on Cais!") {
 		t.Errorf("body missing welcome message, got: %s", rr.Body.String())
 	}
 }
 
 func TestHomeHandler_ContentType(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -422,10 +432,11 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
 )
 
 func TestHomeHandler_Returns200(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -437,19 +448,19 @@ func TestHomeHandler_Returns200(t *testing.T) {
 }
 
 func TestHomeHandler_ContainsWelcome(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
-	if !strings.Contains(rr.Body.String(), "{{.AppName}}") {
-		t.Errorf("body missing app name, got: %s", rr.Body.String())
+	if !strings.Contains(rr.Body.String(), "on Cais!") {
+		t.Errorf("body missing welcome message, got: %s", rr.Body.String())
 	}
 }
 
 func TestHomeHandler_ContentType(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -472,6 +483,7 @@ import (
 	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
+	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/validate"
 )
@@ -480,14 +492,15 @@ type ContactHandler struct {
 	renderer *cais.Renderer
 	store    store.Store
 	site     meta.Site
+	catalog  *i18n.Catalog
 }
 
 type contactErrorData struct {
 	Message string
 }
 
-func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site) *ContactHandler {
-	return &ContactHandler{renderer: renderer, store: s, site: site}
+func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site, catalog *i18n.Catalog) *ContactHandler {
+	return &ContactHandler{renderer: renderer, store: s, site: site, catalog: catalog}
 }
 
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -504,9 +517,9 @@ func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
 	email := strings.TrimSpace(r.FormValue("email"))
 
 	if err := validate.Email(email); err != nil {
-		msg := "O campo email é obrigatório."
+		msg := h.catalog.T("contact.email_required")
 		if email != "" {
-			msg = "Informe um email válido."
+			msg = h.catalog.T("contact.email_invalid")
 		}
 		h.renderContactResponse(w, r, http.StatusUnprocessableEntity, "contact_errors", contactErrorData{Message: msg})
 		return
@@ -539,10 +552,11 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
 )
 
 func TestContactHandler_Get_ReturnsForm(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog())
 
 	req := httptest.NewRequest(http.MethodGet, "/contact", nil)
 	rr := httptest.NewRecorder()
@@ -557,7 +571,7 @@ func TestContactHandler_Get_ReturnsForm(t *testing.T) {
 }
 
 func TestContactHandler_Post_InvalidEmail_Returns422(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog())
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -571,7 +585,7 @@ func TestContactHandler_Post_InvalidEmail_Returns422(t *testing.T) {
 }
 
 func TestContactHandler_Post_InvalidEmail_ReturnsPartial(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog())
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -583,14 +597,14 @@ func TestContactHandler_Post_InvalidEmail_ReturnsPartial(t *testing.T) {
 	if strings.Contains(body, "<!DOCTYPE html>") {
 		t.Error("expected partial HTML, got full page")
 	}
-	if !strings.Contains(body, "email") {
+	if !strings.Contains(body, "Email is required") {
 		t.Errorf("body missing error message, got: %s", body)
 	}
 }
 
 func TestContactHandler_Post_Valid_SavesAndReturnsSuccess(t *testing.T) {
 	s := setupTestStore(t)
-	h := NewContactHandler(setupTestRenderer(t), s, testSite())
+	h := NewContactHandler(setupTestRenderer(t), s, testSite(), testCatalog())
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email=alice@example.com"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -601,7 +615,7 @@ func TestContactHandler_Post_Valid_SavesAndReturnsSuccess(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
 	}
-	if !strings.Contains(rr.Body.String(), "sucesso") {
+	if !strings.Contains(rr.Body.String(), "successfully") {
 		t.Errorf("body missing success message, got: %s", rr.Body.String())
 	}
 }
@@ -691,8 +705,10 @@ const tplHelpersTest = `package handlers
 import (
 	"testing"
 
+	appi18n "{{.ModulePath}}/internal/i18n"
 	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
+	caisi18n "github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/testutil"
 )
@@ -714,6 +730,10 @@ func setupTestStore(t *testing.T) store.Store {
 
 func testSite() meta.Site {
 	return meta.Site{AppName: "{{.AppName}}", AppURL: "https://example.com"}
+}
+
+func testCatalog() *caisi18n.Catalog {
+	return appi18n.DefaultCatalog()
 }
 `
 
@@ -999,7 +1019,7 @@ const tplLayout = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}
 {{"{{"}} define "description" {{"}}"}}{{.AppName}} — powered by Cais{{"{{"}} end {{"}}"}}
 {{"{{"}} define "base" {{"}}"}}
 <!doctype html>
-<html lang="pt-BR">
+<html lang="{{"{{"}} htmlLang {{"}}"}}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -1011,7 +1031,7 @@ const tplLayout = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}
     <meta property="og:title" content="{{"{{"}} template "title" . {{"}}"}}" />
     <meta property="og:description" content="{{"{{"}} template "description" . {{"}}"}}" />
     <meta property="og:image" content="{{"{{"}} absURL .AppURL "/static/og.png" {{"}}"}}" />
-    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:locale" content="{{"{{"}} ogLocale {{"}}"}}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="{{"{{"}} template "title" . {{"}}"}}" />
     <meta name="twitter:description" content="{{"{{"}} template "description" . {{"}}"}}" />
@@ -1023,8 +1043,8 @@ const tplLayout = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="{{.AppName}}" />
-    <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
-    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/static/icons/icon.png" />
+    <link rel="icon" href="/static/icons/icon.png" type="image/png" />
     <script src="/static/js/htmx.min.js" defer></script>
     <script src="/static/js/cais.js" defer></script>
   </head>
@@ -1053,23 +1073,102 @@ const tplLayout = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}
 {{"{{"}} end {{"}}"}}
 `
 
-const tplPageHome = `{{"{{"}} define "title" {{"}}"}}Página Inicial{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
-<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto mt-10">
-  <h2 class="text-2xl font-bold text-slate-800 mb-2">Bem-vindo, {{"{{"}} .Nome {{"}}"}}!</h2>
-  <p class="text-slate-600 mb-4">Mini app Go com HTMX, Tailwind e SQLite.</p>
-  <a
-    href="/contact"
-    class="block w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition shadow-sm"
-  >
-    Contato
-  </a>
+const tplLayoutWelcome = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} if .AppName {{"}}"}}{{"{{"}} .AppName {{"}}"}}{{"{{"}} else {{"}}"}}Cais{{"{{"}} end {{"}}"}}{{"{{"}} end {{"}}"}}
+{{"{{"}} define "description" {{"}}"}}{{"{{"}} if .AppName {{"}}"}}{{"{{"}} .AppName {{"}}"}}{{"{{"}} else {{"}}"}}Cais{{"{{"}} end {{"}}"}} — powered by Cais{{"{{"}} end {{"}}"}}
+{{"{{"}} define "welcome" {{"}}"}}
+<!doctype html>
+<html lang="{{"{{"}} htmlLang {{"}}"}}">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    {{"{{"}} if .CSRFToken {{"}}"}}<meta name="csrf-token" content="{{"{{"}} .CSRFToken {{"}}"}}" />{{"{{"}} end {{"}}"}}
+    <title>{{"{{"}} template "title" . {{"}}"}}</title>
+    <meta name="description" content="{{"{{"}} template "description" . {{"}}"}}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="{{"{{"}} if .AppName {{"}}"}}{{"{{"}} .AppName {{"}}"}}{{"{{"}} else {{"}}"}}Cais{{"{{"}} end {{"}}"}}" />
+    <meta property="og:title" content="{{"{{"}} template "title" . {{"}}"}}" />
+    <meta property="og:description" content="{{"{{"}} template "description" . {{"}}"}}" />
+    <meta property="og:image" content="{{"{{"}} absURL .AppURL "/static/og.png" {{"}}"}}" />
+    <meta property="og:locale" content="{{"{{"}} ogLocale {{"}}"}}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{"{{"}} template "title" . {{"}}"}}" />
+    <meta name="twitter:description" content="{{"{{"}} template "description" . {{"}}"}}" />
+    <meta name="twitter:image" content="{{"{{"}} absURL .AppURL "/static/og.png" {{"}}"}}" />
+    <link rel="stylesheet" href="/static/css/styles.css" />
+    <link rel="manifest" href="/static/manifest.webmanifest" />
+    <meta name="theme-color" content="#D4A574" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="{{"{{"}} if .AppName {{"}}"}}{{"{{"}} .AppName {{"}}"}}{{"{{"}} else {{"}}"}}Cais{{"{{"}} end {{"}}"}}" />
+    <link rel="apple-touch-icon" href="/static/icons/icon.png" />
+    <link rel="icon" href="/static/icons/icon.png" type="image/png" />
+    <script src="/static/js/htmx.min.js" defer></script>
+    <script src="/static/js/cais.js" defer></script>
+  </head>
+  <body class="min-h-screen bg-gradient-to-b from-[#FAF3E8] via-[#EDCFA8] to-[#C9895E] text-stone-800 antialiased">
+    <main>{{"{{"}} template "content" . {{"}}"}}</main>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/static/js/sw.js");
+      }
+    </script>
+  </body>
+</html>
+{{"{{"}} end {{"}}"}}
+`
+
+const tplCaisLogo = `{{"{{"}} define "cais_logo" {{"}}"}}
+<img
+  src="/static/img/go-on-cais.jpg"
+  alt="Go on Cais"
+  width="1024"
+  height="683"
+  class="w-full max-w-lg rounded-2xl shadow-xl shadow-amber-950/15 ring-1 ring-amber-900/10"
+/>
+{{"{{"}} end {{"}}"}}
+`
+
+const tplPageHome = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} .AppName {{"}}"}}{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
+<div class="flex min-h-screen flex-col items-center justify-center px-6 py-14 text-center">
+  {{"{{"}} template "cais_logo" . {{"}}"}}
+  <h1 class="mt-10 font-serif text-4xl font-semibold tracking-tight text-stone-800 md:text-5xl">{{"{{"}} t "home.rails_heading" {{"}}"}}</h1>
+  <p class="mt-3 max-w-md text-lg text-stone-600">{{"{{"}} t "home.rails_subtitle" .AppName {{"}}"}}</p>
+  <p class="mt-6 text-sm font-medium uppercase tracking-[0.2em] text-amber-900/60">{{"{{"}} t "home.stack" {{"}}"}}</p>
+  <div class="mt-12 w-full max-w-lg rounded-2xl border border-amber-900/10 bg-white/45 p-8 text-left shadow-xl shadow-amber-950/5 backdrop-blur-sm">
+    <h2 class="mb-5 text-xs font-semibold uppercase tracking-wider text-stone-500">{{"{{"}} t "home.next_steps" {{"}}"}}</h2>
+    <ol class="space-y-5 text-stone-700">
+      <li class="flex gap-3">
+        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-800/10 text-xs font-bold text-amber-950">1</span>
+        <div>
+          <p class="font-medium text-stone-800">{{"{{"}} t "home.step_resource" {{"}}"}}</p>
+          <code class="mt-1.5 block rounded-lg bg-stone-100/90 px-3 py-2 font-mono text-xs text-stone-600">cais g resource item --fields name:string --public</code>
+        </div>
+      </li>
+      <li class="flex gap-3">
+        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-800/10 text-xs font-bold text-amber-950">2</span>
+        <div>
+          <p class="font-medium text-stone-800">{{"{{"}} t "home.step_dev" {{"}}"}}</p>
+          <code class="mt-1.5 block rounded-lg bg-stone-100/90 px-3 py-2 font-mono text-xs text-stone-600">cais dev</code>
+        </div>
+      </li>
+      <li class="flex gap-3">
+        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-800/10 text-xs font-bold text-amber-950">3</span>
+        <div>
+          <p class="font-medium text-stone-800">{{"{{"}} t "home.step_docs" {{"}}"}}</p>
+          <a href="https://github.com/puppe1990/cais" class="mt-1 inline-block text-sm text-amber-900 underline decoration-amber-700/40 underline-offset-2 hover:decoration-amber-800">github.com/puppe1990/cais</a>
+        </div>
+      </li>
+    </ol>
+  </div>
+  <p class="mt-10 text-xs text-stone-500/90">{{"{{"}} t "home.powered_by" {{"}}"}}</p>
 </div>
 {{"{{"}} end {{"}}"}}
 `
 
-const tplPageContact = `{{"{{"}} define "title" {{"}}"}}Contato{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
+const tplPageContact = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "contact.title" {{"}}"}}{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto mt-10">
-  <h2 class="text-2xl font-bold text-slate-800 mb-4">Fale conosco</h2>
+  <h2 class="text-2xl font-bold text-slate-800 mb-4">{{"{{"}} t "contact.heading" {{"}}"}}</h2>
   <form
     id="contact-form"
     hx-post="/contact"
@@ -1079,7 +1178,7 @@ const tplPageContact = `{{"{{"}} define "title" {{"}}"}}Contato{{"{{"}} end {{"}
     hx-disabled-elt="button[type='submit']"
   >
     <div id="form-errors"></div>
-    <label class="block mb-2 text-sm font-medium text-slate-700" for="name">Nome</label>
+    <label class="block mb-2 text-sm font-medium text-slate-700" for="name">{{"{{"}} t "contact.name_label" {{"}}"}}</label>
     <input
       class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
       type="text"
@@ -1087,7 +1186,7 @@ const tplPageContact = `{{"{{"}} define "title" {{"}}"}}Contato{{"{{"}} end {{"}
       name="name"
       required
     />
-    <label class="block mb-2 text-sm font-medium text-slate-700" for="email">Email</label>
+    <label class="block mb-2 text-sm font-medium text-slate-700" for="email">{{"{{"}} t "contact.email_label" {{"}}"}}</label>
     <input
       class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
       type="email"
@@ -1099,8 +1198,8 @@ const tplPageContact = `{{"{{"}} define "title" {{"}}"}}Contato{{"{{"}} end {{"}
       class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition"
       type="submit"
     >
-      <span class="htmx-indicator" id="contact-spinner">Enviando…</span>
-      <span class="htmx-request-hide">Enviar</span>
+      <span class="htmx-indicator" id="contact-spinner">{{"{{"}} t "contact.sending" {{"}}"}}</span>
+      <span class="htmx-request-hide">{{"{{"}} t "contact.submit" {{"}}"}}</span>
     </button>
   </form>
 </div>
@@ -1149,7 +1248,7 @@ const tplPartialErrors = `{{"{{- "}}define "contact_errors" -{{"}}"}}
 `
 
 const tplPartialSuccess = `{{"{{- "}}define "contact_success" -{{"}}"}}
-<div class="text-green-600 text-sm mb-4">Mensagem enviada com sucesso!</div>
+<div class="text-green-600 text-sm mb-4">{{"{{"}} t "contact.success" {{"}}"}}</div>
 {{"{{- "}}end -{{"}}"}}
 `
 
@@ -1554,17 +1653,6 @@ const tplGenericPage = `{{"{{"}} define "title" {{"}}"}}{{.Title}}{{"{{"}} end {
 {{"{{"}} end {{"}}"}}
 `
 
-const tplPageHomeMinimal = `{{"{{"}} define "title" {{"}}"}}Início{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
-<div class="max-w-lg mx-auto mt-10 text-center">
-  <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-    <h1 class="text-3xl font-bold text-slate-900 mb-2">{{.AppName}}</h1>
-    <p class="text-slate-600 mb-6">App Go com HTMX, Tailwind e SQLite — powered by Cais.</p>
-    <p class="text-sm text-slate-500">Use <code class="bg-slate-100 px-2 py-1 rounded">cais g resource &lt;name&gt; --public</code> para começar.</p>
-  </div>
-</div>
-{{"{{"}} end {{"}}"}}
-`
-
 const tplRoutesMinimal = `package app
 
 import (
@@ -1573,7 +1661,7 @@ import (
 )
 
 func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
-	home := handlers.NewHomeHandler(deps.Renderer, deps.Site)
+	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog)
 	r.Get("/", home.ServeHTTP)
 }
 `
@@ -1656,7 +1744,7 @@ const tplLayoutMinimal = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} e
 {{"{{"}} define "description" {{"}}"}}{{.AppName}} — powered by Cais{{"{{"}} end {{"}}"}}
 {{"{{"}} define "base" {{"}}"}}
 <!doctype html>
-<html lang="pt-BR">
+<html lang="{{"{{"}} htmlLang {{"}}"}}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -1668,7 +1756,7 @@ const tplLayoutMinimal = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} e
     <meta property="og:title" content="{{"{{"}} template "title" . {{"}}"}}" />
     <meta property="og:description" content="{{"{{"}} template "description" . {{"}}"}}" />
     <meta property="og:image" content="{{"{{"}} absURL .AppURL "/static/og.png" {{"}}"}}" />
-    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:locale" content="{{"{{"}} ogLocale {{"}}"}}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="{{"{{"}} template "title" . {{"}}"}}" />
     <meta name="twitter:description" content="{{"{{"}} template "description" . {{"}}"}}" />
@@ -1680,8 +1768,8 @@ const tplLayoutMinimal = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} e
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="{{.AppName}}" />
-    <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
-    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/static/icons/icon.png" />
+    <link rel="icon" href="/static/icons/icon.png" type="image/png" />
     <script src="/static/js/htmx.min.js" defer></script>
     <script src="/static/js/cais.js" defer></script>
   </head>
@@ -1718,6 +1806,7 @@ import (
 	"github.com/puppe1990/cais/pkg/cais/boot"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"{{.ModulePath}}/internal/app"
+	appi18n "{{.ModulePath}}/internal/i18n"
 	"{{.ModulePath}}/internal/store"
 	"{{.ModulePath}}/web"
 )
@@ -1764,7 +1853,8 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 		return nil, fmt.Errorf("templates: %w", err)
 	}
 
-	renderer, err := cais.NewRenderer(tmplFS)
+	catalog := appi18n.NewCatalog(cfg.Locale)
+	renderer, err := cais.NewRenderer(tmplFS, catalog)
 	if err != nil {
 		return nil, fmt.Errorf("renderer: %w", err)
 	}
@@ -1785,6 +1875,7 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 		Store:     s,
 		StaticDir: staticDir,
 		Site:      meta.SiteFrom("{{.AppName}}", cfg.AppURL),
+		Catalog:   catalog,
 	})
 }
 
@@ -1819,6 +1910,7 @@ import (
 
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/devlog"
+	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/middleware"
 	"{{.ModulePath}}/internal/store"
@@ -1829,6 +1921,7 @@ type Deps struct {
 	Store     store.Store
 	StaticDir string
 	Site      meta.Site
+	Catalog   *i18n.Catalog
 }
 
 type App struct {
@@ -1910,6 +2003,8 @@ import (
 )
 
 func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
+	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog)
+	r.Get("/", home.ServeHTTP)
 }
 `
 
@@ -1917,7 +2012,7 @@ const tplLayoutBlank = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end
 {{"{{"}} define "description" {{"}}"}}{{.AppName}} — powered by Cais{{"{{"}} end {{"}}"}}
 {{"{{"}} define "base" {{"}}"}}
 <!doctype html>
-<html lang="pt-BR">
+<html lang="{{"{{"}} htmlLang {{"}}"}}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -1929,7 +2024,7 @@ const tplLayoutBlank = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end
     <meta property="og:title" content="{{"{{"}} template "title" . {{"}}"}}" />
     <meta property="og:description" content="{{"{{"}} template "description" . {{"}}"}}" />
     <meta property="og:image" content="{{"{{"}} absURL .AppURL "/static/og.png" {{"}}"}}" />
-    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:locale" content="{{"{{"}} ogLocale {{"}}"}}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="{{"{{"}} template "title" . {{"}}"}}" />
     <meta name="twitter:description" content="{{"{{"}} template "description" . {{"}}"}}" />
@@ -1941,8 +2036,8 @@ const tplLayoutBlank = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="{{.AppName}}" />
-    <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
-    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/static/icons/icon.png" />
+    <link rel="icon" href="/static/icons/icon.png" type="image/png" />
     <script src="/static/js/htmx.min.js" defer></script>
     <script src="/static/js/cais.js" defer></script>
   </head>
@@ -1988,3 +2083,150 @@ const tplREADMEBlank = "# {{.AppName}}\n\n" +
 	"- Model, migration, admin CRUD, and public list page\n" +
 	"- Tests for handlers and store\n" +
 	"- Routes with admin protection\n"
+
+const tplEnvExample = `# Server
+PORT=:8080
+ENV=development
+APP_URL=http://localhost:8080
+LOCALE=en
+
+# Database
+DB_PATH=./data/app.db
+
+# Security (required when ENV=production)
+ADMIN_TOKEN=
+`
+
+const tplI18nCatalog = `package i18n
+
+import (
+	caisi18n "github.com/puppe1990/cais/pkg/cais/i18n"
+)
+
+var locales = map[string]map[string]string{
+	"en": enMessages,
+	"pt": ptMessages,
+}
+
+// NewCatalog returns a catalog for the given locale (en default, pt for pt-BR).
+func NewCatalog(locale string) *caisi18n.Catalog {
+	return caisi18n.NewCatalogFrom(locale, locales)
+}
+
+// DefaultCatalog returns the English catalog.
+func DefaultCatalog() *caisi18n.Catalog {
+	return NewCatalog(caisi18n.DefaultLocale)
+}
+`
+
+const tplI18nEn = `package i18n
+
+var enMessages = map[string]string{
+	"auth.invalid_credentials": "Invalid email or password.",
+	"auth.welcome":             "Welcome!",
+	"auth.login_title":         "Sign in",
+	"auth.login_submit":        "Sign in",
+	"auth.password_label":      "Password",
+	"auth.logout":              "Sign out",
+
+	"contact.title":          "Contact",
+	"contact.heading":        "Get in touch",
+	"contact.name_label":     "Name",
+	"contact.name_required":  "Name is required.",
+	"contact.email_label":    "Email",
+	"contact.email_required": "Email is required.",
+	"contact.email_invalid":  "Enter a valid email.",
+	"contact.submit":         "Send",
+	"contact.sending":        "Sending…",
+	"contact.success":        "Message sent successfully!",
+
+	"home.title":            "Home",
+	"home.welcome":          "Welcome, %s!",
+	"home.tagline":          "Mini Go app with HTMX, Tailwind, and SQLite.",
+	"home.contact_link":     "Contact",
+	"home.default_name":     "Developer",
+	"home.rails_heading":    "You're on Cais!",
+	"home.rails_subtitle":   "%s is ready to sail.",
+	"home.stack":            "Go · HTMX · Tailwind · SQLite",
+	"home.next_steps":       "Next steps",
+	"home.step_resource":    "Generate your first resource",
+	"home.step_dev":         "Start the dev server",
+	"home.step_docs":        "Explore the framework",
+	"home.powered_by":       "Powered by Cais — lightweight apps on Lightsail",
+	"home.minimal.tagline":  "Go app with HTMX, Tailwind, and SQLite — powered by Cais.",
+	"home.minimal.hint":     "Use ` + "`cais g resource <name> --public`" + ` to get started.",
+
+	"dashboard.title":    "Dashboard",
+	"dashboard.contacts": "Contacts:",
+	"dashboard.env":      "Environment:",
+
+	"layout.footer": "Running light on Lightsail",
+}
+`
+
+const tplI18nPt = `package i18n
+
+var ptMessages = map[string]string{
+	"auth.invalid_credentials": "Email ou senha inválidos.",
+	"auth.welcome":             "Bem-vindo!",
+	"auth.login_title":         "Entrar",
+	"auth.login_submit":        "Entrar",
+	"auth.password_label":      "Senha",
+	"auth.logout":              "Sair",
+
+	"contact.title":          "Contato",
+	"contact.heading":        "Fale conosco",
+	"contact.name_label":     "Nome",
+	"contact.name_required":  "O campo nome é obrigatório.",
+	"contact.email_label":    "Email",
+	"contact.email_required": "O campo email é obrigatório.",
+	"contact.email_invalid":  "Informe um email válido.",
+	"contact.submit":         "Enviar",
+	"contact.sending":        "Enviando…",
+	"contact.success":        "Mensagem enviada com sucesso!",
+
+	"home.title":            "Página Inicial",
+	"home.welcome":          "Bem-vindo, %s!",
+	"home.tagline":          "Mini app Go com HTMX, Tailwind e SQLite.",
+	"home.contact_link":     "Contato",
+	"home.default_name":     "Desenvolvedor",
+	"home.rails_heading":    "Você está no Cais!",
+	"home.rails_subtitle":   "%s está pronto para navegar.",
+	"home.stack":            "Go · HTMX · Tailwind · SQLite",
+	"home.next_steps":       "Próximos passos",
+	"home.step_resource":    "Gere seu primeiro resource",
+	"home.step_dev":         "Suba o servidor de desenvolvimento",
+	"home.step_docs":        "Explore o framework",
+	"home.powered_by":       "Powered by Cais — apps leves no Lightsail",
+	"home.minimal.tagline":  "App Go com HTMX, Tailwind e SQLite — powered by Cais.",
+	"home.minimal.hint":     "Use ` + "`cais g resource <name> --public`" + ` para começar.",
+
+	"dashboard.title":    "Dashboard",
+	"dashboard.contacts": "Contatos:",
+	"dashboard.env":      "Ambiente:",
+
+	"layout.footer": "Rodando leve no Lightsail",
+}
+`
+
+const tplI18nTest = `package i18n
+
+import "testing"
+
+func TestDefaultCatalog_english(t *testing.T) {
+	c := DefaultCatalog()
+	if got := c.T("auth.welcome"); got != "Welcome!" {
+		t.Errorf("T(auth.welcome) = %q", got)
+	}
+}
+
+func TestNewCatalog_portuguese(t *testing.T) {
+	c := NewCatalog("pt-BR")
+	if got := c.T("auth.welcome"); got != "Bem-vindo!" {
+		t.Errorf("T(auth.welcome) = %q", got)
+	}
+	if c.HTMLLang() != "pt-BR" {
+		t.Errorf("HTMLLang() = %q, want pt-BR", c.HTMLLang())
+	}
+}
+`

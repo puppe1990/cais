@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/puppe1990/cais/internal/store"
+	"github.com/puppe1990/cais/pkg/cais/i18n"
 )
 
 func setupTestStore(t *testing.T) store.Store {
@@ -20,7 +21,7 @@ func setupTestStore(t *testing.T) store.Store {
 }
 
 func TestContactHandler_Get_ReturnsForm(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), i18n.DefaultCatalog())
 
 	req := httptest.NewRequest(http.MethodGet, "/contact", nil)
 	rr := httptest.NewRecorder()
@@ -46,7 +47,7 @@ func TestContactHandler_Get_ReturnsForm(t *testing.T) {
 }
 
 func TestContactHandler_Post_MalformedEmail_Returns422(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), i18n.DefaultCatalog())
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email=not-an-email"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -57,13 +58,13 @@ func TestContactHandler_Post_MalformedEmail_Returns422(t *testing.T) {
 	if rr.Code != http.StatusUnprocessableEntity {
 		t.Errorf("status = %d, want %d", rr.Code, http.StatusUnprocessableEntity)
 	}
-	if !strings.Contains(rr.Body.String(), "válido") {
+	if !strings.Contains(rr.Body.String(), "valid email") {
 		t.Errorf("body missing validation message: %s", rr.Body.String())
 	}
 }
 
 func TestContactHandler_Post_MissingName_Returns422(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), i18n.DefaultCatalog())
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=&email=alice@example.com"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -74,13 +75,13 @@ func TestContactHandler_Post_MissingName_Returns422(t *testing.T) {
 	if rr.Code != http.StatusUnprocessableEntity {
 		t.Errorf("status = %d, want %d", rr.Code, http.StatusUnprocessableEntity)
 	}
-	if !strings.Contains(rr.Body.String(), "nome") {
+	if !strings.Contains(rr.Body.String(), "Name is required") {
 		t.Errorf("body missing name validation: %s", rr.Body.String())
 	}
 }
 
 func TestContactHandler_Post_InvalidEmail_Returns422(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), i18n.DefaultCatalog())
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -94,7 +95,7 @@ func TestContactHandler_Post_InvalidEmail_Returns422(t *testing.T) {
 }
 
 func TestContactHandler_Post_InvalidEmail_ReturnsPartial(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), i18n.DefaultCatalog())
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -106,14 +107,14 @@ func TestContactHandler_Post_InvalidEmail_ReturnsPartial(t *testing.T) {
 	if strings.Contains(body, "<!DOCTYPE html>") {
 		t.Error("expected partial HTML, got full page")
 	}
-	if !strings.Contains(body, "email") {
+	if !strings.Contains(body, "Email is required") {
 		t.Errorf("body missing error message, got: %s", body)
 	}
 }
 
 func TestContactHandler_Post_Valid_SavesAndReturnsSuccess(t *testing.T) {
 	s := setupTestStore(t)
-	h := NewContactHandler(setupTestRenderer(t), s, testSite())
+	h := NewContactHandler(setupTestRenderer(t), s, testSite(), i18n.DefaultCatalog())
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email=alice@example.com"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -124,7 +125,7 @@ func TestContactHandler_Post_Valid_SavesAndReturnsSuccess(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
 	}
-	if !strings.Contains(rr.Body.String(), "sucesso") {
+	if !strings.Contains(rr.Body.String(), "successfully") {
 		t.Errorf("body missing success message, got: %s", rr.Body.String())
 	}
 }

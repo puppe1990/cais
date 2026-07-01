@@ -23,28 +23,48 @@ func readModulePath(dir string) string {
 	return ""
 }
 
-func findLocalCaisReplace(appDir string) string {
-	if p := os.Getenv("CAIS_REPLACE"); p != "" {
-		return p
-	}
-	dir := appDir
+func findCaisSiblingFrom(start string) string {
+	dir := start
 	for {
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			break
+			return ""
 		}
 		for _, name := range []string{"Cais", "cais"} {
 			candidate := filepath.Join(parent, name)
 			if _, err := os.Stat(filepath.Join(candidate, "go.mod")); err != nil {
 				continue
 			}
-			rel, err := filepath.Rel(appDir, candidate)
-			if err != nil {
+			if mod := readModulePath(candidate); mod != "" && mod != frameworkModule {
 				continue
 			}
-			return rel
+			return candidate
 		}
 		dir = parent
+	}
+}
+
+func replacePathForApp(appDir, candidate string) string {
+	rel, err := filepath.Rel(appDir, candidate)
+	if err != nil {
+		return candidate
+	}
+	return rel
+}
+
+func findLocalCaisReplace(appDir string) string {
+	if p := os.Getenv("CAIS_REPLACE"); p != "" {
+		return p
+	}
+	if candidate := findCaisSiblingFrom(appDir); candidate != "" {
+		return replacePathForApp(appDir, candidate)
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	if candidate := findCaisSiblingFrom(cwd); candidate != "" {
+		return replacePathForApp(appDir, candidate)
 	}
 	return ""
 }

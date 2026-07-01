@@ -14,6 +14,7 @@ import (
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/csrf"
+	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 )
 
@@ -39,7 +40,8 @@ func setupTestApp(t *testing.T) *App {
 	t.Helper()
 
 	root := projectRoot(t)
-	renderer, err := cais.NewRendererFromDir(filepath.Join(root, "web", "templates"))
+	catalog := i18n.DefaultCatalog()
+	renderer, err := cais.NewRendererFromDir(filepath.Join(root, "web", "templates"), catalog)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,6 +58,7 @@ func setupTestApp(t *testing.T) *App {
 		Store:     s,
 		StaticDir: filepath.Join(root, "web", "static"),
 		Site:      meta.SiteFrom("Cais", ""),
+		Catalog:   catalog,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -126,7 +129,7 @@ func TestApp_HomeRoute(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
 	}
-	if !strings.Contains(rr.Body.String(), "Bem-vindo") {
+	if !strings.Contains(rr.Body.String(), "on Cais!") {
 		t.Errorf("body missing welcome, got: %s", rr.Body.String())
 	}
 }
@@ -254,7 +257,8 @@ func setupTestAppDev(t *testing.T) *App {
 	t.Helper()
 
 	root := projectRoot(t)
-	renderer, err := cais.NewRendererFromDir(filepath.Join(root, "web", "templates"))
+	catalog := i18n.DefaultCatalog()
+	renderer, err := cais.NewRendererFromDir(filepath.Join(root, "web", "templates"), catalog)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -271,6 +275,7 @@ func setupTestAppDev(t *testing.T) *App {
 		Store:     s,
 		StaticDir: filepath.Join(root, "web", "static"),
 		Site:      meta.SiteFrom("Cais", ""),
+		Catalog:   catalog,
 	})
 	if err != nil {
 		t.Fatal(err)

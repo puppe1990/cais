@@ -179,7 +179,7 @@ func patchRoutesForAuth(dir string) error {
 
 	insert := `	loginLimit := middleware.NewRateLimiter(10)
 
-	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions(), cfg)
+	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions(), cfg, deps.Catalog)
 	r.Get("/login", auth.Login)
 	r.Post("/login", loginLimit.Middleware(http.HandlerFunc(auth.LoginPost)).ServeHTTP)
 	r.Post("/logout", auth.LogoutPost)
@@ -236,6 +236,7 @@ import (
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/flash"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
+	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/session"
 )
@@ -246,6 +247,7 @@ type AuthHandler struct {
 	site     meta.Site
 	sessions session.Store
 	cfg      cais.Config
+	catalog  *i18n.Catalog
 }
 
 type loginData struct {
@@ -253,8 +255,8 @@ type loginData struct {
 	Error string
 }
 
-func NewAuthHandler(renderer *cais.Renderer, s store.Store, site meta.Site, sessions session.Store, cfg cais.Config) *AuthHandler {
-	return &AuthHandler{renderer: renderer, store: s, site: site, sessions: sessions, cfg: cfg}
+func NewAuthHandler(renderer *cais.Renderer, s store.Store, site meta.Site, sessions session.Store, cfg cais.Config, catalog *i18n.Catalog) *AuthHandler {
+	return &AuthHandler{renderer: renderer, store: s, site: site, sessions: sessions, cfg: cfg, catalog: catalog}
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -277,7 +279,7 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil || !session.VerifyPassword(user.PasswordHash, password) {
 		httpx.RenderOrError(w, h.renderer, "base", "login", loginData{
 			Site:  meta.ForRequest(h.site, r),
-			Error: "Email ou senha inválidos.",
+			Error: h.catalog.T("auth.invalid_credentials"),
 		})
 		return
 	}
@@ -286,7 +288,7 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	flash.Set(w, "notice", "Bem-vindo!", h.cfg.CookieSecure())
+	flash.Set(w, "notice", h.catalog.T("auth.welcome"), h.cfg.CookieSecure())
 	httpx.SeeOther(w, r, "/dashboard")
 }
 
@@ -312,7 +314,7 @@ import (
 func TestAuth_Login_redirectsWhenAuthenticated(t *testing.T) {
 	s := setupTestStore(t)
 	sessions := s.Sessions()
-	h := NewAuthHandler(setupTestRenderer(t), s, testSite(), sessions, cais.Config{})
+	h := NewAuthHandler(setupTestRenderer(t), s, testSite(), sessions, cais.Config{}, testCatalog())
 
 	req := httptest.NewRequest(http.MethodGet, "/login", nil)
 	req = session.WithUserID(req, 1)
@@ -326,7 +328,7 @@ func TestAuth_Login_redirectsWhenAuthenticated(t *testing.T) {
 
 func TestAuth_LoginPost_invalidCredentials(t *testing.T) {
 	s := setupTestStore(t)
-	h := NewAuthHandler(setupTestRenderer(t), s, testSite(), s.Sessions(), cais.Config{})
+	h := NewAuthHandler(setupTestRenderer(t), s, testSite(), s.Sessions(), cais.Config{}, testCatalog())
 
 	form := url.Values{"email": {"nobody@example.com"}, "password": {"wrong"}}
 	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
@@ -337,7 +339,7 @@ func TestAuth_LoginPost_invalidCredentials(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Errorf("status = %d, want 200", rr.Code)
 	}
-	if !strings.Contains(rr.Body.String(), "inválidos") {
+	if !strings.Contains(rr.Body.String(), "Invalid email or password") {
 		t.Errorf("body missing error: %s", rr.Body.String())
 	}
 }
@@ -345,7 +347,7 @@ func TestAuth_LoginPost_invalidCredentials(t *testing.T) {
 
 const tplPageLogin = `{{"{{"}} define "title" {{"}}"}}Login{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto mt-10">
-  <h2 class="text-2xl font-bold text-slate-800 mb-4">Entrar</h2>
+  <h2 class="text-2xl font-bold text-slate-800 mb-4">{{"{{"}} t "auth.login_title" {{"}}"}}</h2>
   {{"{{"}} if .Error {{"}}"}}<p class="text-red-600 text-sm mb-4">{{"{{"}} .Error {{"}}"}}</p>{{"{{"}} end {{"}}"}}
   <form method="post" action="/login" class="space-y-4">
     <input type="hidden" name="csrf_token" value="{{"{{"}} .CSRFToken {{"}}"}}" />
@@ -354,11 +356,11 @@ const tplPageLogin = `{{"{{"}} define "title" {{"}}"}}Login{{"{{"}} end {{"}}"}}
       <input class="w-full border border-slate-300 rounded-lg px-3 py-2" type="email" id="email" name="email" required />
     </div>
     <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="password">Senha</label>
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="password">{{"{{"}} t "auth.password_label" {{"}}"}}</label>
       <input class="w-full border border-slate-300 rounded-lg px-3 py-2" type="password" id="password" name="password" required />
     </div>
     <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition" type="submit">
-      Entrar
+      {{"{{"}} t "auth.login_submit" {{"}}"}}
     </button>
   </form>
 </div>

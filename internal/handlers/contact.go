@@ -8,6 +8,7 @@ import (
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
+	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/validate"
 )
@@ -16,14 +17,15 @@ type ContactHandler struct {
 	renderer *cais.Renderer
 	store    store.Store
 	site     meta.Site
+	catalog  *i18n.Catalog
 }
 
 type contactErrorData struct {
 	Message string
 }
 
-func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site) *ContactHandler {
-	return &ContactHandler{renderer: renderer, store: s, site: site}
+func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site, catalog *i18n.Catalog) *ContactHandler {
+	return &ContactHandler{renderer: renderer, store: s, site: site, catalog: catalog}
 }
 
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -41,12 +43,12 @@ func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
 
 	var errs validate.FieldErrors
 	if name == "" {
-		errs.Add("name", "O campo nome é obrigatório.")
+		errs.Add("name", h.catalog.T("contact.name_required"))
 	}
 	if err := validate.Email(email); err != nil {
-		msg := "O campo email é obrigatório."
+		msg := h.catalog.T("contact.email_required")
 		if email != "" {
-			msg = "Informe um email válido."
+			msg = h.catalog.T("contact.email_invalid")
 		}
 		errs.Add("email", msg)
 	}

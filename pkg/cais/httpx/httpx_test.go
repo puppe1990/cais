@@ -11,7 +11,7 @@ import (
 
 func testRenderer(t *testing.T) *cais.Renderer {
 	t.Helper()
-	r, err := cais.NewRendererFromDir("../testdata/templates")
+	r, err := cais.NewRendererFromDir("../testdata/templates", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
