@@ -1,4 +1,4 @@
-# Cais
+# Go on Cais
 
 ![Go on Cais](web/static/img/go-on-cais.jpg)
 
