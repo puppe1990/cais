@@ -16,15 +16,27 @@ import (
 
 func main() {
 	cfg := cais.Load()
+	preferredPort := cfg.Port
+	port, shifted, err := cais.ResolvePort(cfg.Port, cfg.Env)
+	if err != nil {
+		log.Fatal(err)
+	}
+	cfg.Port = port
+
 	a, err := bootstrapWithConfig(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	shiftedFrom := ""
+	if shifted {
+		shiftedFrom = preferredPort
+	}
 	boot.Print(os.Stdout, boot.Options{
-		AppName: "Cais",
-		Config:  cfg,
-		Version: boot.CaisVersion(),
+		AppName:         "Cais",
+		Config:          cfg,
+		Version:         boot.CaisVersion(),
+		PortShiftedFrom: shiftedFrom,
 	})
 	if err := a.Run(); err != nil {
 		log.Fatal(err)

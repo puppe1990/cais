@@ -34,6 +34,24 @@ func TestPrint_IncludesRailsStyleLines(t *testing.T) {
 	}
 }
 
+func TestPrint_ShowsPortShiftLine(t *testing.T) {
+	var buf bytes.Buffer
+	Print(&buf, Options{
+		AppName: "PulseFit",
+		Config: cais.Config{
+			Port:   ":8081",
+			DBPath: "./data/app.db",
+			Env:    "development",
+		},
+		Version:         "0.3.2",
+		PortShiftedFrom: ":8080",
+	})
+
+	if !strings.Contains(buf.String(), "=> Port :8080 in use, using :8081") {
+		t.Fatalf("got:\n%s", buf.String())
+	}
+}
+
 func TestListenURL(t *testing.T) {
 	if got := ListenURL(":3000"); got != "http://127.0.0.1:3000" {
 		t.Fatalf("ListenURL(:3000) = %q", got)
