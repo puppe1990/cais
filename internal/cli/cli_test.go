@@ -380,6 +380,11 @@ func TestScaffoldResource_PublicListRichFields(t *testing.T) {
 	if !strings.Contains(body, ".Notes") {
 		t.Error("public list should render notes text field")
 	}
+	for _, needle := range []string{"swap:150ms", `data-cais-optimistic="toggle"`} {
+		if !strings.Contains(body, needle) {
+			t.Errorf("public list missing HTMX UX attribute %q", needle)
+		}
+	}
 }
 
 func TestScaffoldResource_DishPluralization(t *testing.T) {
@@ -542,11 +547,33 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 		"web/templates/pages/dashboard.html",
 		"web/static/manifest.webmanifest",
 		"web/static/js/sw.js",
+		"web/static/js/cais.js",
 		"web/static/og.png",
 		"web/static/icons/icon-192.png",
 	} {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
 			t.Errorf("missing %s: %v", path, err)
+		}
+	}
+}
+
+func TestScaffold_InputCSSIncludesHTMXStyles(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "styles")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "styles",
+		ModulePath: "github.com/puppe1990/styles",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	css, err := os.ReadFile(filepath.Join(appDir, "input.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(css)
+	for _, needle := range []string{".htmx-swapping", ".htmx-settling", ".htmx-indicator"} {
+		if !strings.Contains(body, needle) {
+			t.Errorf("input.css missing %q", needle)
 		}
 	}
 }
