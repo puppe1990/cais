@@ -20,7 +20,7 @@ func setupTestStore(t *testing.T) store.Store {
 }
 
 func TestContactHandler_Get_ReturnsForm(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t))
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite())
 
 	req := httptest.NewRequest(http.MethodGet, "/contact", nil)
 	rr := httptest.NewRecorder()
@@ -35,7 +35,7 @@ func TestContactHandler_Get_ReturnsForm(t *testing.T) {
 }
 
 func TestContactHandler_Post_InvalidEmail_Returns422(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t))
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite())
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -49,7 +49,7 @@ func TestContactHandler_Post_InvalidEmail_Returns422(t *testing.T) {
 }
 
 func TestContactHandler_Post_InvalidEmail_ReturnsPartial(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t))
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite())
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -68,7 +68,7 @@ func TestContactHandler_Post_InvalidEmail_ReturnsPartial(t *testing.T) {
 
 func TestContactHandler_Post_Valid_SavesAndReturnsSuccess(t *testing.T) {
 	s := setupTestStore(t)
-	h := NewContactHandler(setupTestRenderer(t), s)
+	h := NewContactHandler(setupTestRenderer(t), s, testSite())
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email=alice@example.com"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")

@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/puppe1990/cais/pkg/cais/meta"
 )
 
 func NewRendererFromDir(dir string) (*Renderer, error) {
@@ -40,7 +42,7 @@ func NewRenderer(fsys fs.FS) (*Renderer, error) {
 	}
 	for _, pagePath := range pages {
 		name := strings.TrimSuffix(filepath.Base(pagePath), ".html")
-		tmpl, err := template.ParseFS(fsys, layoutPath, pagePath)
+		tmpl, err := parsePage(fsys, layoutPath, pagePath)
 		if err != nil {
 			return nil, fmt.Errorf("parse page %s: %w", name, err)
 		}
@@ -69,6 +71,10 @@ func (r *Renderer) Render(w io.Writer, layout, page string, data any) error {
 		return fmt.Errorf("page %q not found", page)
 	}
 	return tmpl.ExecuteTemplate(w, layout, data)
+}
+
+func parsePage(fsys fs.FS, layoutPath, pagePath string) (*template.Template, error) {
+	return template.New("").Funcs(meta.TemplateFuncs()).ParseFS(fsys, layoutPath, pagePath)
 }
 
 func (r *Renderer) RenderPartial(w io.Writer, partial string, data any) error {

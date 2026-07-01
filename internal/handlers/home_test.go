@@ -9,7 +9,12 @@ import (
 	"testing"
 
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/meta"
 )
+
+func testSite() meta.Site {
+	return meta.Site{AppName: "Cais", AppURL: "https://cais.example.com"}
+}
 
 func projectRoot(t *testing.T) string {
 	t.Helper()
@@ -40,7 +45,7 @@ func setupTestRenderer(t *testing.T) *cais.Renderer {
 }
 
 func TestHomeHandler_Returns200(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t))
+	h := NewHomeHandler(setupTestRenderer(t), testSite())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -52,7 +57,7 @@ func TestHomeHandler_Returns200(t *testing.T) {
 }
 
 func TestHomeHandler_ContainsWelcome(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t))
+	h := NewHomeHandler(setupTestRenderer(t), testSite())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -64,7 +69,7 @@ func TestHomeHandler_ContainsWelcome(t *testing.T) {
 }
 
 func TestHomeHandler_ContentType(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t))
+	h := NewHomeHandler(setupTestRenderer(t), testSite())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -77,7 +82,7 @@ func TestHomeHandler_ContentType(t *testing.T) {
 }
 
 func TestHomeHandler_IncludesPWA(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t))
+	h := NewHomeHandler(setupTestRenderer(t), testSite())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -89,6 +94,9 @@ func TestHomeHandler_IncludesPWA(t *testing.T) {
 		"theme-color",
 		"serviceWorker",
 		"apple-mobile-web-app-capable",
+		`property="og:title"`,
+		`name="twitter:card"`,
+		"https://cais.example.com/static/og.png",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("body missing %q", want)

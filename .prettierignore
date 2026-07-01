@@ -2,6 +2,7 @@ node_modules/
 bin/
 tmp/
 data/
+web/templates/
 web/static/css/styles.css
 web/static/js/htmx.min.js
 pkg/cais/pwa/assets/htmx.min.js

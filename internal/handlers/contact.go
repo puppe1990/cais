@@ -8,23 +8,25 @@ import (
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
+	"github.com/puppe1990/cais/pkg/cais/meta"
 )
 
 type ContactHandler struct {
 	renderer *cais.Renderer
 	store    store.Store
+	site     meta.Site
 }
 
 type contactErrorData struct {
 	Message string
 }
 
-func NewContactHandler(renderer *cais.Renderer, s store.Store) *ContactHandler {
-	return &ContactHandler{renderer: renderer, store: s}
+func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site) *ContactHandler {
+	return &ContactHandler{renderer: renderer, store: s, site: site}
 }
 
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
-	httpx.RenderOrError(w, h.renderer, "base", "contact", nil)
+	httpx.RenderOrError(w, h.renderer, "base", "contact", h.site)
 }
 
 func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
@@ -61,5 +63,5 @@ func (h *ContactHandler) renderContactResponse(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	httpx.RenderOrError(w, h.renderer, "base", "contact", nil)
+	httpx.RenderOrError(w, h.renderer, "base", "contact", h.site)
 }

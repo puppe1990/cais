@@ -43,6 +43,7 @@ import (
 
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/boot"
+	"github.com/puppe1990/cais/pkg/cais/meta"
 	"{{.ModulePath}}/internal/app"
 	"{{.ModulePath}}/internal/store"
 	"{{.ModulePath}}/web"
@@ -107,6 +108,7 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 		Renderer:  renderer,
 		Store:     s,
 		StaticDir: staticDir,
+		Site:      meta.SiteFrom("{{.AppName}}", cfg.AppURL),
 	})
 }
 
@@ -190,6 +192,7 @@ import (
 
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/devlog"
+	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/middleware"
 	"{{.ModulePath}}/internal/store"
 )
@@ -198,6 +201,7 @@ type Deps struct {
 	Renderer  *cais.Renderer
 	Store     store.Store
 	StaticDir string
+	Site      meta.Site
 }
 
 type App struct {
@@ -283,9 +287,9 @@ import (
 )
 
 func registerRoutes(r *cais.Router, deps Deps) {
-	home := handlers.NewHomeHandler(deps.Renderer)
-	contact := handlers.NewContactHandler(deps.Renderer, deps.Store)
-	dashboard := handlers.NewDashboardHandler(deps.Renderer, deps.Store)
+	home := handlers.NewHomeHandler(deps.Renderer, deps.Site)
+	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, deps.Site)
+	dashboard := handlers.NewDashboardHandler(deps.Renderer, deps.Store, deps.Site)
 
 	r.Get("/", home.ServeHTTP)
 	r.Get("/contact", contact.Get)
@@ -300,23 +304,26 @@ import (
 	"net/http"
 
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/meta"
 )
 
 type PageData struct {
+	meta.Site
 	Nome string
 }
 
 type HomeHandler struct {
 	renderer *cais.Renderer
+	site     meta.Site
 }
 
-func NewHomeHandler(renderer *cais.Renderer) *HomeHandler {
-	return &HomeHandler{renderer: renderer}
+func NewHomeHandler(renderer *cais.Renderer, site meta.Site) *HomeHandler {
+	return &HomeHandler{renderer: renderer, site: site}
 }
 
 func (h *HomeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "home", PageData{Nome: "{{.AppName}}"}); err != nil {
+	if err := h.renderer.Render(w, "base", "home", PageData{Site: h.site, Nome: "{{.AppName}}"}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -332,7 +339,7 @@ import (
 )
 
 func TestHomeHandler_Returns200(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t))
+	h := NewHomeHandler(setupTestRenderer(t), testSite())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -344,7 +351,7 @@ func TestHomeHandler_Returns200(t *testing.T) {
 }
 
 func TestHomeHandler_ContainsWelcome(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t))
+	h := NewHomeHandler(setupTestRenderer(t), testSite())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -356,7 +363,7 @@ func TestHomeHandler_ContainsWelcome(t *testing.T) {
 }
 
 func TestHomeHandler_ContentType(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t))
+	h := NewHomeHandler(setupTestRenderer(t), testSite())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -379,7 +386,7 @@ import (
 )
 
 func TestHomeHandler_Returns200(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t))
+	h := NewHomeHandler(setupTestRenderer(t), testSite())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -391,7 +398,7 @@ func TestHomeHandler_Returns200(t *testing.T) {
 }
 
 func TestHomeHandler_ContainsWelcome(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t))
+	h := NewHomeHandler(setupTestRenderer(t), testSite())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -403,7 +410,7 @@ func TestHomeHandler_ContainsWelcome(t *testing.T) {
 }
 
 func TestHomeHandler_ContentType(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t))
+	h := NewHomeHandler(setupTestRenderer(t), testSite())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -425,24 +432,26 @@ import (
 	"{{.ModulePath}}/internal/models"
 	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/meta"
 )
 
 type ContactHandler struct {
 	renderer *cais.Renderer
 	store    store.Store
+	site     meta.Site
 }
 
 type contactErrorData struct {
 	Message string
 }
 
-func NewContactHandler(renderer *cais.Renderer, s store.Store) *ContactHandler {
-	return &ContactHandler{renderer: renderer, store: s}
+func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site) *ContactHandler {
+	return &ContactHandler{renderer: renderer, store: s, site: site}
 }
 
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "contact", nil); err != nil {
+	if err := h.renderer.Render(w, "base", "contact", h.site); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -483,7 +492,7 @@ func (h *ContactHandler) renderContactResponse(w http.ResponseWriter, r *http.Re
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "contact", nil); err != nil {
+	if err := h.renderer.Render(w, "base", "contact", h.site); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -499,7 +508,7 @@ import (
 )
 
 func TestContactHandler_Get_ReturnsForm(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t))
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite())
 
 	req := httptest.NewRequest(http.MethodGet, "/contact", nil)
 	rr := httptest.NewRecorder()
@@ -514,7 +523,7 @@ func TestContactHandler_Get_ReturnsForm(t *testing.T) {
 }
 
 func TestContactHandler_Post_InvalidEmail_Returns422(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t))
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite())
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -528,7 +537,7 @@ func TestContactHandler_Post_InvalidEmail_Returns422(t *testing.T) {
 }
 
 func TestContactHandler_Post_InvalidEmail_ReturnsPartial(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t))
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite())
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -547,7 +556,7 @@ func TestContactHandler_Post_InvalidEmail_ReturnsPartial(t *testing.T) {
 
 func TestContactHandler_Post_Valid_SavesAndReturnsSuccess(t *testing.T) {
 	s := setupTestStore(t)
-	h := NewContactHandler(setupTestRenderer(t), s)
+	h := NewContactHandler(setupTestRenderer(t), s, testSite())
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email=alice@example.com"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -571,9 +580,11 @@ import (
 
 	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/meta"
 )
 
 type DashboardData struct {
+	meta.Site
 	TotalContacts int64
 	Env           string
 }
@@ -581,10 +592,11 @@ type DashboardData struct {
 type DashboardHandler struct {
 	renderer *cais.Renderer
 	store    store.Store
+	site     meta.Site
 }
 
-func NewDashboardHandler(renderer *cais.Renderer, s store.Store) *DashboardHandler {
-	return &DashboardHandler{renderer: renderer, store: s}
+func NewDashboardHandler(renderer *cais.Renderer, s store.Store, site meta.Site) *DashboardHandler {
+	return &DashboardHandler{renderer: renderer, store: s, site: site}
 }
 
 func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -595,6 +607,7 @@ func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := DashboardData{
+		Site:          h.site,
 		TotalContacts: count,
 		Env:           cais.Load().Env,
 	}
@@ -616,7 +629,7 @@ import (
 )
 
 func TestDashboardHandler_Returns200(t *testing.T) {
-	h := NewDashboardHandler(setupTestRenderer(t), setupTestStore(t))
+	h := NewDashboardHandler(setupTestRenderer(t), setupTestStore(t), testSite())
 
 	req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
 	rr := httptest.NewRecorder()
@@ -628,7 +641,7 @@ func TestDashboardHandler_Returns200(t *testing.T) {
 }
 
 func TestDashboardHandler_ContainsDashboard(t *testing.T) {
-	h := NewDashboardHandler(setupTestRenderer(t), setupTestStore(t))
+	h := NewDashboardHandler(setupTestRenderer(t), setupTestStore(t), testSite())
 
 	req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
 	rr := httptest.NewRecorder()
@@ -647,6 +660,7 @@ import (
 
 	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/testutil"
 )
 
@@ -663,6 +677,10 @@ func setupTestStore(t *testing.T) store.Store {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 	return s
+}
+
+func testSite() meta.Site {
+	return meta.Site{AppName: "{{.AppName}}", AppURL: "https://example.com"}
 }
 `
 
@@ -919,19 +937,32 @@ import "embed"
 var Templates embed.FS
 `
 
-const tplLayout = `{{"{{"}} define "base" {{"}}"}}
+const tplLayout = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}}"}}
+{{"{{"}} define "description" {{"}}"}}{{.AppName}} — powered by Cais{{"{{"}} end {{"}}"}}
+{{"{{"}} define "base" {{"}}"}}
 <!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{"{{"}} block "title" . {{"}}"}}{{.AppName}}{{"{{"}} end {{"}}"}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>{{"{{"}} template "title" . {{"}}"}}</title>
+    <meta name="description" content="{{"{{"}} template "description" . {{"}}"}}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="{{.AppName}}" />
+    <meta property="og:title" content="{{"{{"}} template "title" . {{"}}"}}" />
+    <meta property="og:description" content="{{"{{"}} template "description" . {{"}}"}}" />
+    <meta property="og:image" content="{{"{{"}} absURL .AppURL "/static/og.png" {{"}}"}}" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{"{{"}} template "title" . {{"}}"}}" />
+    <meta name="twitter:description" content="{{"{{"}} template "description" . {{"}}"}}" />
+    <meta name="twitter:image" content="{{"{{"}} absURL .AppURL "/static/og.png" {{"}}"}}" />
     <link rel="stylesheet" href="/static/css/styles.css" />
     <link rel="manifest" href="/static/manifest.webmanifest" />
     <meta name="theme-color" content="#4f46e5" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="{{.AppName}}" />
     <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
     <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />
@@ -1249,7 +1280,7 @@ import (
 )
 
 func registerRoutes(r *cais.Router, deps Deps) {
-	home := handlers.NewHomeHandler(deps.Renderer)
+	home := handlers.NewHomeHandler(deps.Renderer, deps.Site)
 	r.Get("/", home.ServeHTTP)
 }
 `
@@ -1328,19 +1359,32 @@ func TestStore_Migrations(t *testing.T) {
 }
 `
 
-const tplLayoutMinimal = `{{"{{"}} define "base" {{"}}"}}
+const tplLayoutMinimal = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}}"}}
+{{"{{"}} define "description" {{"}}"}}{{.AppName}} — powered by Cais{{"{{"}} end {{"}}"}}
+{{"{{"}} define "base" {{"}}"}}
 <!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{"{{"}} block "title" . {{"}}"}}{{.AppName}}{{"{{"}} end {{"}}"}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>{{"{{"}} template "title" . {{"}}"}}</title>
+    <meta name="description" content="{{"{{"}} template "description" . {{"}}"}}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="{{.AppName}}" />
+    <meta property="og:title" content="{{"{{"}} template "title" . {{"}}"}}" />
+    <meta property="og:description" content="{{"{{"}} template "description" . {{"}}"}}" />
+    <meta property="og:image" content="{{"{{"}} absURL .AppURL "/static/og.png" {{"}}"}}" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{"{{"}} template "title" . {{"}}"}}" />
+    <meta name="twitter:description" content="{{"{{"}} template "description" . {{"}}"}}" />
+    <meta name="twitter:image" content="{{"{{"}} absURL .AppURL "/static/og.png" {{"}}"}}" />
     <link rel="stylesheet" href="/static/css/styles.css" />
     <link rel="manifest" href="/static/manifest.webmanifest" />
     <meta name="theme-color" content="#4f46e5" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="{{.AppName}}" />
     <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
     <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />
@@ -1377,6 +1421,7 @@ import (
 
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/boot"
+	"github.com/puppe1990/cais/pkg/cais/meta"
 	"{{.ModulePath}}/internal/app"
 	"{{.ModulePath}}/internal/store"
 	"{{.ModulePath}}/web"
@@ -1441,6 +1486,7 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 		Renderer:  renderer,
 		Store:     s,
 		StaticDir: staticDir,
+		Site:      meta.SiteFrom("{{.AppName}}", cfg.AppURL),
 	})
 }
 
@@ -1475,6 +1521,7 @@ import (
 
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/devlog"
+	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/middleware"
 	"{{.ModulePath}}/internal/store"
 )
@@ -1483,6 +1530,7 @@ type Deps struct {
 	Renderer  *cais.Renderer
 	Store     store.Store
 	StaticDir string
+	Site      meta.Site
 }
 
 type App struct {
@@ -1566,19 +1614,32 @@ func registerRoutes(r *cais.Router, deps Deps) {
 }
 `
 
-const tplLayoutBlank = `{{"{{"}} define "base" {{"}}"}}
+const tplLayoutBlank = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}}"}}
+{{"{{"}} define "description" {{"}}"}}{{.AppName}} — powered by Cais{{"{{"}} end {{"}}"}}
+{{"{{"}} define "base" {{"}}"}}
 <!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{"{{"}} block "title" . {{"}}"}}{{.AppName}}{{"{{"}} end {{"}}"}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>{{"{{"}} template "title" . {{"}}"}}</title>
+    <meta name="description" content="{{"{{"}} template "description" . {{"}}"}}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="{{.AppName}}" />
+    <meta property="og:title" content="{{"{{"}} template "title" . {{"}}"}}" />
+    <meta property="og:description" content="{{"{{"}} template "description" . {{"}}"}}" />
+    <meta property="og:image" content="{{"{{"}} absURL .AppURL "/static/og.png" {{"}}"}}" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{"{{"}} template "title" . {{"}}"}}" />
+    <meta name="twitter:description" content="{{"{{"}} template "description" . {{"}}"}}" />
+    <meta name="twitter:image" content="{{"{{"}} absURL .AppURL "/static/og.png" {{"}}"}}" />
     <link rel="stylesheet" href="/static/css/styles.css" />
     <link rel="manifest" href="/static/manifest.webmanifest" />
     <meta name="theme-color" content="#4f46e5" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="{{.AppName}}" />
     <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
     <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />

@@ -12,6 +12,7 @@ import (
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/devlog"
+	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/middleware"
 )
 
@@ -46,8 +47,9 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	r.Use(middleware.Recover)
 	r.Static("/static", deps.StaticDir)
 
-	home := handlers.NewHomeHandler(deps.Renderer)
-	contact := handlers.NewContactHandler(deps.Renderer, deps.Store)
+	site := meta.SiteFrom("Cais", cfg.AppURL)
+	home := handlers.NewHomeHandler(deps.Renderer, site)
+	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, site)
 
 	r.Get("/", home.ServeHTTP)
 	r.Get("/contact", contact.Get)

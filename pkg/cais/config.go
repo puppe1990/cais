@@ -6,6 +6,7 @@ type Config struct {
 	Port   string
 	DBPath string
 	Env    string
+	AppURL string
 }
 
 func Load() Config {
@@ -23,6 +24,9 @@ func Load() Config {
 	}
 	if v := os.Getenv("ENV"); v != "" {
 		cfg.Env = v
+	}
+	if v := os.Getenv("APP_URL"); v != "" {
+		cfg.AppURL = v
 	}
 
 	return cfg

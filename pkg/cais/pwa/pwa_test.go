@@ -30,6 +30,9 @@ func TestWriteStatic(t *testing.T) {
 	if !strings.Contains(string(manifest), "My App") {
 		t.Errorf("manifest missing app name: %s", manifest)
 	}
+	if !strings.Contains(string(manifest), `"display": "fullscreen"`) {
+		t.Errorf("manifest should use fullscreen display, got: %s", manifest)
+	}
 
 	for _, path := range []string{
 		"web/static/js/sw.js",
@@ -38,6 +41,7 @@ func TestWriteStatic(t *testing.T) {
 		"web/static/icons/icon.svg",
 		"web/static/icons/icon-192.png",
 		"web/static/icons/icon-512.png",
+		"web/static/og.png",
 	} {
 		if _, err := os.Stat(filepath.Join(dir, path)); err != nil {
 			t.Errorf("missing %s: %v", path, err)
@@ -46,7 +50,11 @@ func TestWriteStatic(t *testing.T) {
 }
 
 func TestHeadHTML(t *testing.T) {
-	if !strings.Contains(HeadHTML(), "manifest.webmanifest") {
+	html := HeadHTML()
+	if !strings.Contains(html, "manifest.webmanifest") {
 		t.Error("HeadHTML missing manifest link")
+	}
+	if !strings.Contains(html, `apple-mobile-web-app-status-bar-style" content="black-translucent"`) {
+		t.Error("HeadHTML should use black-translucent status bar for fullscreen PWA")
 	}
 }

@@ -542,6 +542,7 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 		"web/templates/pages/dashboard.html",
 		"web/static/manifest.webmanifest",
 		"web/static/js/sw.js",
+		"web/static/og.png",
 		"web/static/icons/icon-192.png",
 	} {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {

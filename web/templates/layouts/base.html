@@ -1,16 +1,29 @@
+{{ define "title" }}{{ if .AppName }}{{ .AppName }}{{ else }}Cais{{ end }}{{ end }}
+{{ define "description" }}{{ if .AppName }}{{ .AppName }}{{ else }}Cais{{ end }} — powered by Cais{{ end }}
 {{ define "base" }}
 <!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{ block "title" . }}Cais{{ end }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>{{ template "title" . }}</title>
+    <meta name="description" content="{{ template "description" . }}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="{{ if .AppName }}{{ .AppName }}{{ else }}Cais{{ end }}" />
+    <meta property="og:title" content="{{ template "title" . }}" />
+    <meta property="og:description" content="{{ template "description" . }}" />
+    <meta property="og:image" content="{{ absURL .AppURL "/static/og.png" }}" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{ template "title" . }}" />
+    <meta name="twitter:description" content="{{ template "description" . }}" />
+    <meta name="twitter:image" content="{{ absURL .AppURL "/static/og.png" }}" />
     <link rel="stylesheet" href="/static/css/styles.css" />
     <link rel="manifest" href="/static/manifest.webmanifest" />
     <meta name="theme-color" content="#4f46e5" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Cais" />
     <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
     <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />

@@ -46,7 +46,7 @@ func HeadHTML() string {
     <meta name="theme-color" content="#4f46e5" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Cais" />
     <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
     <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />`
@@ -99,6 +99,10 @@ func WriteStatic(appDir string, cfg Config) error {
 		}
 	}
 
+	if err := writeOGImage(filepath.Join(staticDir, "og.png")); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -113,7 +117,7 @@ func writeManifest(path string, cfg Config) error {
   "short_name": {{printf "%q" .ShortName}},
   "description": {{printf "%q" .Description}},
   "start_url": {{printf "%q" .StartURL}},
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#f8fafc",
   "theme_color": {{printf "%q" .ThemeColor}},
   "orientation": "portrait-primary",
@@ -160,12 +164,34 @@ func copyAsset(src, dst string) error {
 
 func writePNGIcon(path string, size int) error {
 	img := image.NewRGBA(image.Rect(0, 0, size, size))
-	indigo := color.RGBA{R: 79, G: 70, B: 229, A: 255}
-	for y := 0; y < size; y++ {
-		for x := 0; x < size; x++ {
-			img.Set(x, y, indigo)
+	fill(img, color.RGBA{R: 79, G: 70, B: 229, A: 255})
+	return encodePNG(path, img)
+}
+
+func writeOGImage(path string) error {
+	const width, height = 1200, 630
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	fill(img, color.RGBA{R: 15, G: 23, B: 42, A: 255})
+	accent := color.RGBA{R: 79, G: 70, B: 229, A: 255}
+	barHeight := height / 5
+	for y := 0; y < barHeight; y++ {
+		for x := 0; x < width; x++ {
+			img.Set(x, y, accent)
 		}
 	}
+	return encodePNG(path, img)
+}
+
+func fill(img *image.RGBA, c color.RGBA) {
+	bounds := img.Bounds()
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			img.Set(x, y, c)
+		}
+	}
+}
+
+func encodePNG(path string, img image.Image) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return err

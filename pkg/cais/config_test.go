@@ -47,3 +47,13 @@ func TestConfig_DefaultEnv(t *testing.T) {
 		t.Errorf("Env = %q, want %q", cfg.Env, "development")
 	}
 }
+
+func TestConfig_AppURL(t *testing.T) {
+	t.Setenv("APP_URL", "https://pulsefit.gestaobem.com")
+
+	cfg := Load()
+
+	if cfg.AppURL != "https://pulsefit.gestaobem.com" {
+		t.Errorf("AppURL = %q, want https://pulsefit.gestaobem.com", cfg.AppURL)
+	}
+}
