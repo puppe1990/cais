@@ -20,7 +20,8 @@ Before writing production code:
 | `internal/handlers/` | HTTP handlers                                       |
 | `internal/store/`    | SQLite persistence                                  |
 | `web/templates/`     | HTML templates (layouts, pages, partials)           |
-| `web/static/`        | Compiled Tailwind CSS + vendored HTMX               |
+| `web/static/`        | Tailwind CSS, HTMX, PWA (manifest, sw.js, icons)    |
+| `pkg/cais/pwa/`      | Default PWA assets generator                        |
 | `cmd/server/`        | Entry point                                         |
 
 ## New page

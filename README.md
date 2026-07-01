@@ -6,6 +6,7 @@ Full-stack Go framework for mini apps on Lightsail: server-side HTML, HTMX, Tail
 
 - Go 1.22+ (`net/http` stdlib)
 - `html/template` + HTMX 2.x
+- PWA by default (manifest, service worker, offline page, icons)
 - Tailwind CSS 3.x
 - SQLite (`modernc.org/sqlite`, no CGO)
 
@@ -49,6 +50,7 @@ Requires Go on your PATH and `~/go/bin` for hot reload (`air`):
 
 ```bash
 export PATH="$HOME/go/bin:$PATH"
+make pwa      # regenerate manifest, icons, service worker
 make dev      # http://localhost:8080
 make test     # full test suite
 make build    # builds bin/cais

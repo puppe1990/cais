@@ -75,3 +75,23 @@ func TestHomeHandler_ContentType(t *testing.T) {
 		t.Errorf("Content-Type = %q, want text/html", ct)
 	}
 }
+
+func TestHomeHandler_IncludesPWA(t *testing.T) {
+	h := NewHomeHandler(setupTestRenderer(t))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	body := rr.Body.String()
+	for _, want := range []string{
+		"manifest.webmanifest",
+		"theme-color",
+		"serviceWorker",
+		"apple-mobile-web-app-capable",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("body missing %q", want)
+		}
+	}
+}

@@ -801,6 +801,14 @@ const tplLayout = `{{"{{"}} define "base" {{"}}"}}
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{"{{"}} block "title" . {{"}}"}}}{{.AppName}}{{"{{"}} end {{"}}"}}</title>
     <link rel="stylesheet" href="/static/css/styles.css" />
+    <link rel="manifest" href="/static/manifest.webmanifest" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="{{.AppName}}" />
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
+    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml" />
     <script src="/static/js/htmx.min.js" defer></script>
   </head>
   <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
@@ -818,6 +826,11 @@ const tplLayout = `{{"{{"}} define "base" {{"}}"}}
     <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
       {{.AppName}} — powered by Cais
     </footer>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/static/js/sw.js");
+      }
+    </script>
   </body>
 </html>
 {{"{{"}} end {{"}}"}}

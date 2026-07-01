@@ -1,4 +1,4 @@
-.PHONY: dev build test test-v css css-watch docker clean lint format format-check pre-commit-install ci install-cli
+.PHONY: dev build test test-v css css-watch docker clean lint format format-check pre-commit-install ci install-cli pwa
 
 BIN := bin/cais
 CSS_IN := input.css
@@ -44,6 +44,9 @@ ci: test lint format-check
 
 install-cli:
 	go install ./cmd/cais
+
+pwa:
+	go run ./cmd/pwagen
 
 clean:
 	rm -rf bin/ data/ tmp/

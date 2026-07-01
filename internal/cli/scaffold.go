@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"github.com/matheuspuppe/cais/pkg/cais/pwa"
 )
 
 func scaffoldNewApp(dir string, data scaffoldData) error {
@@ -47,6 +49,10 @@ func scaffoldNewApp(dir string, data scaffoldData) error {
 		if err := writeTemplate(filepath.Join(dir, path), content, data); err != nil {
 			return fmt.Errorf("%s: %w", path, err)
 		}
+	}
+
+	if err := pwa.InstallTo(dir, data.AppName); err != nil {
+		return fmt.Errorf("pwa assets: %w", err)
 	}
 
 	if os.Getenv("CAIS_SKIP_TIDY") == "1" {
