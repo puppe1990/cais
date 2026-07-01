@@ -597,7 +597,7 @@ func TestContactHandler_Post_InvalidEmail_ReturnsPartial(t *testing.T) {
 	if strings.Contains(body, "<!DOCTYPE html>") {
 		t.Error("expected partial HTML, got full page")
 	}
-	if !strings.Contains(body, "email") {
+	if !strings.Contains(body, "Email is required") {
 		t.Errorf("body missing error message, got: %s", body)
 	}
 }
