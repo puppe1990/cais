@@ -856,6 +856,82 @@ func TestCLI_NewBlankCreatesEmptyApp(t *testing.T) {
 	}
 }
 
+func TestScaffoldNewApp_CustomModule(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "myapp")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "myapp",
+		ModulePath: "github.com/acme/myapp",
+	}, false, false); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(appDir, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "module github.com/acme/myapp") {
+		t.Errorf("go.mod missing custom module path: %s", body)
+	}
+}
+
+func TestCLI_New_CustomModule(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	root := t.TempDir()
+	appDir := filepath.Join(root, "myapp")
+
+	var buf bytes.Buffer
+	c := &CLI{Out: &buf}
+	if err := c.Run([]string{"new", "myapp", appDir, "--module", "github.com/acme/myapp"}); err != nil {
+		t.Fatal(err)
+	}
+
+	body, err := os.ReadFile(filepath.Join(appDir, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "module github.com/acme/myapp") {
+		t.Errorf("go.mod missing custom module path: %s", body)
+	}
+}
+
+func TestCLI_New_CustomModule_DefaultWhenOmitted(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	root := t.TempDir()
+	appDir := filepath.Join(root, "cool-app")
+
+	var buf bytes.Buffer
+	c := &CLI{Out: &buf}
+	if err := c.Run([]string{"new", "cool-app", appDir}); err != nil {
+		t.Fatal(err)
+	}
+
+	body, err := os.ReadFile(filepath.Join(appDir, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "module github.com/puppe1990/coolapp") {
+		t.Errorf("go.mod missing default module path: %s", body)
+	}
+}
+
+func TestCLI_New_ModuleRequiresValue(t *testing.T) {
+	c := &CLI{Out: os.Stdout}
+	if err := c.Run([]string{"new", "myapp", "--module"}); err == nil {
+		t.Fatal("expected error for --module without value")
+	}
+}
+
+func TestCLI_Help_IncludesModuleFlag(t *testing.T) {
+	var buf bytes.Buffer
+	c := &CLI{Out: &buf}
+	if err := c.Run([]string{"help"}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "--module") {
+		t.Error("help missing --module flag")
+	}
+}
+
 func TestScaffoldMigration_numbersAfterSQLOnly(t *testing.T) {
 	dir := t.TempDir()
 	migrationsDir := filepath.Join(dir, "internal", "store", "migrations")

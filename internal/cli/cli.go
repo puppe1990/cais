@@ -62,9 +62,11 @@ func (c *CLI) printHelp() {
 	_, _ = fmt.Fprintln(c.Out, `Cais — Rails-style CLI for Go full-stack apps
 
 Usage:
-  cais new <app> [dir]       Create a new app (default dir: ./<app>)
+  cais new <app> [dir] [--minimal] [--blank] [--module <path>]
+                               Create a new app (default dir: ./<app>)
   cais new <app> [dir] --minimal   Slim app (home only)
   cais new <app> [dir] --blank     Empty app (no starter content)
+  cais new <app> [dir] --module <path>   Override go module path
   cais g handler <name>      Generate handler + test + page template
   cais g resource <name> [--fields title:string,url:url] [--public] [--no-seed] [--admin-auth session|bearer]
   cais g page <name>         Generate page template only
@@ -101,34 +103,15 @@ Examples:
 
 func (c *CLI) cmdNew(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: cais new <app> [dir] [--minimal|--blank]")
+		return fmt.Errorf("usage: cais new <app> [dir] [--minimal] [--blank] [--module <path>]")
 	}
 
-	minimal := false
-	blank := false
-	positional := make([]string, 0, len(args))
-	for _, arg := range args {
-		if arg == "--minimal" {
-			minimal = true
-			continue
-		}
-		if arg == "--blank" {
-			blank = true
-			continue
-		}
-		positional = append(positional, arg)
-	}
-	if len(positional) == 0 {
-		return fmt.Errorf("usage: cais new <app> [dir] [--minimal|--blank]")
+	opts, err := parseNewArgs(args)
+	if err != nil {
+		return err
 	}
 
-	name := positional[0]
-	dir := name
-	if len(positional) > 1 {
-		dir = positional[1]
-	}
-
-	abs, err := filepath.Abs(dir)
+	abs, err := filepath.Abs(opts.dir)
 	if err != nil {
 		return err
 	}
@@ -137,16 +120,58 @@ func (c *CLI) cmdNew(args []string) error {
 		return fmt.Errorf("directory %s already exists", abs)
 	}
 
-	module := moduleName(name)
+	module := opts.module
+	if module == "" {
+		module = moduleName(opts.name)
+	}
 	if err := scaffoldNewApp(abs, scaffoldData{
-		AppName:    name,
+		AppName:    opts.name,
 		ModulePath: module,
-	}, minimal, blank); err != nil {
+	}, opts.minimal, opts.blank); err != nil {
 		return err
 	}
 
-	_, _ = fmt.Fprintf(c.Out, "Created app %q at %s\n\nNext steps:\n  cd %s\n  cais install\n  cais dev\n", name, abs, abs)
+	_, _ = fmt.Fprintf(c.Out, "Created app %q at %s\n\nNext steps:\n  cd %s\n  cais install\n  cais dev\n", opts.name, abs, abs)
 	return nil
+}
+
+type newOpts struct {
+	name    string
+	dir     string
+	minimal bool
+	blank   bool
+	module  string
+}
+
+func parseNewArgs(args []string) (newOpts, error) {
+	opts := newOpts{}
+	positional := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--minimal":
+			opts.minimal = true
+		case "--blank":
+			opts.blank = true
+		case "--module":
+			if i+1 >= len(args) {
+				return opts, fmt.Errorf("--module requires a value")
+			}
+			i++
+			opts.module = args[i]
+		default:
+			positional = append(positional, args[i])
+		}
+	}
+	if len(positional) == 0 {
+		return opts, fmt.Errorf("usage: cais new <app> [dir] [--minimal] [--blank] [--module <path>]")
+	}
+
+	opts.name = positional[0]
+	opts.dir = opts.name
+	if len(positional) > 1 {
+		opts.dir = positional[1]
+	}
+	return opts, nil
 }
 
 func (c *CLI) cmdGenerate(args []string) error {
