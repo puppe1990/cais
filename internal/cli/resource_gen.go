@@ -184,7 +184,7 @@ func seedValueForField(f FieldDef) string {
 		if strings.Contains(name, "rating") || strings.Contains(name, "score") {
 			return "5"
 		}
-		if strings.Contains(name, "minute") || strings.Contains(name, "hour") || strings.Contains(name, "second") || strings.Contains(name, "duration") {
+		if strings.Contains(name, "minute") || strings.Contains(name, "hour") || strings.Contains(name, "second") || strings.Contains(name, "duration") || strings.Contains(name, "calorie") {
 			return "30"
 		}
 		if strings.Contains(name, "quantity") || strings.Contains(name, "qty") || strings.Contains(name, "servings") {
