@@ -293,6 +293,53 @@ func TestHomeHandler_ContentType(t *testing.T) {
 }
 `
 
+const tplHomeTestMinimal = `package handlers
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+func TestHomeHandler_Returns200(t *testing.T) {
+	h := NewHomeHandler(setupTestRenderer(t))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+}
+
+func TestHomeHandler_ContainsWelcome(t *testing.T) {
+	h := NewHomeHandler(setupTestRenderer(t))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if !strings.Contains(rr.Body.String(), "{{.AppName}}") {
+		t.Errorf("body missing app name, got: %s", rr.Body.String())
+	}
+}
+
+func TestHomeHandler_ContentType(t *testing.T) {
+	h := NewHomeHandler(setupTestRenderer(t))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	ct := rr.Header().Get("Content-Type")
+	if !strings.Contains(ct, "text/html") {
+		t.Errorf("Content-Type = %q, want text/html", ct)
+	}
+}
+`
+
 const tplContactHandler = `package handlers
 
 import (

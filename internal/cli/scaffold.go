@@ -63,6 +63,7 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool) error {
 		files["internal/store/store_test.go"] = tplStoreTestMinimal
 		files["web/templates/layouts/base.html"] = tplLayoutMinimal
 		files["web/templates/pages/home.html"] = tplPageHomeMinimal
+		files["internal/handlers/home_test.go"] = tplHomeTestMinimal
 		files["internal/store/migrations/.gitkeep"] = ""
 	}
 

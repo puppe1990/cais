@@ -81,18 +81,7 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 
 func buildResourceAdminTest(data scaffoldData) string {
 	first := data.Fields[0]
-	formBody := first.Name + "=Demo"
-	if first.HTMLType == "url" {
-		formBody = "title=Demo&url=https%3A%2F%2Fexample.com"
-		for _, f := range data.Fields {
-			if f.Name == "title" {
-				formBody = f.Name + "=Demo"
-			}
-			if f.HTMLType == "url" {
-				formBody += "&" + f.Name + "=https%3A%2F%2Fexample.com"
-			}
-		}
-	}
+	formBody := buildAdminTestFormBody(data.Fields)
 	return fmt.Sprintf(`package handlers
 
 import (
@@ -150,6 +139,27 @@ func TestAdmin%sHandler_Delete(t *testing.T) {
 		data.PluralPascal, data.Pascal, data.Pascal, first.Pascal, urlFieldTestExtra(data),
 		data.PluralPascal, data.Plural,
 	)
+}
+
+func buildAdminTestFormBody(fields []FieldDef) string {
+	var parts []string
+	for _, f := range fields {
+		if !f.Required || f.GoType == "bool" {
+			continue
+		}
+		val := "Demo"
+		if f.HTMLType == "url" {
+			val = "https://example.com"
+		}
+		if f.Widget == "textarea" {
+			val = "Sample " + f.Pascal
+		}
+		parts = append(parts, f.Name+"="+val)
+	}
+	if len(parts) == 0 && len(fields) > 0 {
+		return fields[0].Name + "=Demo"
+	}
+	return strings.Join(parts, "&")
 }
 
 func urlFieldTestExtra(data scaffoldData) string {
@@ -335,7 +345,7 @@ func patchRoutesForResource(dir string, data scaffoldData) error {
 		fmt.Fprintf(&insert, "\tr.Get(\"/%s\", %s.List)\n", data.Plural, pubVar)
 	}
 	fmt.Fprintf(&insert, "\n\t%s := handlers.NewAdmin%sHandler(deps.Renderer, deps.Store)\n", adminVar, data.PluralPascal)
-	fmt.Fprintf(&insert, "\tr.Group(middleware.Protect, func(g *cais.Router) {\n")
+	fmt.Fprintf(&insert, "\tr.Group(middleware.TokenAuth, func(g *cais.Router) {\n")
 	fmt.Fprintf(&insert, "\t\tg.Get(\"/admin/%s\", %s.Index)\n", data.Plural, adminVar)
 	fmt.Fprintf(&insert, "\t\tg.Get(\"/admin/%s/new\", %s.New)\n", data.Plural, adminVar)
 	fmt.Fprintf(&insert, "\t\tg.Post(\"/admin/%s\", %s.Create)\n", data.Plural, adminVar)
@@ -374,7 +384,7 @@ func patchLayoutNav(dir string, data scaffoldData) error {
           <a href="/%s" class="text-slate-600 hover:text-indigo-600 transition">%s</a>
           <a href="/admin/%s" class="text-slate-600 hover:text-indigo-600 transition">Admin</a>
         </nav>
-`, data.Plural, data.Title, data.Plural)
+`, data.Plural, toTitle(data.Plural), data.Plural)
 	content = strings.Replace(content,
 		`</div>
     </header>`,

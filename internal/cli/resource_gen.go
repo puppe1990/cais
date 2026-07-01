@@ -290,8 +290,21 @@ func buildAdminParseForm(data scaffoldData) string {
 	return fmt.Sprintf(`item := models.%s{%s}%s	return item, nil`, data.Pascal, strings.Join(assigns, ", "), validateBlock)
 }
 
+func needsValidate(fields []FieldDef) bool {
+	for _, f := range fields {
+		if f.HTMLType == "url" && f.Required {
+			return true
+		}
+	}
+	return false
+}
+
 func buildResourceAdminHandler(data scaffoldData) string {
 	parse := buildAdminParseForm(data)
+	validateImport := ""
+	if needsValidate(data.Fields) {
+		validateImport = "\n\t\"" + frameworkModule + "/pkg/cais/validate\""
+	}
 	return fmt.Sprintf(`package handlers
 
 import (
@@ -302,8 +315,7 @@ import (
 	"%s/internal/models"
 	"%s/internal/store"
 	"%s/pkg/cais"
-	"%s/pkg/cais/httpx"
-	"%s/pkg/cais/validate"
+	"%s/pkg/cais/httpx"%s
 )
 
 type Admin%sHandler struct {
@@ -388,13 +400,13 @@ func (h *Admin%sHandler) parseForm(r *http.Request) (models.%s, error) {
 	%s
 }
 `,
-		data.ModulePath, data.ModulePath, frameworkModule, frameworkModule, frameworkModule,
+		data.ModulePath, data.ModulePath, frameworkModule, frameworkModule, validateImport,
 		data.PluralPascal,
 		data.PluralPascal, data.Pascal,
 		data.Pascal, data.Pascal,
 		data.PluralPascal, data.PluralPascal, data.PluralPascal,
 		data.PluralPascal,
-		data.Plural, data.Plural, data.PluralPascal,
+		data.PluralPascal, data.Plural, data.PluralPascal,
 		data.PluralPascal, data.Snake, data.Pascal,
 		data.PluralPascal, data.Pascal, data.Snake, data.Pascal,
 		data.PluralPascal, data.Pascal, data.Plural,
@@ -453,12 +465,12 @@ func buildAdminFormHTML(data scaffoldData) string {
 		case "textarea":
 			fmt.Fprintf(&fields, `    <div>
       <label class="block text-sm font-medium text-slate-700 mb-1" for="%s">%s</label>
-      <textarea class="w-full border border-slate-300 rounded-lg px-3 py-2 min-h-[80px] focus:ring-2 focus:ring-indigo-500 outline-none" id="%s" name="%s">{{"{{"}} .Item.%s {{"}}"}}</textarea>
+      <textarea class="w-full border border-slate-300 rounded-lg px-3 py-2 min-h-[80px] focus:ring-2 focus:ring-indigo-500 outline-none" id="%s" name="%s">{{ .Item.%s }}</textarea>
     </div>
 `, f.Name, f.Pascal, f.Name, f.Name, f.Pascal)
 		case "checkbox":
 			fmt.Fprintf(&fields, `    <label class="flex items-center gap-2 text-sm text-slate-700">
-      <input type="checkbox" name="%s" class="rounded border-slate-300 text-indigo-600" {{"{{"}} if .Item.%s {{"}}"}}checked{{"{{"}} end {{"}}"}} />
+      <input type="checkbox" name="%s" class="rounded border-slate-300 text-indigo-600" {{ if .Item.%s }}checked{{ end }} />
       %s
     </label>
 `, f.Name, f.Pascal, f.Pascal)
@@ -469,24 +481,24 @@ func buildAdminFormHTML(data scaffoldData) string {
 			}
 			fmt.Fprintf(&fields, `    <div>
       <label class="block text-sm font-medium text-slate-700 mb-1" for="%s">%s</label>
-      <input class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" type="%s" id="%s" name="%s" value="{{"{{"}} .Item.%s {{"}}"}}"%s />
+      <input class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" type="%s" id="%s" name="%s" value="{{ .Item.%s }}"%s />
     </div>
 `, f.Name, f.Pascal, f.HTMLType, f.Name, f.Name, f.Pascal, req)
 		}
 	}
-	return fmt.Sprintf(`{{"{{"}} define "title" {{"}}"}}{{"{{"}} if .IsNew {{"}}"}}New %s{{"{{"}} else {{"}}"}}Edit %s{{"{{"}} end {{"}}"}}{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
+	return fmt.Sprintf(`{{ define "title" }}{{ if .IsNew }}New %s{{ else }}Edit %s{{ end }}{{ end }} {{ define "content" }}
 <div class="max-w-md mx-auto">
   <a href="/admin/%s" class="text-sm text-indigo-600 hover:underline mb-4 inline-block">← Back</a>
-  <h1 class="text-3xl font-bold text-slate-900 mb-6">{{"{{"}} if .IsNew {{"}}"}}New %s{{"{{"}} else {{"}}"}}Edit %s{{"{{"}} end {{"}}"}}</h1>
+  <h1 class="text-3xl font-bold text-slate-900 mb-6">{{ if .IsNew }}New %s{{ else }}Edit %s{{ end }}</h1>
   <form class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4" method="post"
-    action="{{"{{"}} if .IsNew {{"}}"}}/admin/%s{{"{{"}} else {{"}}"}}/admin/%s/{{"{{"}} .Item.ID {{"}}"}}{{"{{"}} end {{"}}"}}">
+    action="{{ if .IsNew }}/admin/%s{{ else }}/admin/%s/{{ .Item.ID }}{{ end }}">
 %s
     <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition">
-      {{"{{"}} if .IsNew {{"}}"}}Create{{"{{"}} else {{"}}"}}Save{{"{{"}} end {{"}}"}}
+      {{ if .IsNew }}Create{{ else }}Save{{ end }}
     </button>
   </form>
 </div>
-{{"{{"}} end {{"}}"}}
+{{ end }}
 `, data.Title, data.Title, data.Plural, data.Title, data.Title, data.Plural, data.Plural, fields.String())
 }
 
@@ -498,7 +510,7 @@ func buildAdminIndexHTML(data scaffoldData) string {
 			break
 		}
 	}
-	return fmt.Sprintf(`{{"{{"}} define "title" {{"}}"}}Admin — %s{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
+	return fmt.Sprintf(`{{ define "title" }}Admin — %s{{ end }} {{ define "content" }}
 <div class="max-w-3xl mx-auto">
   <div class="flex items-center justify-between mb-8">
     <h1 class="text-3xl font-bold text-slate-900">%s</h1>
@@ -508,24 +520,24 @@ func buildAdminIndexHTML(data scaffoldData) string {
     <table class="w-full text-left text-sm">
       <thead class="bg-slate-50 border-b"><tr><th class="px-6 py-3">%s</th><th class="px-6 py-3 text-right">Actions</th></tr></thead>
       <tbody class="divide-y">
-        {{"{{"}} range .Items {{"}}"}}
+        {{ range .Items }}
         <tr class="hover:bg-slate-50">
-          <td class="px-6 py-4 font-medium">{{"{{"}} .%s {{"}}"}}</td>
+          <td class="px-6 py-4 font-medium">{{ .%s }}</td>
           <td class="px-6 py-4 text-right space-x-3">
-            <a href="/admin/%s/{{"{{"}} .ID {{"}}"}}/edit" class="text-slate-600 hover:underline">Edit</a>
-            <form class="inline" method="post" action="/admin/%s/{{"{{"}} .ID {{"}}"}}/delete" onsubmit="return confirm('Delete?')">
+            <a href="/admin/%s/{{ .ID }}/edit" class="text-slate-600 hover:underline">Edit</a>
+            <form class="inline" method="post" action="/admin/%s/{{ .ID }}/delete" onsubmit="return confirm('Delete?')">
               <button type="submit" class="text-red-600 hover:underline">Delete</button>
             </form>
           </td>
         </tr>
-        {{"{{"}} else {{"}}"}}
+        {{ else }}
         <tr><td colspan="2" class="px-6 py-8 text-center text-slate-500">No items yet.</td></tr>
-        {{"{{"}} end {{"}}"}}
+        {{ end }}
       </tbody>
     </table>
   </div>
 </div>
-{{"{{"}} end {{"}}"}}
+{{ end }}
 `, data.Title, data.Title, data.Plural, data.Plural, displayField.Pascal, displayField.Pascal, data.Plural, data.Plural)
 }
 
@@ -540,21 +552,21 @@ func buildPublicListHTML(data scaffoldData) string {
 			linkField = &data.Fields[i]
 		}
 	}
-	linkBlock := fmt.Sprintf(`<p class="text-lg font-semibold text-slate-800">{{"{{"}} .%s {{"}}"}}</p>`, displayField.Pascal)
+	linkBlock := fmt.Sprintf(`<p class="text-lg font-semibold text-slate-800">{{ .%s }}</p>`, displayField.Pascal)
 	if linkField != nil {
-		linkBlock = fmt.Sprintf(`<a href="{{"{{"}} .%s {{"}}"}}" target="_blank" rel="noopener" class="text-lg font-semibold text-indigo-600 hover:underline">{{"{{"}} .%s {{"}}"}}</a>`, linkField.Pascal, displayField.Pascal)
+		linkBlock = fmt.Sprintf(`<a href="{{ .%s }}" target="_blank" rel="noopener" class="text-lg font-semibold text-indigo-600 hover:underline">{{ .%s }}</a>`, linkField.Pascal, displayField.Pascal)
 	}
-	return fmt.Sprintf(`{{"{{"}} define "title" {{"}}"}}%s{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
+	return fmt.Sprintf(`{{ define "title" }}%s{{ end }} {{ define "content" }}
 <div class="max-w-2xl mx-auto">
   <h1 class="text-3xl font-bold text-slate-900 mb-6">%s</h1>
   <ul id="%s-list" class="space-y-3">
-    {{"{{"}} range .Items {{"}}"}}
+    {{ range .Items }}
     <li class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">%s</li>
-    {{"{{"}} else {{"}}"}}
+    {{ else }}
     <li class="text-center text-slate-500 py-8">No items yet.</li>
-    {{"{{"}} end {{"}}"}}
+    {{ end }}
   </ul>
 </div>
-{{"{{"}} end {{"}}"}}
+{{ end }}
 `, data.Title, data.Title, data.Plural, linkBlock)
 }
