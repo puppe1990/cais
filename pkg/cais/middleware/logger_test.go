@@ -7,11 +7,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 func TestLogger_RailsStyleRequestLog(t *testing.T) {
 	var buf bytes.Buffer
-	handler := LoggerWithWriter(&buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := LoggerWithWriter(cais.Config{}, &buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -31,7 +33,7 @@ func TestLogger_RailsStyleRequestLog(t *testing.T) {
 
 func TestLogger_SkipsStaticAssets(t *testing.T) {
 	var buf bytes.Buffer
-	handler := LoggerWithWriter(&buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := LoggerWithWriter(cais.Config{}, &buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -44,38 +46,9 @@ func TestLogger_SkipsStaticAssets(t *testing.T) {
 	}
 }
 
-func TestClientIP_usesXForwardedFor(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.RemoteAddr = "10.0.0.1:80"
-	req.Header.Set("X-Forwarded-For", "203.0.113.1, 198.51.100.2")
-
-	if got := clientIP(req); got != "203.0.113.1" {
-		t.Errorf("clientIP() = %q, want %q", got, "203.0.113.1")
-	}
-}
-
-func TestClientIP_usesXRealIP(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.RemoteAddr = "10.0.0.1:80"
-	req.Header.Set("X-Real-IP", "203.0.113.5")
-
-	if got := clientIP(req); got != "203.0.113.5" {
-		t.Errorf("clientIP() = %q, want %q", got, "203.0.113.5")
-	}
-}
-
-func TestClientIP_fallsBackToRemoteAddr(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.RemoteAddr = "192.168.1.1:54321"
-
-	if got := clientIP(req); got != "192.168.1.1" {
-		t.Errorf("clientIP() = %q, want %q", got, "192.168.1.1")
-	}
-}
-
 func TestLogger_SlowRequestMarksDuration(t *testing.T) {
 	var buf bytes.Buffer
-	handler := LoggerWithWriter(&buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := LoggerWithWriter(cais.Config{}, &buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(2 * time.Millisecond)
 		w.WriteHeader(http.StatusCreated)
 	}))

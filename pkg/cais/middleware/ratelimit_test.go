@@ -4,10 +4,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 func TestRateLimit_blocksAfterBurst(t *testing.T) {
-	lim := NewRateLimiter(2) // 2 requests per window
+	lim := NewRateLimiter(2, cais.Config{}) // 2 requests per window
 	h := lim.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))

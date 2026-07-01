@@ -127,3 +127,29 @@ func TestConfig_LoadLocaleFromEnv(t *testing.T) {
 		t.Errorf("Locale = %q, want pt_BR", cfg.Locale)
 	}
 }
+
+func TestConfig_TrustedProxies_emptyByDefault(t *testing.T) {
+	t.Setenv("TRUSTED_PROXIES", "")
+
+	cfg := Load()
+
+	if len(cfg.TrustedProxies) != 0 {
+		t.Errorf("TrustedProxies = %v, want empty", cfg.TrustedProxies)
+	}
+}
+
+func TestConfig_TrustedProxies_loadFromEnv(t *testing.T) {
+	t.Setenv("TRUSTED_PROXIES", "127.0.0.1, 10.0.0.1")
+
+	cfg := Load()
+
+	want := []string{"127.0.0.1", "10.0.0.1"}
+	if len(cfg.TrustedProxies) != len(want) {
+		t.Fatalf("TrustedProxies = %v, want %v", cfg.TrustedProxies, want)
+	}
+	for i, ip := range want {
+		if cfg.TrustedProxies[i] != ip {
+			t.Errorf("TrustedProxies[%d] = %q, want %q", i, cfg.TrustedProxies[i], ip)
+		}
+	}
+}

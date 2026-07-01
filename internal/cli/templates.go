@@ -239,9 +239,9 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	r.Use(middleware.Flash)
 	buf := devlog.Prepare(cfg.Env)
 	if buf != nil {
-		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))
+		r.Use(middleware.LoggerTo(cfg, devlog.MirrorDefault(log.Writer())))
 	} else {
-		r.Use(middleware.Logger)
+		r.Use(middleware.Logger(cfg))
 	}
 	r.Use(middleware.Recover)
 	r.Use(middleware.SecurityHeaders(cfg))
@@ -331,8 +331,8 @@ func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
 	dashboard := handlers.NewDashboardHandler(deps.Renderer, deps.Store, deps.Site, cfg)
 	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions(), cfg, deps.Catalog)
 
-	loginLimit := middleware.NewRateLimiter(10)
-	contactLimit := middleware.NewRateLimiter(20)
+	loginLimit := middleware.NewRateLimiter(10, cfg)
+	contactLimit := middleware.NewRateLimiter(20, cfg)
 
 	r.Get("/", home.ServeHTTP)
 	r.Get("/contact", contact.Get)
@@ -1978,9 +1978,9 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	r.Use(middleware.CSRF(cfg))
 	buf := devlog.Prepare(cfg.Env)
 	if buf != nil {
-		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))
+		r.Use(middleware.LoggerTo(cfg, devlog.MirrorDefault(log.Writer())))
 	} else {
-		r.Use(middleware.Logger)
+		r.Use(middleware.Logger(cfg))
 	}
 	r.Use(middleware.Recover)
 	r.Use(middleware.SecurityHeaders(cfg))

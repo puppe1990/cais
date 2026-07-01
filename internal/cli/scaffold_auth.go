@@ -177,7 +177,7 @@ func patchRoutesForAuth(dir string) error {
 		)
 	}
 
-	insert := `	loginLimit := middleware.NewRateLimiter(10)
+	insert := `	loginLimit := middleware.NewRateLimiter(10, cfg)
 
 	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions(), cfg, deps.Catalog)
 	r.Get("/login", auth.Login)

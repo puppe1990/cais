@@ -8,20 +8,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/logtime"
 )
 
-func Logger(next http.Handler) http.Handler {
-	return LoggerWithWriter(log.Writer(), next)
+func Logger(cfg cais.Config) func(http.Handler) http.Handler {
+	return LoggerTo(cfg, log.Writer())
 }
 
-func LoggerTo(w io.Writer) func(http.Handler) http.Handler {
+func LoggerTo(cfg cais.Config, w io.Writer) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		return LoggerWithWriter(w, next)
+		return LoggerWithWriter(cfg, w, next)
 	}
 }
 
-func LoggerWithWriter(w io.Writer, next http.Handler) http.Handler {
+func LoggerWithWriter(cfg cais.Config, w io.Writer, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		if skipRequestLog(r.URL.Path) {
 			next.ServeHTTP(rw, r)
@@ -29,7 +30,7 @@ func LoggerWithWriter(w io.Writer, next http.Handler) http.Handler {
 		}
 
 		start := time.Now()
-		remote := clientIP(r)
+		remote := ClientIP(r, cfg)
 		_, _ = fmt.Fprintf(w, "Started %s %q for %s at %s\n", r.Method, r.URL.Path, remote, logtime.Format(start))
 
 		rec := &statusRecorder{ResponseWriter: rw, status: http.StatusOK}
@@ -47,25 +48,6 @@ func LoggerWithWriter(w io.Writer, next http.Handler) http.Handler {
 
 func skipRequestLog(path string) bool {
 	return path == "/health" || path == "/logs" || strings.HasPrefix(path, "/static/")
-}
-
-func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if i := strings.Index(xff, ","); i >= 0 {
-			return strings.TrimSpace(xff[:i])
-		}
-		return strings.TrimSpace(xff)
-	}
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return strings.TrimSpace(xri)
-	}
-	if host := r.RemoteAddr; host != "" {
-		if i := strings.LastIndex(host, ":"); i >= 0 {
-			return host[:i]
-		}
-		return host
-	}
-	return "127.0.0.1"
 }
 
 func statusLabel(code int) string {

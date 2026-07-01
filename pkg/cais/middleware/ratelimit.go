@@ -4,17 +4,21 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 type RateLimiter struct {
 	mu      sync.Mutex
+	cfg     cais.Config
 	limit   int
 	window  time.Duration
 	buckets map[string][]time.Time
 }
 
-func NewRateLimiter(limit int) *RateLimiter {
+func NewRateLimiter(limit int, cfg cais.Config) *RateLimiter {
 	return &RateLimiter{
+		cfg:     cfg,
 		limit:   limit,
 		window:  time.Minute,
 		buckets: make(map[string][]time.Time),
@@ -23,7 +27,7 @@ func NewRateLimiter(limit int) *RateLimiter {
 
 func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		key := clientIP(r) + ":" + r.URL.Path
+		key := ClientIP(r, rl.cfg) + ":" + r.URL.Path
 		if !rl.allow(key) {
 			http.Error(w, "too many requests", http.StatusTooManyRequests)
 			return
