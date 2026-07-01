@@ -108,6 +108,20 @@ func TestConfig_CookieSecure_falseInDevelopment(t *testing.T) {
 	}
 }
 
+func TestConfig_SanitizeErrors_trueInProduction(t *testing.T) {
+	cfg := Config{Env: "production"}
+	if !cfg.SanitizeErrors() {
+		t.Error("SanitizeErrors() = false, want true in production")
+	}
+}
+
+func TestConfig_SanitizeErrors_falseInDevelopment(t *testing.T) {
+	cfg := Config{Env: "development"}
+	if cfg.SanitizeErrors() {
+		t.Error("SanitizeErrors() = true, want false in development")
+	}
+}
+
 func TestConfig_DefaultLocale(t *testing.T) {
 	t.Setenv("LOCALE", "")
 

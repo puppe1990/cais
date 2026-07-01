@@ -101,13 +101,14 @@ import (
 	"strings"
 	"testing"
 
+	"%s/pkg/cais"
 	"%s/pkg/cais/testutil"
 	"%s/internal/models"
 )
 
 func TestAdmin%sHandler_Index(t *testing.T) {
 	s := setupTestStore(t)
-	h := NewAdmin%sHandler(setupTestRenderer(t), s)
+	h := NewAdmin%sHandler(setupTestRenderer(t), s, cais.Config{})
 	rr := httptest.NewRecorder()
 	h.Index(rr, httptest.NewRequest(http.MethodGet, "/admin/%s", nil))
 	if rr.Code != http.StatusOK {
@@ -120,7 +121,7 @@ func TestAdmin%sHandler_Index(t *testing.T) {
 
 func TestAdmin%sHandler_Create(t *testing.T) {
 	s := setupTestStore(t)
-	h := NewAdmin%sHandler(setupTestRenderer(t), s)
+	h := NewAdmin%sHandler(setupTestRenderer(t), s, cais.Config{})
 	req := httptest.NewRequest(http.MethodPost, "/admin/%s", strings.NewReader(%q))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr := httptest.NewRecorder()
@@ -136,7 +137,7 @@ func TestAdmin%sHandler_Delete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := NewAdmin%sHandler(setupTestRenderer(t), s)
+	h := NewAdmin%sHandler(setupTestRenderer(t), s, cais.Config{})
 	rr := httptest.NewRecorder()
 	h.Delete(rr, testutil.NewRequest(http.MethodPost, "/admin/%s/1/delete", testutil.PathValue("id", "1")), id)
 	if rr.Code != http.StatusSeeOther {
@@ -144,7 +145,7 @@ func TestAdmin%sHandler_Delete(t *testing.T) {
 	}
 }
 `,
-		frameworkModule, data.ModulePath,
+		frameworkModule, frameworkModule, data.ModulePath,
 		data.PluralPascal, data.PluralPascal, data.Plural, data.Plural,
 		data.PluralPascal, data.PluralPascal, data.Plural, formBody,
 		data.PluralPascal, data.Pascal, data.Pascal, first.Pascal, urlFieldTestExtra(data),
@@ -202,12 +203,14 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"%s/pkg/cais"
 )
 
 func Test%sHandler_List(t *testing.T) {
 	s := setupTestStore(t)
 %s
-	h := New%sHandler(setupTestRenderer(t), s)
+	h := New%sHandler(setupTestRenderer(t), s, cais.Config{})
 	rr := httptest.NewRecorder()
 	h.List(rr, httptest.NewRequest(http.MethodGet, "/%s", nil))
 	if rr.Code != http.StatusOK {
@@ -217,7 +220,7 @@ func Test%sHandler_List(t *testing.T) {
 		t.Error("missing public list")
 	}
 }
-`, data.PluralPascal, seedCall, data.PluralPascal, data.Plural, data.Plural)
+`, frameworkModule, data.PluralPascal, seedCall, data.PluralPascal, data.Plural, data.Plural)
 }
 
 func patchStoreForResource(dir string, data scaffoldData) error {
@@ -352,13 +355,13 @@ func patchRoutesForResource(dir string, data scaffoldData) error {
 	var insert strings.Builder
 	if data.Public {
 		pubVar := lowerFirst(data.PluralPascal)
-		fmt.Fprintf(&insert, "\t%s := handlers.New%sHandler(deps.Renderer, deps.Store)\n", pubVar, data.PluralPascal)
+		fmt.Fprintf(&insert, "\t%s := handlers.New%sHandler(deps.Renderer, deps.Store, cfg)\n", pubVar, data.PluralPascal)
 		fmt.Fprintf(&insert, "\tr.Get(\"/%s\", %s.List)\n", data.Plural, pubVar)
 		if firstBoolField(data.Fields) != nil {
 			fmt.Fprintf(&insert, "\tr.Post(\"/%s/{id}/toggle\", cais.IntParam(\"id\", %s.Toggle))\n", data.Plural, pubVar)
 		}
 	}
-	fmt.Fprintf(&insert, "\t%s := handlers.NewAdmin%sHandler(deps.Renderer, deps.Store)\n", adminVar, data.PluralPascal)
+	fmt.Fprintf(&insert, "\t%s := handlers.NewAdmin%sHandler(deps.Renderer, deps.Store, cfg)\n", adminVar, data.PluralPascal)
 	if data.AdminAuth == "bearer" {
 		fmt.Fprintf(&insert, "\tr.Group(middleware.AdminAuth(cfg), func(g *cais.Router) {\n")
 	} else {

@@ -265,7 +265,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
-	httpx.RenderOrError(w, h.renderer, "base", "login", loginData{Site: meta.ForRequest(h.site, r)})
+	httpx.RenderOrError(w, h.renderer, "base", "login", loginData{Site: meta.ForRequest(h.site, r)}, h.cfg)
 }
 
 func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
@@ -281,7 +281,7 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 		httpx.RenderOrError(w, h.renderer, "base", "login", loginData{
 			Site:  meta.ForRequest(h.site, r),
 			Error: h.catalog.T("auth.invalid_credentials"),
-		})
+		}, h.cfg)
 		return
 	}
 

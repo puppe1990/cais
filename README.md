@@ -121,8 +121,8 @@ r.Group(middleware.Protect, func(g *cais.Router) {
 **httpx** — less render boilerplate:
 
 ```go
-httpx.RenderOrError(w, renderer, "base", "home", data)
-httpx.RenderPageOrPartial(w, r, renderer, httpx.RenderOptions{Layout: "base", Page: "contact", Partial: "contact_errors", Data: data, Status: 422})
+httpx.RenderOrError(w, renderer, "base", "home", data, cfg)
+httpx.RenderPageOrPartial(w, r, renderer, httpx.RenderOptions{Layout: "base", Page: "contact", Partial: "contact_errors", Data: data, Status: 422}, cfg)
 httpx.RenderPartial(w, renderer, "errors", data)
 httpx.SeeOther(w, r, "/admin")
 ```
@@ -131,7 +131,7 @@ httpx.SeeOther(w, r, "/admin")
 
 ```go
 site := meta.SiteFrom("MyApp", cfg.AppURL)
-httpx.RenderOrError(w, renderer, "base", "home", PageData{Site: site})
+httpx.RenderOrError(w, renderer, "base", "home", PageData{Site: site}, cfg)
 ```
 
 **testutil** — shared test helpers for scaffolded apps:

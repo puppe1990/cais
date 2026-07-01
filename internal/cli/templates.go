@@ -326,8 +326,8 @@ import (
 )
 
 func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
-	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog)
-	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, deps.Site, deps.Catalog)
+	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog, cfg)
+	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, deps.Site, deps.Catalog, cfg)
 	dashboard := handlers.NewDashboardHandler(deps.Renderer, deps.Store, deps.Site, cfg)
 	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions(), cfg, deps.Catalog)
 
@@ -364,16 +364,17 @@ type HomeHandler struct {
 	renderer *cais.Renderer
 	site     meta.Site
 	catalog  *i18n.Catalog
+	cfg      cais.Config
 }
 
-func NewHomeHandler(renderer *cais.Renderer, site meta.Site, catalog *i18n.Catalog) *HomeHandler {
-	return &HomeHandler{renderer: renderer, site: site, catalog: catalog}
+func NewHomeHandler(renderer *cais.Renderer, site meta.Site, catalog *i18n.Catalog, cfg cais.Config) *HomeHandler {
+	return &HomeHandler{renderer: renderer, site: site, catalog: catalog, cfg: cfg}
 }
 
 func (h *HomeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	httpx.RenderOrError(w, h.renderer, "welcome", "home", PageData{
 		Site: meta.ForRequest(h.site, r),
-	})
+	}, h.cfg)
 }
 `
 
@@ -385,10 +386,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 func TestHomeHandler_Returns200(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -400,7 +402,7 @@ func TestHomeHandler_Returns200(t *testing.T) {
 }
 
 func TestHomeHandler_ContainsWelcome(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -412,7 +414,7 @@ func TestHomeHandler_ContainsWelcome(t *testing.T) {
 }
 
 func TestHomeHandler_ContentType(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -433,10 +435,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 func TestHomeHandler_Returns200(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -448,7 +451,7 @@ func TestHomeHandler_Returns200(t *testing.T) {
 }
 
 func TestHomeHandler_ContainsWelcome(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -460,7 +463,7 @@ func TestHomeHandler_ContainsWelcome(t *testing.T) {
 }
 
 func TestHomeHandler_ContentType(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -493,18 +496,19 @@ type ContactHandler struct {
 	store    store.Store
 	site     meta.Site
 	catalog  *i18n.Catalog
+	cfg      cais.Config
 }
 
 type contactErrorData struct {
 	Message string
 }
 
-func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site, catalog *i18n.Catalog) *ContactHandler {
-	return &ContactHandler{renderer: renderer, store: s, site: site, catalog: catalog}
+func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site, catalog *i18n.Catalog, cfg cais.Config) *ContactHandler {
+	return &ContactHandler{renderer: renderer, store: s, site: site, catalog: catalog, cfg: cfg}
 }
 
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
-	httpx.RenderOrError(w, h.renderer, "base", "contact", meta.ForRequest(h.site, r))
+	httpx.RenderOrError(w, h.renderer, "base", "contact", meta.ForRequest(h.site, r), h.cfg)
 }
 
 func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
@@ -548,7 +552,7 @@ func (h *ContactHandler) renderContactResponse(w http.ResponseWriter, r *http.Re
 		Partial: partial,
 		Data:    data,
 		Status:  status,
-	})
+	}, h.cfg)
 }
 `
 
@@ -560,10 +564,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/puppe1990/cais/pkg/cais"
 )
 
 func TestContactHandler_Get_ReturnsForm(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/contact", nil)
 	rr := httptest.NewRecorder()
@@ -578,7 +583,7 @@ func TestContactHandler_Get_ReturnsForm(t *testing.T) {
 }
 
 func TestContactHandler_Post_MissingName_Returns422(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=&email=alice@example.com"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -595,7 +600,7 @@ func TestContactHandler_Post_MissingName_Returns422(t *testing.T) {
 }
 
 func TestContactHandler_Post_InvalidEmail_Returns422(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -609,7 +614,7 @@ func TestContactHandler_Post_InvalidEmail_Returns422(t *testing.T) {
 }
 
 func TestContactHandler_Post_InvalidEmail_ReturnsPartial(t *testing.T) {
-	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog())
+	h := NewContactHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -628,7 +633,7 @@ func TestContactHandler_Post_InvalidEmail_ReturnsPartial(t *testing.T) {
 
 func TestContactHandler_Post_Valid_SavesAndReturnsSuccess(t *testing.T) {
 	s := setupTestStore(t)
-	h := NewContactHandler(setupTestRenderer(t), s, testSite(), testCatalog())
+	h := NewContactHandler(setupTestRenderer(t), s, testSite(), testCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader("name=Alice&email=alice@example.com"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -684,7 +689,7 @@ func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Site:          meta.ForRequest(h.site, r),
 		TotalContacts: count,
 		Env:           h.cfg.Env,
-	})
+	}, h.cfg)
 }
 `
 
@@ -1685,7 +1690,7 @@ import (
 )
 
 func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
-	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog)
+	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog, cfg)
 	r.Get("/", home.ServeHTTP)
 }
 `
@@ -2062,7 +2067,7 @@ import (
 )
 
 func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
-	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog)
+	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog, cfg)
 	r.Get("/", home.ServeHTTP)
 }
 `

@@ -456,6 +456,7 @@ import (
 type Admin%sHandler struct {
 	renderer *cais.Renderer
 	store    store.Store
+	cfg      cais.Config
 }
 
 type Admin%sIndexData struct {
@@ -469,8 +470,8 @@ type Admin%sFormData struct {
 	IsNew     bool
 }
 
-func NewAdmin%sHandler(renderer *cais.Renderer, s store.Store) *Admin%sHandler {
-	return &Admin%sHandler{renderer: renderer, store: s}
+func NewAdmin%sHandler(renderer *cais.Renderer, s store.Store, cfg cais.Config) *Admin%sHandler {
+	return &Admin%sHandler{renderer: renderer, store: s, cfg: cfg}
 }
 
 func (h *Admin%sHandler) Index(w http.ResponseWriter, r *http.Request) {
@@ -479,11 +480,11 @@ func (h *Admin%sHandler) Index(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	httpx.RenderOrError(w, h.renderer, "base", "admin_%s", Admin%sIndexData{CSRFToken: csrf.TokenFromRequest(r), Items: items})
+	httpx.RenderOrError(w, h.renderer, "base", "admin_%s", Admin%sIndexData{CSRFToken: csrf.TokenFromRequest(r), Items: items}, h.cfg)
 }
 
 func (h *Admin%sHandler) New(w http.ResponseWriter, r *http.Request) {
-	httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", Admin%sFormData{CSRFToken: csrf.TokenFromRequest(r), IsNew: true})
+	httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", Admin%sFormData{CSRFToken: csrf.TokenFromRequest(r), IsNew: true}, h.cfg)
 }
 
 func (h *Admin%sHandler) Edit(w http.ResponseWriter, r *http.Request, id int64) {
@@ -492,7 +493,7 @@ func (h *Admin%sHandler) Edit(w http.ResponseWriter, r *http.Request, id int64) 
 		http.NotFound(w, r)
 		return
 	}
-	httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", Admin%sFormData{CSRFToken: csrf.TokenFromRequest(r), Item: item})
+	httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", Admin%sFormData{CSRFToken: csrf.TokenFromRequest(r), Item: item}, h.cfg)
 }
 
 func (h *Admin%sHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -606,6 +607,7 @@ import (
 type %sHandler struct {
 	renderer *cais.Renderer
 	store    store.Store
+	cfg      cais.Config
 }
 
 type %sListData struct {
@@ -613,8 +615,8 @@ type %sListData struct {
 	Items     []models.%s%s
 }
 
-func New%sHandler(renderer *cais.Renderer, s store.Store) *%sHandler {
-	return &%sHandler{renderer: renderer, store: s}
+func New%sHandler(renderer *cais.Renderer, s store.Store, cfg cais.Config) *%sHandler {
+	return &%sHandler{renderer: renderer, store: s, cfg: cfg}
 }
 
 func (h *%sHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -623,7 +625,7 @@ func (h *%sHandler) List(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}%s
-	httpx.RenderOrError(w, h.renderer, "base", "%s", %sListData{CSRFToken: csrf.TokenFromRequest(r), Items: items%s})
+	httpx.RenderOrError(w, h.renderer, "base", "%s", %sListData{CSRFToken: csrf.TokenFromRequest(r), Items: items%s}, h.cfg)
 }
 %s`,
 		frameworkModule, frameworkModule, frameworkModule, data.ModulePath, data.ModulePath,

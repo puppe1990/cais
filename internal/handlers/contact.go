@@ -18,18 +18,19 @@ type ContactHandler struct {
 	store    store.Store
 	site     meta.Site
 	catalog  *i18n.Catalog
+	cfg      cais.Config
 }
 
 type contactErrorData struct {
 	Message string
 }
 
-func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site, catalog *i18n.Catalog) *ContactHandler {
-	return &ContactHandler{renderer: renderer, store: s, site: site, catalog: catalog}
+func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site, catalog *i18n.Catalog, cfg cais.Config) *ContactHandler {
+	return &ContactHandler{renderer: renderer, store: s, site: site, catalog: catalog, cfg: cfg}
 }
 
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
-	httpx.RenderOrError(w, h.renderer, "base", "contact", meta.ForRequest(h.site, r))
+	httpx.RenderOrError(w, h.renderer, "base", "contact", meta.ForRequest(h.site, r), h.cfg)
 }
 
 func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
@@ -73,5 +74,5 @@ func (h *ContactHandler) renderContactResponse(w http.ResponseWriter, r *http.Re
 		Partial: partial,
 		Data:    data,
 		Status:  status,
-	})
+	}, h.cfg)
 }

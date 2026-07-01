@@ -37,5 +37,5 @@ func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Site:          meta.ForRequest(h.site, r),
 		TotalContacts: count,
 		Env:           h.cfg.Env,
-	})
+	}, h.cfg)
 }

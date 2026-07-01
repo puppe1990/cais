@@ -57,6 +57,10 @@ func (c Config) CookieSecure() bool {
 	return c.Env == "production"
 }
 
+func (c Config) SanitizeErrors() bool {
+	return c.Env == "production"
+}
+
 // Validate checks required settings for the active environment.
 func (c Config) Validate() error {
 	if c.Env == "production" && c.AdminToken == "" {

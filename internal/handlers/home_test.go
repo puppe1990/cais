@@ -46,7 +46,7 @@ func setupTestRenderer(t *testing.T) *cais.Renderer {
 }
 
 func TestHomeHandler_Returns200(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite(), i18n.DefaultCatalog())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), i18n.DefaultCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -58,7 +58,7 @@ func TestHomeHandler_Returns200(t *testing.T) {
 }
 
 func TestHomeHandler_ContainsWelcome(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite(), i18n.DefaultCatalog())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), i18n.DefaultCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -73,7 +73,7 @@ func TestHomeHandler_ContainsWelcome(t *testing.T) {
 }
 
 func TestHomeHandler_ContentType(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite(), i18n.DefaultCatalog())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), i18n.DefaultCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -86,7 +86,7 @@ func TestHomeHandler_ContentType(t *testing.T) {
 }
 
 func TestHomeHandler_IncludesPWA(t *testing.T) {
-	h := NewHomeHandler(setupTestRenderer(t), testSite(), i18n.DefaultCatalog())
+	h := NewHomeHandler(setupTestRenderer(t), testSite(), i18n.DefaultCatalog(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
