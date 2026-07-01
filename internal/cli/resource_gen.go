@@ -222,17 +222,21 @@ func fieldNames(fields []FieldDef) []string {
 	return names
 }
 
+func boolScanTemp(f FieldDef) string {
+	return f.Name + "Int"
+}
+
 func scanDeclare(fields []FieldDef) string {
 	var extra []string
 	for _, f := range fields {
 		if f.GoType == "bool" {
-			extra = append(extra, "published int")
+			extra = append(extra, "var "+boolScanTemp(f)+" int")
 		}
 	}
 	if len(extra) == 0 {
 		return ""
 	}
-	return strings.Join(extra, ", ") + "\n\t"
+	return strings.Join(extra, "\n\t") + "\n\t"
 }
 
 func scanLoopDeclare(fields []FieldDef) string {
@@ -243,7 +247,7 @@ func scanVars(fields []FieldDef) string {
 	var vars []string
 	for _, f := range fields {
 		if f.GoType == "bool" {
-			vars = append(vars, "&published")
+			vars = append(vars, "&"+boolScanTemp(f))
 		} else {
 			vars = append(vars, "&c."+f.Pascal)
 		}
@@ -256,7 +260,7 @@ func scanAssign(fields []FieldDef) string {
 	var lines []string
 	for _, f := range fields {
 		if f.GoType == "bool" {
-			lines = append(lines, "c."+f.Pascal+" = published == 1")
+			lines = append(lines, "c."+f.Pascal+" = "+boolScanTemp(f)+" == 1")
 		}
 	}
 	if len(lines) == 0 {

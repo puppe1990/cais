@@ -246,6 +246,69 @@ func TestScaffoldResource_IntFields(t *testing.T) {
 	}
 }
 
+func TestScaffoldResource_BoolFields(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "tasks")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "tasks",
+		ModulePath: "github.com/puppe1990/tasks",
+	}, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "task", resourceOpts{
+		Fields: "title:string,done:bool",
+		Seed:   true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	store, err := os.ReadFile(filepath.Join(appDir, "internal/store/store.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(store)
+	if strings.Contains(body, "\n\tpublished int\n") || strings.Contains(body, "\tpublished int\n") {
+		t.Error("bool scan temp must use var declaration, not bare published int")
+	}
+	if !strings.Contains(body, "var doneInt int") {
+		t.Error("bool scan temp should be named after field: var doneInt int")
+	}
+	if !strings.Contains(body, "c.Done = doneInt == 1") {
+		t.Error("bool assign should use field-specific temp var")
+	}
+	if strings.Contains(body, "published") {
+		t.Error("should not hardcode published variable name for non-published bool fields")
+	}
+}
+
+func TestPatchGoModReplace_CaisAppsLayout(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	root := t.TempDir()
+	caisDir := filepath.Join(root, "Cais")
+	appsDir := filepath.Join(root, "Cais-apps", "demo")
+	for _, d := range []string{caisDir, filepath.Dir(appsDir)} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(caisDir, "go.mod"), []byte("module github.com/puppe1990/cais\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldNewApp(appsDir, scaffoldData{
+		AppName:    "demo",
+		ModulePath: "github.com/puppe1990/demo",
+	}, true); err != nil {
+		t.Fatal(err)
+	}
+	mod, err := os.ReadFile(filepath.Join(appsDir, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(mod), "replace github.com/puppe1990/cais => ../../Cais") {
+		t.Errorf("go.mod missing sibling Cais replace: %s", mod)
+	}
+}
+
 func TestParseFields(t *testing.T) {
 	fields, err := parseFields("title:string,url:url,notes:text?")
 	if err != nil {

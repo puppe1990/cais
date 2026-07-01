@@ -27,17 +27,24 @@ func findLocalCaisReplace(appDir string) string {
 	if p := os.Getenv("CAIS_REPLACE"); p != "" {
 		return p
 	}
-	parent := filepath.Dir(appDir)
-	for _, name := range []string{"Cais", "cais"} {
-		candidate := filepath.Join(parent, name)
-		if _, err := os.Stat(filepath.Join(candidate, "go.mod")); err != nil {
-			continue
+	dir := appDir
+	for {
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
 		}
-		rel, err := filepath.Rel(appDir, candidate)
-		if err != nil {
-			continue
+		for _, name := range []string{"Cais", "cais"} {
+			candidate := filepath.Join(parent, name)
+			if _, err := os.Stat(filepath.Join(candidate, "go.mod")); err != nil {
+				continue
+			}
+			rel, err := filepath.Rel(appDir, candidate)
+			if err != nil {
+				continue
+			}
+			return rel
 		}
-		return rel
+		dir = parent
 	}
 	return ""
 }
