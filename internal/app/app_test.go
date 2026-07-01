@@ -185,3 +185,95 @@ func TestApp_ContactPost_withCSRF_succeeds(t *testing.T) {
 		t.Errorf("POST with CSRF status = %d, want 200, body: %s", postRR.Code, postRR.Body.String())
 	}
 }
+
+func TestApp_LoginPost_requiresCSRF(t *testing.T) {
+	a := setupTestAppDev(t)
+	h := a.Handler()
+
+	postReq := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader("email=demo@example.com&password=password"))
+	postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	postRR := httptest.NewRecorder()
+	h.ServeHTTP(postRR, postReq)
+
+	if postRR.Code != http.StatusForbidden {
+		t.Errorf("POST without CSRF status = %d, want 403", postRR.Code)
+	}
+}
+
+func TestApp_LoginPost_withCSRF_redirects(t *testing.T) {
+	a := setupTestAppDev(t)
+	h := a.Handler()
+
+	getReq := httptest.NewRequest(http.MethodGet, "/login", nil)
+	getRR := httptest.NewRecorder()
+	h.ServeHTTP(getRR, getReq)
+
+	var token string
+	for _, c := range getRR.Result().Cookies() {
+		if c.Name == csrf.CookieName {
+			token = c.Value
+		}
+	}
+	if token == "" {
+		t.Fatal("missing csrf cookie after GET /login")
+	}
+
+	form := url.Values{}
+	form.Set("email", "demo@example.com")
+	form.Set("password", "password")
+	form.Set("csrf_token", token)
+
+	postReq := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+	postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	postReq.AddCookie(&http.Cookie{Name: csrf.CookieName, Value: token})
+	postRR := httptest.NewRecorder()
+	h.ServeHTTP(postRR, postReq)
+
+	if postRR.Code != http.StatusSeeOther {
+		t.Errorf("POST with CSRF status = %d, want 303, body: %s", postRR.Code, postRR.Body.String())
+	}
+}
+
+func TestApp_Dashboard_requiresAuth(t *testing.T) {
+	a := setupTestApp(t)
+	h := a.Handler()
+
+	req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("status = %d, want 303", rr.Code)
+	}
+	if rr.Header().Get("Location") != "/login" {
+		t.Errorf("Location = %q, want /login", rr.Header().Get("Location"))
+	}
+}
+
+func setupTestAppDev(t *testing.T) *App {
+	t.Helper()
+
+	root := projectRoot(t)
+	renderer, err := cais.NewRendererFromDir(filepath.Join(root, "web", "templates"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s, err := store.NewSQLiteStore(":memory:", "development")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+
+	cfg := cais.Config{Port: ":0", DBPath: ":memory:", Env: "development"}
+	a, err := New(cfg, Deps{
+		Renderer:  renderer,
+		Store:     s,
+		StaticDir: filepath.Join(root, "web", "static"),
+		Site:      meta.SiteFrom("Cais", ""),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return a
+}

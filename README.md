@@ -150,7 +150,7 @@ r.Group(middleware.AdminAuth(cfg), func(g *cais.Router) {
 **CSRF** — double-submit cookie on all mutations (enabled by default):
 
 ```go
-r.Use(middleware.CSRF)
+r.Use(middleware.CSRF(cfg))
 site := meta.WithCSRF(meta.SiteFrom("MyApp", cfg.AppURL), r)
 ```
 
@@ -160,21 +160,21 @@ site := meta.WithCSRF(meta.SiteFrom("MyApp", cfg.AppURL), r)
 r.Use(middleware.LoadSession(store))
 r.Use(middleware.Flash)
 r.Get("/dashboard", middleware.RequireAuth("/login")(dashboard.Index))
-session.SignIn(w, store, userID, session.CookieOptionsFromConfig(cfg))
-flash.Set(w, "notice", "Welcome!")
+session.SignIn(w, store, r, userID, session.CookieOptionsFromConfig(cfg))
+flash.Set(w, "notice", "Welcome!", cfg.CookieSecure())
 ```
 
 **Security** — `middleware.SecurityHeaders(cfg)` and `middleware.NewRateLimiter(n)` on login/contact POST routes.
 
 ## Environment variables
 
-| Variable      | Default         | Description                         |
-| ------------- | --------------- | ----------------------------------- |
-| `PORT`        | `:8080`         | Server port                         |
-| `DB_PATH`     | `./data/app.db` | SQLite file path                    |
-| `ENV`         | `development`   | Environment                         |
-| `APP_URL`     | _(empty)_       | Public base URL for OG/Twitter tags |
-| `ADMIN_TOKEN` | _(empty)_       | Bearer/query token for admin routes |
+| Variable      | Default         | Description                                            |
+| ------------- | --------------- | ------------------------------------------------------ |
+| `PORT`        | `:8080`         | Server port                                            |
+| `DB_PATH`     | `./data/app.db` | SQLite file path                                       |
+| `ENV`         | `development`   | Environment                                            |
+| `APP_URL`     | _(empty)_       | Public base URL for OG/Twitter tags                    |
+| `ADMIN_TOKEN` | _(empty)_       | Bearer token for admin routes (required in production) |
 
 ## Deploy (Lightsail)
 

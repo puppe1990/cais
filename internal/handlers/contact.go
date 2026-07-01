@@ -39,12 +39,19 @@ func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.FormValue("name"))
 	email := strings.TrimSpace(r.FormValue("email"))
 
+	var errs validate.FieldErrors
+	if name == "" {
+		errs.Add("name", "O campo nome é obrigatório.")
+	}
 	if err := validate.Email(email); err != nil {
 		msg := "O campo email é obrigatório."
 		if email != "" {
 			msg = "Informe um email válido."
 		}
-		h.renderContactResponse(w, r, http.StatusUnprocessableEntity, "contact_errors", contactErrorData{Message: msg})
+		errs.Add("email", msg)
+	}
+	if errs.Any() {
+		h.renderContactResponse(w, r, http.StatusUnprocessableEntity, "contact_errors", contactErrorData{Message: errs.First()})
 		return
 	}
 

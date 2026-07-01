@@ -62,11 +62,8 @@ func Apply(db *sql.DB, migrations fs.FS, dir string) error {
 		if err != nil {
 			return fmt.Errorf("read migration %s: %w", name, err)
 		}
-		if _, err := db.Exec(string(sqlBytes)); err != nil {
-			return fmt.Errorf("apply migration %s: %w", name, err)
-		}
-		if _, err := db.Exec("INSERT INTO schema_migrations (version) VALUES (?)", version); err != nil {
-			return fmt.Errorf("record migration %s: %w", version, err)
+		if err := applyMigration(db, version, string(sqlBytes)); err != nil {
+			return err
 		}
 	}
 
@@ -135,6 +132,26 @@ func listSQL(migrations fs.FS, dir string) ([]string, error) {
 	}
 	sort.Strings(files)
 	return files, nil
+}
+
+func applyMigration(db *sql.DB, version, sql string) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin migration %s: %w", version, err)
+	}
+
+	if _, err := tx.Exec(sql); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("apply migration %s: %w", version, err)
+	}
+	if _, err := tx.Exec("INSERT INTO schema_migrations (version) VALUES (?)", version); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("record migration %s: %w", version, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit migration %s: %w", version, err)
+	}
+	return nil
 }
 
 func isApplied(db *sql.DB, version string) (bool, error) {

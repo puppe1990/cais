@@ -19,6 +19,7 @@ func TestSecurityHeaders_production(t *testing.T) {
 		"X-Content-Type-Options",
 		"X-Frame-Options",
 		"Referrer-Policy",
+		"Permissions-Policy",
 		"Content-Security-Policy",
 		"Strict-Transport-Security",
 	} {

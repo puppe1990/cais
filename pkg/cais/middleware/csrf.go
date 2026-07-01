@@ -4,11 +4,18 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/csrf"
 )
 
 // CSRF protects state-changing requests with a double-submit cookie token.
-func CSRF(next http.Handler) http.Handler {
+func CSRF(cfg cais.Config) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return csrfHandler(cfg, next)
+	}
+}
+
+func csrfHandler(cfg cais.Config, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if skipCSRF(r.URL.Path) {
 			next.ServeHTTP(w, r)
@@ -16,7 +23,7 @@ func CSRF(next http.Handler) http.Handler {
 		}
 
 		if isSafeMethod(r.Method) {
-			token, err := csrf.EnsureToken(w, r)
+			token, err := csrf.EnsureToken(w, r, cfg.CookieSecure())
 			if err != nil {
 				http.Error(w, "csrf token error", http.StatusInternalServerError)
 				return

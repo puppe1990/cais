@@ -12,9 +12,20 @@ func base64Decode(v string) ([]byte, error) {
 	return base64.RawURLEncoding.DecodeString(v)
 }
 
+func TestSet_secureInProduction(t *testing.T) {
+	rr := httptest.NewRecorder()
+	Set(rr, "notice", "Saved!", true)
+
+	for _, c := range rr.Result().Cookies() {
+		if c.Name == CookieName && !c.Secure {
+			t.Error("expected Secure flash cookie in production")
+		}
+	}
+}
+
 func TestSetAndConsume(t *testing.T) {
 	rr := httptest.NewRecorder()
-	Set(rr, "notice", "Bem-vindo!")
+	Set(rr, "notice", "Bem-vindo!", false)
 
 	res := rr.Result()
 	defer func() { _ = res.Body.Close() }()

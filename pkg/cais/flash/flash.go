@@ -21,7 +21,7 @@ type Message struct {
 }
 
 // Set stores a flash message in the response cookie.
-func Set(w http.ResponseWriter, kind, message string) {
+func Set(w http.ResponseWriter, kind, message string, secure bool) {
 	payload, err := json.Marshal(Message{Kind: kind, Message: message})
 	if err != nil {
 		return
@@ -34,6 +34,8 @@ func Set(w http.ResponseWriter, kind, message string) {
 		Path:     "/",
 		MaxAge:   CookieMaxAge,
 		SameSite: http.SameSiteLaxMode,
+		HttpOnly: true,
+		Secure:   secure,
 	})
 }
 

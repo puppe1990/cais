@@ -56,8 +56,8 @@ r.Use(middleware.LoadSession(deps.Store.Sessions()))
 r.Use(middleware.Flash)
 r.Get("/dashboard", middleware.RequireAuthFunc("/login", dashboard.ServeHTTP))
 auth := handlers.NewAuthHandler(renderer, store, site, store.Sessions(), cfg)
-session.SignIn(w, sessions, userID, session.CookieOptionsFromConfig(cfg))
-flash.Set(w, "notice", "Bem-vindo!")
+session.SignIn(w, sessions, r, userID, session.CookieOptionsFromConfig(cfg))
+flash.Set(w, "notice", "Bem-vindo!", cfg.CookieSecure())
 ```
 
 Dev seed user: `demo@example.com` / `password`. Sessions persist in SQLite via `session.NewSQLiteStore`.
@@ -77,7 +77,7 @@ Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap so layouts render corre
 
 ## CSRF
 
-- `middleware.CSRF` on the router (validates POST/PUT/DELETE/PATCH)
+- `middleware.CSRF(cfg)` on the router (validates POST/PUT/DELETE/PATCH)
 - Pass `meta.ForRequest(site, r)` in page data (CSRF + flash) — layout renders `<meta name="csrf-token">` + HTMX header script
 - HTML forms: `<input type="hidden" name="csrf_token" value="{{ .CSRFToken }}" />`
 - Integration tests: GET page first (cookie), then POST with matching token
@@ -85,14 +85,16 @@ Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap so layouts render corre
 ## Flash messages
 
 - `middleware.Flash` on the router (after `LoadSession`)
-- Set on redirect: `flash.Set(w, "notice", "Saved!")` — read in templates via `meta.ForRequest(site, r)` → `.Flash`
+- Set on redirect: `flash.Set(w, "notice", "Saved!", cfg.CookieSecure())` — read in templates via `meta.ForRequest(site, r)` → `.Flash`
 - One-shot: consumed on the next request
 
 ## Security headers
 
 - `middleware.SecurityHeaders(cfg)` on the router (after `Recover`)
 - Sets `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`
-- Adds `Strict-Transport-Security` in production when `cfg.CookieSecure()` is true
+- Adds `Strict-Transport-Security` in production (`ENV=production`)
+- CSRF and flash cookies use `Secure` when `cfg.CookieSecure()` is true
+- Session rotates on login (invalidates previous token)
 
 ## Rate limiting
 

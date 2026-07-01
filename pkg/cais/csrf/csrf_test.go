@@ -81,7 +81,7 @@ func TestSetCookie_andTokenFromRequest(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	token, err := EnsureToken(rr, req)
+	token, err := EnsureToken(rr, req, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,6 +105,22 @@ func TestSetCookie_andTokenFromRequest(t *testing.T) {
 	req3.AddCookie(&http.Cookie{Name: CookieName, Value: token})
 	if got := TokenFromRequest(req3); got != token {
 		t.Errorf("TokenFromRequest from cookie = %q, want %q", got, token)
+	}
+}
+
+func TestEnsureToken_setsSecureInProduction(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	_, err := EnsureToken(rr, req, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, c := range rr.Result().Cookies() {
+		if c.Name == CookieName && !c.Secure {
+			t.Error("expected Secure cookie in production")
+		}
 	}
 }
 

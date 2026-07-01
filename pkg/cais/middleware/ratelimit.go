@@ -46,9 +46,17 @@ func (rl *RateLimiter) allow(key string) bool {
 		}
 	}
 	if len(filtered) >= rl.limit {
-		rl.buckets[key] = filtered
+		rl.setBucket(key, filtered)
 		return false
 	}
-	rl.buckets[key] = append(filtered, now)
+	rl.setBucket(key, append(filtered, now))
 	return true
+}
+
+func (rl *RateLimiter) setBucket(key string, times []time.Time) {
+	if len(times) == 0 {
+		delete(rl.buckets, key)
+		return
+	}
+	rl.buckets[key] = times
 }

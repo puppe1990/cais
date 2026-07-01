@@ -229,7 +229,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	deps.Site = site
 
 	r := cais.NewRouter()
-	r.Use(middleware.CSRF)
+	r.Use(middleware.CSRF(cfg))
 	r.Use(middleware.LoadSession(deps.Store.Sessions()))
 	r.Use(middleware.Flash)
 	buf := devlog.Prepare(cfg.Env)
@@ -323,7 +323,7 @@ import (
 func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
 	home := handlers.NewHomeHandler(deps.Renderer, deps.Site)
 	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, deps.Site)
-	dashboard := handlers.NewDashboardHandler(deps.Renderer, deps.Store, deps.Site)
+	dashboard := handlers.NewDashboardHandler(deps.Renderer, deps.Store, deps.Site, cfg)
 	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions(), cfg)
 
 	loginLimit := middleware.NewRateLimiter(10)
@@ -628,10 +628,11 @@ type DashboardHandler struct {
 	renderer *cais.Renderer
 	store    store.Store
 	site     meta.Site
+	cfg      cais.Config
 }
 
-func NewDashboardHandler(renderer *cais.Renderer, s store.Store, site meta.Site) *DashboardHandler {
-	return &DashboardHandler{renderer: renderer, store: s, site: site}
+func NewDashboardHandler(renderer *cais.Renderer, s store.Store, site meta.Site, cfg cais.Config) *DashboardHandler {
+	return &DashboardHandler{renderer: renderer, store: s, site: site, cfg: cfg}
 }
 
 func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -644,7 +645,7 @@ func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	httpx.RenderOrError(w, h.renderer, "base", "dashboard", DashboardData{
 		Site:          meta.ForRequest(h.site, r),
 		TotalContacts: count,
-		Env:           cais.Load().Env,
+		Env:           h.cfg.Env,
 	})
 }
 `
@@ -659,7 +660,7 @@ import (
 )
 
 func TestDashboardHandler_Returns200(t *testing.T) {
-	h := NewDashboardHandler(setupTestRenderer(t), setupTestStore(t), testSite())
+	h := NewDashboardHandler(setupTestRenderer(t), setupTestStore(t), testSite(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
 	rr := httptest.NewRecorder()
@@ -671,7 +672,7 @@ func TestDashboardHandler_Returns200(t *testing.T) {
 }
 
 func TestDashboardHandler_ContainsDashboard(t *testing.T) {
-	h := NewDashboardHandler(setupTestRenderer(t), setupTestStore(t), testSite())
+	h := NewDashboardHandler(setupTestRenderer(t), setupTestStore(t), testSite(), cais.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
 	rr := httptest.NewRecorder()
@@ -1843,7 +1844,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	}
 
 	r := cais.NewRouter()
-	r.Use(middleware.CSRF)
+	r.Use(middleware.CSRF(cfg))
 	buf := devlog.Prepare(cfg.Env)
 	if buf != nil {
 		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))

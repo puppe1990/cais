@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net/mail"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // Required reports missing trimmed form fields.
@@ -25,6 +27,30 @@ func Email(s string) error {
 	}
 	if _, err := mail.ParseAddress(s); err != nil {
 		return fmt.Errorf("email is invalid")
+	}
+	return nil
+}
+
+// Int checks that s is a base-10 integer.
+func Int(s string) error {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return fmt.Errorf("value is required")
+	}
+	if _, err := strconv.ParseInt(s, 10, 64); err != nil {
+		return fmt.Errorf("value must be an integer")
+	}
+	return nil
+}
+
+// Date checks that s is a YYYY-MM-DD date.
+func Date(s string) error {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return fmt.Errorf("date is required")
+	}
+	if _, err := time.Parse("2006-01-02", s); err != nil {
+		return fmt.Errorf("date is invalid")
 	}
 	return nil
 }

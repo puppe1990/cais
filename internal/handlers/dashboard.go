@@ -19,10 +19,11 @@ type DashboardHandler struct {
 	renderer *cais.Renderer
 	store    store.Store
 	site     meta.Site
+	cfg      cais.Config
 }
 
-func NewDashboardHandler(renderer *cais.Renderer, s store.Store, site meta.Site) *DashboardHandler {
-	return &DashboardHandler{renderer: renderer, store: s, site: site}
+func NewDashboardHandler(renderer *cais.Renderer, s store.Store, site meta.Site, cfg cais.Config) *DashboardHandler {
+	return &DashboardHandler{renderer: renderer, store: s, site: site, cfg: cfg}
 }
 
 func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -35,6 +36,6 @@ func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	httpx.RenderOrError(w, h.renderer, "base", "dashboard", DashboardData{
 		Site:          meta.ForRequest(h.site, r),
 		TotalContacts: count,
-		Env:           cais.Load().Env,
+		Env:           h.cfg.Env,
 	})
 }
