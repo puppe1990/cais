@@ -112,11 +112,51 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 	if !strings.Contains(string(routesBody), "/admin/products") {
 		t.Error("routes.go missing /admin/products")
 	}
-	if !strings.Contains(string(routesBody), "r.Group(middleware.AdminAuth(cfg)") {
-		t.Error("routes.go missing r.Group(middleware.AdminAuth(cfg)")
+	if !strings.Contains(string(routesBody), `middleware.RequireAuth("/login")`) {
+		t.Error("routes.go missing middleware.RequireAuth(\"/login\")")
 	}
 	if strings.Contains(string(routesBody), "\n\n\n") {
 		t.Error("routes.go has triple newlines (formatting issue)")
+	}
+}
+
+func TestScaffoldResource_DefaultAdminAuthUsesRequireAuth(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "items")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName: "items", ModulePath: "github.com/puppe1990/items",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "item", resourceOpts{Fields: "name:string"}); err != nil {
+		t.Fatal(err)
+	}
+	body, _ := os.ReadFile(filepath.Join(appDir, "internal/app/routes.go"))
+	s := string(body)
+	if !strings.Contains(s, `middleware.RequireAuth("/login")`) {
+		t.Errorf("routes should use RequireAuth for session admin: %s", s)
+	}
+	if strings.Contains(s, "middleware.AdminAuth(cfg)") {
+		t.Error("default should not use AdminAuth")
+	}
+}
+
+func TestScaffoldResource_AdminAuthBearerFlag(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "apiitems")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName: "apiitems", ModulePath: "github.com/puppe1990/apiitems",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "item", resourceOpts{
+		Fields: "name:string", AdminAuth: "bearer",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	body, _ := os.ReadFile(filepath.Join(appDir, "internal/app/routes.go"))
+	if !strings.Contains(string(body), "middleware.AdminAuth(cfg)") {
+		t.Error("bearer flag should use AdminAuth")
 	}
 }
 

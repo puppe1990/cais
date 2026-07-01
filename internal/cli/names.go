@@ -20,6 +20,7 @@ type scaffoldData struct {
 	Fields       []FieldDef
 	Public       bool
 	Seed         bool
+	AdminAuth    string
 }
 
 func dataForHandler(name string) scaffoldData {

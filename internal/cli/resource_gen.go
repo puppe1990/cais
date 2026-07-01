@@ -6,13 +6,14 @@ import (
 )
 
 type resourceOpts struct {
-	Fields string
-	Public bool
-	Seed   bool
+	Fields    string
+	Public    bool
+	Seed      bool
+	AdminAuth string
 }
 
 func parseResourceOpts(args []string) (resourceOpts, error) {
-	opts := resourceOpts{Seed: true}
+	opts := resourceOpts{Seed: true, AdminAuth: "session"}
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--fields":
@@ -25,6 +26,17 @@ func parseResourceOpts(args []string) (resourceOpts, error) {
 			opts.Public = true
 		case "--no-seed":
 			opts.Seed = false
+		case "--admin-auth":
+			if i+1 >= len(args) {
+				return opts, fmt.Errorf("--admin-auth requires a value")
+			}
+			i++
+			switch args[i] {
+			case "session", "bearer":
+				opts.AdminAuth = args[i]
+			default:
+				return opts, fmt.Errorf("--admin-auth must be session or bearer")
+			}
 		default:
 			return opts, fmt.Errorf("unknown flag %q", args[i])
 		}

@@ -66,7 +66,7 @@ Usage:
   cais new <app> [dir] --minimal   Slim app (home only)
   cais new <app> [dir] --blank     Empty app (no starter content)
   cais g handler <name>      Generate handler + test + page template
-  cais g resource <name> [--fields title:string,url:url] [--public] [--no-seed]
+  cais g resource <name> [--fields title:string,url:url] [--public] [--no-seed] [--admin-auth session|bearer]
   cais g page <name>         Generate page template only
   cais g migration <name>    Generate SQL migration file
   cais g auth                Add login/logout and protect dashboard
