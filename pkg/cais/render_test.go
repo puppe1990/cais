@@ -41,6 +41,21 @@ func TestRender_Page(t *testing.T) {
 	}
 }
 
+func TestRender_PageIncludesPartials(t *testing.T) {
+	r := testRenderer(t)
+
+	var buf strings.Builder
+	err := r.Render(&buf, "base", "with_partial", map[string]string{"Name": "Bob"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	body := buf.String()
+	if !strings.Contains(body, "<p>Greetings, Bob</p>") {
+		t.Errorf("body missing partial content, got: %s", body)
+	}
+}
+
 func TestRender_Partial(t *testing.T) {
 	r := testRenderer(t)
 
