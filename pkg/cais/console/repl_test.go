@@ -33,7 +33,7 @@ func TestRepl_HelpCommand(t *testing.T) {
 	if err := r.HandleLine("help"); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"store", "help", "sql"} {
+	for _, want := range []string{"cfg", "help", "sql", "reload", "history"} {
 		if !strings.Contains(buf.String(), want) {
 			t.Fatalf("help missing %q, got:\n%s", want, buf.String())
 		}

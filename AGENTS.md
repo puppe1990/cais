@@ -84,7 +84,7 @@ cais doctor   # verify htmx, air, go.mod
 cais console  # Rails-style REPL (store, cfg, db + sql)
 ```
 
-Console bindings: `store` (app store), `cfg` (config), `db` (*sql.DB). Commands: `help`, `sql <query>`, `exit`.
+Console bindings: `store`, `cfg`, `db`, plus any custom keys in `Bindings`. Commands: `help`, `sql`, `reload`, `history`, `!N`/`!!`, `exit`. Arrow keys when stdin is a TTY.
 
 ## Framework commands (Cais repo)
 

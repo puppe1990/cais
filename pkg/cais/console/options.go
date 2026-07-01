@@ -11,6 +11,7 @@ type Options struct {
 	AppName  string
 	Config   cais.Config
 	Bindings map[string]any
+	Reload   func() (map[string]any, error)
 	In       io.Reader
 	Out      io.Writer
 }
