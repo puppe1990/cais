@@ -6,6 +6,7 @@ import (
 
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/flash"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/session"
@@ -16,6 +17,7 @@ type AuthHandler struct {
 	store    store.Store
 	site     meta.Site
 	sessions session.Store
+	cfg      cais.Config
 }
 
 type loginData struct {
@@ -23,8 +25,8 @@ type loginData struct {
 	Error string
 }
 
-func NewAuthHandler(renderer *cais.Renderer, s store.Store, site meta.Site, sessions session.Store) *AuthHandler {
-	return &AuthHandler{renderer: renderer, store: s, site: site, sessions: sessions}
+func NewAuthHandler(renderer *cais.Renderer, s store.Store, site meta.Site, sessions session.Store, cfg cais.Config) *AuthHandler {
+	return &AuthHandler{renderer: renderer, store: s, site: site, sessions: sessions, cfg: cfg}
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +34,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
-	httpx.RenderOrError(w, h.renderer, "base", "login", loginData{Site: meta.WithCSRF(h.site, r)})
+	httpx.RenderOrError(w, h.renderer, "base", "login", loginData{Site: meta.ForRequest(h.site, r)})
 }
 
 func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
@@ -46,16 +48,17 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 	user, err := h.store.FindUserByEmail(email)
 	if err != nil || !session.VerifyPassword(user.PasswordHash, password) {
 		httpx.RenderOrError(w, h.renderer, "base", "login", loginData{
-			Site:  meta.WithCSRF(h.site, r),
+			Site:  meta.ForRequest(h.site, r),
 			Error: "Email ou senha inválidos.",
 		})
 		return
 	}
 
-	if err := session.SignIn(w, h.sessions, user.ID, session.CookieOptions{}); err != nil {
+	if err := session.SignIn(w, h.sessions, user.ID, session.CookieOptionsFromConfig(h.cfg)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	flash.Set(w, "notice", "Bem-vindo!")
 	httpx.SeeOther(w, r, "/dashboard")
 }
 

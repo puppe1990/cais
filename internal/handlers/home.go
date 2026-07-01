@@ -24,7 +24,7 @@ func NewHomeHandler(renderer *cais.Renderer, site meta.Site) *HomeHandler {
 
 func (h *HomeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	httpx.RenderOrError(w, h.renderer, "base", "home", PageData{
-		Site: meta.WithCSRF(h.site, r),
+		Site: meta.ForRequest(h.site, r),
 		Nome: "Desenvolvedor",
 	})
 }

@@ -31,6 +31,11 @@ func StatusDir(db *sql.DB, dir string) ([]Entry, error) {
 	return Status(db, os.DirFS(dir), ".")
 }
 
+// RollbackLastDir removes the last applied migration record from a filesystem directory.
+func RollbackLastDir(db *sql.DB, dir string) (string, error) {
+	return RollbackLast(db, os.DirFS(dir), ".")
+}
+
 // Apply runs pending SQL migrations from dir inside migrations in sorted order.
 func Apply(db *sql.DB, migrations fs.FS, dir string) error {
 	if _, err := db.Exec(schemaTable); err != nil {
@@ -89,6 +94,31 @@ func Status(db *sql.DB, migrations fs.FS, dir string) ([]Entry, error) {
 		entries = append(entries, Entry{Version: version, Applied: applied})
 	}
 	return entries, nil
+}
+
+// RollbackLast removes the last applied migration record from schema_migrations.
+// It does not execute SQL down migrations.
+func RollbackLast(db *sql.DB, migrations fs.FS, dir string) (string, error) {
+	entries, err := Status(db, migrations, dir)
+	if err != nil {
+		return "", err
+	}
+
+	var lastApplied string
+	for _, e := range entries {
+		if e.Applied {
+			lastApplied = e.Version
+		}
+	}
+	if lastApplied == "" {
+		return "", fmt.Errorf("no applied migrations to roll back")
+	}
+
+	if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = ?", lastApplied); err != nil {
+		return "", fmt.Errorf("remove migration %s: %w", lastApplied, err)
+	}
+
+	return lastApplied, nil
 }
 
 func listSQL(migrations fs.FS, dir string) ([]string, error) {

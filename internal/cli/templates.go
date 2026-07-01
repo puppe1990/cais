@@ -209,6 +209,7 @@ type Deps struct {
 
 type App struct {
 	config cais.Config
+	store  store.Store
 	router *cais.Router
 	server *http.Server
 }
@@ -221,9 +222,16 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 		return nil, fmt.Errorf("store is required")
 	}
 
+	site := deps.Site
+	if site.AppName == "" {
+		site = meta.SiteFrom("{{.AppName}}", cfg.AppURL)
+	}
+	deps.Site = site
+
 	r := cais.NewRouter()
 	r.Use(middleware.CSRF)
 	r.Use(middleware.LoadSession(deps.Store.Sessions()))
+	r.Use(middleware.Flash)
 	buf := devlog.Prepare(cfg.Env)
 	if buf != nil {
 		r.Use(middleware.LoggerTo(devlog.MirrorDefault(log.Writer())))
@@ -231,25 +239,40 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 		r.Use(middleware.Logger)
 	}
 	r.Use(middleware.Recover)
+	r.Use(middleware.SecurityHeaders(cfg))
 	r.Static("/static", deps.StaticDir)
 
 	registerRoutes(r, deps, cfg)
 	devlog.Register(r, cfg.Env, buf)
-	r.Get("/health", healthHandler)
+	r.Get("/health", healthHandler(deps.Store))
 
 	return &App{
 		config: cfg,
+		store:  deps.Store,
 		router: r,
 		server: &http.Server{
-			Addr:    cfg.Port,
-			Handler: r,
+			Addr:              cfg.Port,
+			Handler:           r,
+			ReadHeaderTimeout: 10 * time.Second,
+			ReadTimeout:       30 * time.Second,
+			WriteTimeout:      30 * time.Second,
+			IdleTimeout:       60 * time.Second,
 		},
 	}, nil
 }
 
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+func healthHandler(s store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		status := "ok"
+		code := http.StatusOK
+		if err := s.Ping(); err != nil {
+			status = "degraded"
+			code = http.StatusServiceUnavailable
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(code)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": status})
+	}
 }
 
 func (a *App) Handler() http.Handler {
@@ -271,11 +294,14 @@ func (a *App) RunContext(ctx context.Context) error {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := a.server.Shutdown(shutdownCtx); err != nil {
+			_ = a.store.Close()
 			return err
 		}
 		<-errCh
+		_ = a.store.Close()
 		return nil
 	case err := <-errCh:
+		_ = a.store.Close()
 		if err == http.ErrServerClosed {
 			return nil
 		}
@@ -287,6 +313,8 @@ func (a *App) RunContext(ctx context.Context) error {
 const tplRoutes = `package app
 
 import (
+	"net/http"
+
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/middleware"
 	"{{.ModulePath}}/internal/handlers"
@@ -296,13 +324,16 @@ func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
 	home := handlers.NewHomeHandler(deps.Renderer, deps.Site)
 	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, deps.Site)
 	dashboard := handlers.NewDashboardHandler(deps.Renderer, deps.Store, deps.Site)
-	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions())
+	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions(), cfg)
+
+	loginLimit := middleware.NewRateLimiter(10)
+	contactLimit := middleware.NewRateLimiter(20)
 
 	r.Get("/", home.ServeHTTP)
 	r.Get("/contact", contact.Get)
-	r.Post("/contact", contact.Post)
+	r.Post("/contact", contactLimit.Middleware(http.HandlerFunc(contact.Post)).ServeHTTP)
 	r.Get("/login", auth.Login)
-	r.Post("/login", auth.LoginPost)
+	r.Post("/login", loginLimit.Middleware(http.HandlerFunc(auth.LoginPost)).ServeHTTP)
 	r.Post("/logout", auth.LogoutPost)
 	r.Get("/dashboard", middleware.RequireAuthFunc("/login", dashboard.ServeHTTP))
 }
@@ -314,6 +345,7 @@ import (
 	"net/http"
 
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/httpx"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 )
 
@@ -332,10 +364,7 @@ func NewHomeHandler(renderer *cais.Renderer, site meta.Site) *HomeHandler {
 }
 
 func (h *HomeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "home", PageData{Site: meta.WithCSRF(h.site, r), Nome: "{{.AppName}}"}); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	httpx.RenderOrError(w, h.renderer, "base", "home", PageData{Site: meta.ForRequest(h.site, r), Nome: "{{.AppName}}"})
 }
 `
 
@@ -442,7 +471,9 @@ import (
 	"{{.ModulePath}}/internal/models"
 	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/httpx"
 	"github.com/puppe1990/cais/pkg/cais/meta"
+	"github.com/puppe1990/cais/pkg/cais/validate"
 )
 
 type ContactHandler struct {
@@ -460,10 +491,7 @@ func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site) *
 }
 
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "contact", meta.WithCSRF(h.site, r)); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	httpx.RenderOrError(w, h.renderer, "base", "contact", meta.ForRequest(h.site, r))
 }
 
 func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
@@ -475,10 +503,12 @@ func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.FormValue("name"))
 	email := strings.TrimSpace(r.FormValue("email"))
 
-	if email == "" {
-		h.renderContactResponse(w, r, http.StatusUnprocessableEntity, "contact_errors", contactErrorData{
-			Message: "O campo email é obrigatório.",
-		})
+	if err := validate.Email(email); err != nil {
+		msg := "O campo email é obrigatório."
+		if email != "" {
+			msg = "Informe um email válido."
+		}
+		h.renderContactResponse(w, r, http.StatusUnprocessableEntity, "contact_errors", contactErrorData{Message: msg})
 		return
 	}
 
@@ -491,20 +521,14 @@ func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
 	h.renderContactResponse(w, r, http.StatusOK, "contact_success", nil)
 }
 
-func (h *ContactHandler) renderContactResponse(w http.ResponseWriter, r *http.Request, status int, tmpl string, data any) {
-	w.WriteHeader(status)
-	if cais.IsHTMX(r) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := h.renderer.RenderPartial(w, tmpl, data); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "contact", meta.WithCSRF(h.site, r)); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+func (h *ContactHandler) renderContactResponse(w http.ResponseWriter, r *http.Request, status int, partial string, data any) {
+	httpx.RenderPageOrPartial(w, r, h.renderer, httpx.RenderOptions{
+		Layout:  "base",
+		Page:    "contact",
+		Partial: partial,
+		Data:    data,
+		Status:  status,
+	})
 }
 `
 
@@ -590,6 +614,7 @@ import (
 
 	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/httpx"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 )
 
@@ -616,16 +641,11 @@ func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := DashboardData{
-		Site:          meta.WithCSRF(h.site, r),
+	httpx.RenderOrError(w, h.renderer, "base", "dashboard", DashboardData{
+		Site:          meta.ForRequest(h.site, r),
 		TotalContacts: count,
 		Env:           cais.Load().Env,
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.renderer.Render(w, "base", "dashboard", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	})
 }
 `
 
@@ -729,6 +749,7 @@ type Store interface {
 	CountContacts() (int64, error)
 	FindUserByEmail(email string) (models.User, error)
 	Sessions() session.Store
+	Ping() error
 	Close() error
 }
 
@@ -831,6 +852,10 @@ func (s *SQLiteStore) FindUserByEmail(email string) (models.User, error) {
 
 func (s *SQLiteStore) Sessions() session.Store {
 	return session.NewSQLiteStore(s.db.Raw())
+}
+
+func (s *SQLiteStore) Ping() error {
+	return s.db.Raw().Ping()
 }
 
 func (s *SQLiteStore) DB() *sql.DB {

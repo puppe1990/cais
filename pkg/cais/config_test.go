@@ -74,9 +74,16 @@ func TestConfig_AdminToken(t *testing.T) {
 }
 
 func TestConfig_Validate_requiresAdminTokenInProduction(t *testing.T) {
-	cfg := Config{Env: "production", AdminToken: ""}
+	cfg := Config{Env: "production", AdminToken: "", AppURL: "https://example.com"}
 	if err := cfg.Validate(); err == nil {
 		t.Fatal("expected error without ADMIN_TOKEN in production")
+	}
+}
+
+func TestConfig_Validate_requiresAppURLInProduction(t *testing.T) {
+	cfg := Config{Env: "production", AdminToken: "secret", AppURL: ""}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected error without APP_URL in production")
 	}
 }
 
@@ -84,5 +91,19 @@ func TestConfig_Validate_allowsEmptyTokenInDevelopment(t *testing.T) {
 	cfg := Config{Env: "development", AdminToken: ""}
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestConfig_CookieSecure_trueInProduction(t *testing.T) {
+	cfg := Config{Env: "production"}
+	if !cfg.CookieSecure() {
+		t.Error("CookieSecure() = false, want true in production")
+	}
+}
+
+func TestConfig_CookieSecure_falseInDevelopment(t *testing.T) {
+	cfg := Config{Env: "development"}
+	if cfg.CookieSecure() {
+		t.Error("CookieSecure() = true, want false in development")
 	}
 }

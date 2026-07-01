@@ -8,21 +8,26 @@ import (
 
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/migrate"
+	"github.com/puppe1990/cais/pkg/cais/session"
 
 	_ "modernc.org/sqlite"
 )
 
 func (c *CLI) cmdDB(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: cais db <migrate|status>")
+		return fmt.Errorf("usage: cais db <migrate|status|rollback|prune-sessions>")
 	}
 	switch args[0] {
 	case "migrate":
 		return c.cmdDBMigrate()
 	case "status":
 		return c.cmdDBStatus()
+	case "rollback":
+		return c.cmdDBRollback()
+	case "prune-sessions":
+		return c.cmdDBPruneSessions()
 	default:
-		return fmt.Errorf("unknown db command %q (use migrate or status)", args[0])
+		return fmt.Errorf("unknown db command %q (use migrate, status, rollback, or prune-sessions)", args[0])
 	}
 }
 
@@ -41,6 +46,47 @@ func (c *CLI) cmdDBMigrate() error {
 		return err
 	}
 	_, _ = fmt.Fprintln(c.Out, "=> Migrations up to date")
+	return nil
+}
+
+func (c *CLI) cmdDBRollback() error {
+	dir, err := c.appDir()
+	if err != nil {
+		return err
+	}
+	db, migrationsDir, cleanup, err := openAppDB(dir)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	version, err := migrate.RollbackLastDir(db, migrationsDir)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(c.Out, "=> Rolled back %s (does not run SQL down migrations)\n", version)
+	return nil
+}
+
+func (c *CLI) cmdDBPruneSessions() error {
+	dir, err := c.appDir()
+	if err != nil {
+		return err
+	}
+	db, _, cleanup, err := openAppDB(dir)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	if err := session.EnsureSQLiteSchema(db); err != nil {
+		return err
+	}
+	n, err := session.NewSQLiteStore(db).PruneExpired()
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(c.Out, "=> Pruned %d expired session(s)\n", n)
 	return nil
 }
 

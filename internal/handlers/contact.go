@@ -27,7 +27,7 @@ func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site) *
 }
 
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
-	httpx.RenderOrError(w, h.renderer, "base", "contact", meta.WithCSRF(h.site, r))
+	httpx.RenderOrError(w, h.renderer, "base", "contact", meta.ForRequest(h.site, r))
 }
 
 func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
@@ -57,14 +57,12 @@ func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
 	h.renderContactResponse(w, r, http.StatusOK, "contact_success", nil)
 }
 
-func (h *ContactHandler) renderContactResponse(w http.ResponseWriter, r *http.Request, status int, tmpl string, data any) {
-	w.WriteHeader(status)
-	if cais.IsHTMX(r) {
-		if err := httpx.RenderPartial(w, h.renderer, tmpl, data); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		return
-	}
-
-	httpx.RenderOrError(w, h.renderer, "base", "contact", h.site)
+func (h *ContactHandler) renderContactResponse(w http.ResponseWriter, r *http.Request, status int, partial string, data any) {
+	httpx.RenderPageOrPartial(w, r, h.renderer, httpx.RenderOptions{
+		Layout:  "base",
+		Page:    "contact",
+		Partial: partial,
+		Data:    data,
+		Status:  status,
+	})
 }

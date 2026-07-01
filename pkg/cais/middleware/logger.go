@@ -50,6 +50,15 @@ func skipRequestLog(path string) bool {
 }
 
 func clientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if i := strings.Index(xff, ","); i >= 0 {
+			return strings.TrimSpace(xff[:i])
+		}
+		return strings.TrimSpace(xff)
+	}
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
 	if host := r.RemoteAddr; host != "" {
 		if i := strings.LastIndex(host, ":"); i >= 0 {
 			return host[:i]

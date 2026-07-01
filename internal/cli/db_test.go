@@ -2,10 +2,15 @@ package cli
 
 import (
 	"bytes"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/puppe1990/cais/pkg/cais/session"
+
+	_ "modernc.org/sqlite"
 )
 
 func TestCLI_DBStatus_listsMigrations(t *testing.T) {
@@ -19,6 +24,69 @@ func TestCLI_DBStatus_listsMigrations(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "001_contacts") {
 		t.Errorf("status output missing migration: %q", buf.String())
+	}
+}
+
+func TestCLI_DBRollback_removesLastMigration(t *testing.T) {
+	dir := t.TempDir()
+	writeMinimalApp(t, dir)
+
+	c := &CLI{Out: &bytes.Buffer{}}
+	if err := c.Run([]string{"db", "migrate"}); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	c2 := &CLI{Out: &buf}
+	if err := c2.Run([]string{"db", "rollback"}); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "001_contacts") {
+		t.Errorf("rollback output missing version: %q", out)
+	}
+	if !strings.Contains(out, "does not run SQL down migrations") {
+		t.Errorf("rollback output missing down-migration notice: %q", out)
+	}
+}
+
+func TestCLI_DBPruneSessions_removesExpired(t *testing.T) {
+	dir := t.TempDir()
+	writeMinimalApp(t, dir)
+
+	dbPath := filepath.Join(dir, "data", "app.db")
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := session.EnsureSQLiteSchema(db); err != nil {
+		t.Fatal(err)
+	}
+	store := session.NewSQLiteStore(db)
+	token, err := store.Create(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(
+		"UPDATE sessions SET expires_at = datetime('now', '-1 day') WHERE token = ?",
+		token,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	c := &CLI{Out: &buf}
+	if err := c.Run([]string{"db", "prune-sessions"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := buf.String(); !strings.Contains(got, "=> Pruned 1 expired session(s)") {
+		t.Errorf("prune output = %q, want pruned count message", got)
 	}
 }
 

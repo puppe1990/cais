@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/puppe1990/cais/pkg/cais/csrf"
+	"github.com/puppe1990/cais/pkg/cais/flash"
 )
 
 const DefaultImagePath = "/static/og.png"
@@ -16,6 +17,7 @@ type Site struct {
 	AppName   string
 	AppURL    string
 	CSRFToken string
+	Flash     *flash.Message
 }
 
 // Preview describes Open Graph / Twitter card metadata for a page.
@@ -51,6 +53,15 @@ func SiteFrom(appName, appURL string) Site {
 // WithCSRF returns site with the per-request CSRF token for layout templates.
 func WithCSRF(site Site, r *http.Request) Site {
 	site.CSRFToken = csrf.TokenFromRequest(r)
+	return site
+}
+
+// ForRequest returns site with per-request CSRF and flash values for layout templates.
+func ForRequest(site Site, r *http.Request) Site {
+	site = WithCSRF(site, r)
+	if msg, ok := flash.MessageFromRequest(r); ok {
+		site.Flash = &msg
+	}
 	return site
 }
 
