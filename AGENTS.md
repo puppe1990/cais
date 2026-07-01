@@ -84,6 +84,18 @@ Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap so layouts render corre
 - Handler: if `cais.IsHTMX(r)` → `RenderPartial`, else → `Render` with layout
 - Test with `req.Header.Set("HX-Request", "true")`
 
+## HTMX UX (app-like feel)
+
+Layout loads `cais.js` after `htmx.min.js` — CSRF header, focus restore, optimistic toggles.
+
+- **Small targets** — swap `#form-errors` or `this`, not whole lists
+- **Transitions** — `hx-swap="innerHTML swap:150ms"` on forms; `outerHTML swap:150ms` on toggles
+- **Forms** — `hx-indicator` + `hx-disabled-elt="button[type='submit']"`; hide label with `.htmx-request-hide`
+- **Bool toggles** — `data-cais-optimistic="toggle"` for instant class flip (see resource generator)
+- **Optional** — `data-cais-view-transition` enables View Transitions API when supported
+- **CSS** — `input.css` includes `.htmx-swapping` / `.htmx-settling` fade utilities
+- **Response headers** — `cais.SetTrigger(w, "event")`, `cais.SetRetarget(w, "#id")` when needed
+
 ## New table
 
 1. Store test with `":memory:"` before the migration
