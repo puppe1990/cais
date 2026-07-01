@@ -271,6 +271,9 @@ func TestScaffoldResource_IntFields(t *testing.T) {
 	if !strings.Contains(string(store), "PrepMinutes: 30") {
 		t.Error("seed data should use numeric literal for int fields")
 	}
+	if strings.Contains(string(store), "Demo ") {
+		t.Error("seed data should use realistic values, not 'Demo X' pattern")
+	}
 
 	adminTest, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/admin_meals_test.go"))
 	if err != nil {
