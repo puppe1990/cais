@@ -77,7 +77,9 @@ Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap so layouts render corre
 
 ## HTMX interactions
 
-- Partial in `web/templates/partials/`
+- Partial in `web/templates/partials/` — each file has `{{ define "name" }}` matching the filename
+- Partials are parsed into full pages too, so `{{ template "name" . }}` works in pages and layouts
+- For HTMX swaps, handler returns the partial via `RenderPartial` (not a full layout)
 - Template attributes: `hx-post`, `hx-target`, `hx-swap`
 - Handler: if `cais.IsHTMX(r)` → `RenderPartial`, else → `Render` with layout
 - Test with `req.Header.Set("HX-Request", "true")`
@@ -105,6 +107,7 @@ Set `APP_URL` for absolute OG image URLs in production.
 ## CLI generators
 
 ```bash
+cais new myapp              # includes GitHub Actions CI, pre-commit, golangci-lint, Prettier
 cais new myapp --minimal
 cais new myapp --blank
 cais g resource bookmark --fields title:string,url:url,notes:text? --public
@@ -112,6 +115,7 @@ cais doctor                    # verify htmx, air, go.mod
 cais g handler settings
 cais g console              # scaffold cmd/console/main.go
 cais g auth                 # login/logout + protected dashboard
+cais g ci                   # add CI/pre-commit to existing apps
 ```
 
 Field types: `string`, `text`, `url`, `bool`, `int`, `date`. Suffix `?` for optional.

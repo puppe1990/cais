@@ -551,6 +551,79 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 	}
 }
 
+func TestScaffold_IncludesQualityTooling(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+
+	for _, tc := range []struct {
+		name           string
+		minimal, blank bool
+	}{
+		{"full", false, false},
+		{"minimal", true, false},
+		{"blank", false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			appDir := filepath.Join(t.TempDir(), tc.name)
+			if err := scaffoldNewApp(appDir, scaffoldData{
+				AppName:    tc.name,
+				ModulePath: "github.com/puppe1990/" + tc.name,
+			}, tc.minimal, tc.blank); err != nil {
+				t.Fatal(err)
+			}
+
+			for _, path := range []string{
+				".github/workflows/ci.yml",
+				".pre-commit-config.yaml",
+				".golangci.yml",
+				".prettierrc.json",
+				".prettierignore",
+			} {
+				if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
+					t.Errorf("missing %s: %v", path, err)
+				}
+			}
+
+			makefile, err := os.ReadFile(filepath.Join(appDir, "Makefile"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			body := string(makefile)
+			for _, target := range []string{"lint:", "format-check:", "pre-commit-install:", "ci:"} {
+				if !strings.Contains(body, target) {
+					t.Errorf("Makefile missing target %s", target)
+				}
+			}
+
+			golangci, err := os.ReadFile(filepath.Join(appDir, ".golangci.yml"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(golangci), "github.com/puppe1990/"+tc.name) {
+				t.Error(".golangci.yml missing module local-prefix")
+			}
+
+			ci, err := os.ReadFile(filepath.Join(appDir, ".github/workflows/ci.yml"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			ciBody := string(ci)
+			for _, needle := range []string{"go test", "golangci-lint", "prettier", "npm test"} {
+				if !strings.Contains(ciBody, needle) {
+					t.Errorf("ci.yml missing %q", needle)
+				}
+			}
+
+			pkg, err := os.ReadFile(filepath.Join(appDir, "package.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(pkg), `"test"`) {
+				t.Error("package.json missing test script")
+			}
+		})
+	}
+}
+
 func TestCLI_NewBlankCreatesEmptyApp(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "empty")
