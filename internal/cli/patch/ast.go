@@ -1,15 +1,14 @@
 package patch
 
 import (
-	"bytes"
 	"fmt"
 	"go/ast"
-	"go/format"
 	"go/parser"
 	"go/token"
 )
 
 // InsertBeforeFuncEnd inserts Go statements before the closing brace of funcName.
+// The source file is not reformatted so qualified calls such as cais.IntParam stay intact.
 func InsertBeforeFuncEnd(src []byte, funcName, insert string) ([]byte, error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "routes.go", src, parser.ParseComments)
@@ -30,17 +29,22 @@ func InsertBeforeFuncEnd(src []byte, funcName, insert string) ([]byte, error) {
 		return nil, fmt.Errorf("function %q not found", funcName)
 	}
 
-	insertStmts, err := parseStmtList(insert)
-	if err != nil {
+	if _, err := parseStmtList(insert); err != nil {
 		return nil, err
 	}
-	target.Body.List = append(target.Body.List, insertStmts...)
 
-	var buf bytes.Buffer
-	if err := format.Node(&buf, fset, f); err != nil {
-		return nil, fmt.Errorf("format: %w", err)
+	// Body.End() is the position after the closing brace; insert immediately before '}'.
+	closeBrace := target.Body.End() - 1
+	pos := fset.Position(closeBrace).Offset
+	if pos <= 0 || pos > len(src) || src[pos] != '}' {
+		return nil, fmt.Errorf("invalid insert position for %q", funcName)
 	}
-	return buf.Bytes(), nil
+
+	out := make([]byte, 0, len(src)+len(insert))
+	out = append(out, src[:pos]...)
+	out = append(out, insert...)
+	out = append(out, src[pos:]...)
+	return out, nil
 }
 
 func parseStmtList(insert string) ([]ast.Stmt, error) {

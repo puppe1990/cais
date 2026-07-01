@@ -224,6 +224,8 @@ flash.Set(w, "notice", "Welcome!", cfg.CookieSecure())
 
 **Security** — `middleware.SecurityHeaders(cfg)` and `middleware.NewRateLimiter(n)` on login/contact POST routes. Set `TRUSTED_PROXIES` when behind a reverse proxy so rate limits use the real client IP.
 
+**Content-Security-Policy** — production responses include a CSP that allows `'unsafe-inline'` for `script-src` and `style-src`. HTMX and the inline service-worker registration script rely on inline execution; nonce-based CSP would require bundling or refactoring those assets. Treat this as a deliberate tradeoff for server-rendered HTMX apps, not an oversight.
+
 ## Environment variables
 
 | Variable          | Default         | Description                                                              |

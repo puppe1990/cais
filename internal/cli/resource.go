@@ -32,6 +32,7 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 		filepath.Join("internal/handlers", "admin_"+data.Plural+".go"):         buildResourceAdminHandler(data),
 		filepath.Join("internal/handlers", "admin_"+data.Plural+"_test.go"):    buildResourceAdminTest(data),
 		filepath.Join("web/templates/pages", "admin_"+data.Plural+".html"):     buildAdminIndexHTML(data),
+		filepath.Join("web/templates/pages", "admin_"+data.Snake+"_show.html"): buildAdminShowHTML(data),
 		filepath.Join("web/templates/pages", "admin_"+data.Snake+"_form.html"): buildAdminFormHTML(data),
 		migrationPath: buildResourceMigration(data),
 	}
@@ -105,6 +106,23 @@ import (
 	"%s/internal/models"
 )
 
+func TestAdmin%sHandler_Show(t *testing.T) {
+	s := setupTestStore(t)
+	id, err := s.Insert%s(models.%s{%s: "show-me"%s})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := NewAdmin%sHandler(setupTestRenderer(t), s, cais.Config{})
+	rr := httptest.NewRecorder()
+	h.Show(rr, testutil.NewRequest(http.MethodGet, "/admin/%s/1", testutil.PathValue("id", "1")), id)
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %%d", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "show-me") {
+		t.Error("missing item detail in show page")
+	}
+}
+
 func TestAdmin%sHandler_Index(t *testing.T) {
 	s := setupTestStore(t)
 	h := NewAdmin%sHandler(setupTestRenderer(t), s, cais.Config{})
@@ -145,6 +163,8 @@ func TestAdmin%sHandler_Delete(t *testing.T) {
 }
 `,
 		frameworkModule, frameworkModule, data.ModulePath,
+		data.PluralPascal, data.Pascal, data.Pascal, first.Pascal, urlFieldTestExtra(data),
+		data.PluralPascal, data.Plural,
 		data.PluralPascal, data.PluralPascal, data.Plural, data.Plural,
 		data.PluralPascal, data.PluralPascal, data.Plural, formBody,
 		data.PluralPascal, data.Pascal, data.Pascal, first.Pascal, urlFieldTestExtra(data),
@@ -387,6 +407,7 @@ func patchRoutesForResource(dir string, data scaffoldData, dryRun bool) error {
 		fmt.Fprintf(&insert, "\tr.Group(middleware.RequireAuth(\"/login\"), func(g *cais.Router) {\n")
 	}
 	fmt.Fprintf(&insert, "\t\tg.Get(\"/admin/%s\", %s.Index)\n", data.Plural, adminVar)
+	fmt.Fprintf(&insert, "\t\tg.Get(\"/admin/%s/{id}\", cais.IntParam(\"id\", %s.Show))\n", data.Plural, adminVar)
 	fmt.Fprintf(&insert, "\t\tg.Get(\"/admin/%s/new\", %s.New)\n", data.Plural, adminVar)
 	fmt.Fprintf(&insert, "\t\tg.Post(\"/admin/%s\", %s.Create)\n", data.Plural, adminVar)
 	fmt.Fprintf(&insert, "\t\tg.Get(\"/admin/%s/{id}/edit\", cais.IntParam(\"id\", %s.Edit))\n", data.Plural, adminVar)

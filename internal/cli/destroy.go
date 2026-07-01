@@ -16,6 +16,7 @@ func destroyResource(dir, name string, dryRun bool) error {
 		filepath.Join("internal/handlers", "admin_"+data.Plural+".go"),
 		filepath.Join("internal/handlers", "admin_"+data.Plural+"_test.go"),
 		filepath.Join("web/templates/pages", "admin_"+data.Plural+".html"),
+		filepath.Join("web/templates/pages", "admin_"+data.Snake+"_show.html"),
 		filepath.Join("web/templates/pages", "admin_"+data.Snake+"_form.html"),
 		filepath.Join("internal/handlers", data.Plural+".go"),
 		filepath.Join("internal/handlers", data.Plural+"_test.go"),

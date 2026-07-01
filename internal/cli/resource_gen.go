@@ -523,6 +523,27 @@ func boolImport(cond bool, s string) string {
 	return ""
 }
 
+func buildAdminShowDataStruct(data scaffoldData) string {
+	return fmt.Sprintf(`type Admin%sShowData struct {
+	CSRFToken string
+	Item      models.%s
+}`, data.PluralPascal, data.Pascal)
+}
+
+func buildAdminShowMethod(data scaffoldData) string {
+	return fmt.Sprintf(`func (h *Admin%sHandler) Show(w http.ResponseWriter, r *http.Request, id int64) {
+	item, err := h.store.Find%sByID(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	httpx.RenderOrError(w, h.renderer, "base", "admin_%s_show", Admin%sShowData{
+		CSRFToken: csrf.TokenFromRequest(r),
+		Item:      item,
+	}, h.cfg)
+}`, data.PluralPascal, data.Pascal, data.Snake, data.PluralPascal)
+}
+
 func buildAdminIndexDataStruct(data scaffoldData) string {
 	if data.Paginate {
 		return fmt.Sprintf(`type Admin%sIndexData struct {
@@ -586,7 +607,9 @@ func buildResourceAdminHandler(data scaffoldData) string {
 	parse := buildAdminParseForm(data)
 	hasStrconv := needsStrconv(data.Fields) || data.Paginate
 	indexDataStruct := buildAdminIndexDataStruct(data)
+	showDataStruct := buildAdminShowDataStruct(data)
 	indexMethod := buildAdminIndexMethod(data)
+	showMethod := buildAdminShowMethod(data)
 	paginationImport := ""
 	if data.Paginate {
 		paginationImport = "\t\"" + frameworkModule + "/pkg/cais/pagination\"\n"
@@ -613,6 +636,8 @@ type Admin%sHandler struct {
 
 %s
 
+%s
+
 type Admin%sFormData struct {
 	CSRFToken string
 	Item      models.%s
@@ -623,6 +648,8 @@ type Admin%sFormData struct {
 func NewAdmin%sHandler(renderer *cais.Renderer, s store.Store, cfg cais.Config) *Admin%sHandler {
 	return &Admin%sHandler{renderer: renderer, store: s, cfg: cfg}
 }
+
+%s
 
 %s
 
@@ -695,9 +722,11 @@ func (h *Admin%sHandler) parseForm(r *http.Request) (models.%s, validate.FieldEr
 		frameworkModule, frameworkModule, frameworkModule, data.ModulePath, data.ModulePath,
 		data.PluralPascal,
 		indexDataStruct,
+		showDataStruct,
 		data.Pascal, data.Pascal,
 		data.PluralPascal, data.PluralPascal, data.PluralPascal,
 		indexMethod,
+		showMethod,
 		data.PluralPascal, data.Snake, data.Pascal,
 		data.PluralPascal, data.Pascal, data.Snake, data.Pascal,
 		data.PluralPascal, data.Snake, data.Pascal, data.Pascal, data.Plural,
@@ -890,6 +919,7 @@ func buildAdminIndexHTML(data scaffoldData) string {
         <tr class="hover:bg-slate-50">
           <td class="px-6 py-4 font-medium">{{ .%s }}</td>
           <td class="px-6 py-4 text-right space-x-3">
+            <a href="/admin/%s/{{ .ID }}" class="text-indigo-600 hover:underline">View</a>
             <a href="/admin/%s/{{ .ID }}/edit" class="text-slate-600 hover:underline">Edit</a>
             <form class="inline" method="post" action="/admin/%s/{{ .ID }}/delete" onsubmit="return confirm('Delete?')">
               <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}" />
@@ -905,7 +935,42 @@ func buildAdminIndexHTML(data scaffoldData) string {
 %s  </div>
 </div>
 {{ end }}
-`, data.Title, data.Title, data.Plural, data.Plural, displayField.Pascal, displayField.Pascal, data.Plural, data.Plural, paginationBlock)
+`, data.Title, data.Title, data.Plural, data.Plural, displayField.Pascal, displayField.Pascal, data.Plural, data.Plural, data.Plural, paginationBlock)
+}
+
+func buildAdminShowHTML(data scaffoldData) string {
+	var fields strings.Builder
+	for _, f := range data.Fields {
+		if f.GoType == "bool" {
+			fmt.Fprintf(&fields, `    <div>
+      <dt class="text-sm font-medium text-slate-500">%s</dt>
+      <dd class="mt-1 text-slate-900">{{ if .Item.%s }}Yes{{ else }}No{{ end }}</dd>
+    </div>
+`, f.Pascal, f.Pascal)
+			continue
+		}
+		fmt.Fprintf(&fields, `    <div>
+      <dt class="text-sm font-medium text-slate-500">%s</dt>
+      <dd class="mt-1 text-slate-900">{{ .Item.%s }}</dd>
+    </div>
+`, f.Pascal, f.Pascal)
+	}
+	return fmt.Sprintf(`{{ define "title" }}%s{{ end }} {{ define "content" }}
+<div class="max-w-md mx-auto">
+  <a href="/admin/%s" class="text-sm text-indigo-600 hover:underline mb-4 inline-block">← Back</a>
+  <h1 class="text-3xl font-bold text-slate-900 mb-6">%s</h1>
+  <dl class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+%s  </dl>
+  <div class="mt-6 flex gap-3">
+    <a href="/admin/%s/{{ .Item.ID }}/edit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition shadow-sm">Edit</a>
+    <form method="post" action="/admin/%s/{{ .Item.ID }}/delete" onsubmit="return confirm('Delete?')">
+      <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}" />
+      <button type="submit" class="text-red-600 hover:underline py-2 px-4">Delete</button>
+    </form>
+  </div>
+</div>
+{{ end }}
+`, data.Title, data.Plural, data.Title, fields.String(), data.Plural, data.Plural)
 }
 
 func displayFieldForList(fields []FieldDef) FieldDef {
