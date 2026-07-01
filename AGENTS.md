@@ -66,6 +66,7 @@ cais new myapp --minimal
 cais g resource bookmark --fields title:string,url:url,notes:text? --public
 cais doctor                    # verify htmx, air, go.mod
 cais g handler settings
+cais g console              # scaffold cmd/console/main.go
 ```
 
 Field types: `string`, `text`, `url`, `bool`, `int`. Suffix `?` for optional.
@@ -80,7 +81,10 @@ cais build    # bin/server
 cais server   # go run ./cmd/server
 cais test     # go test ./...
 cais doctor   # verify htmx, air, go.mod
+cais console  # Rails-style REPL (store, cfg, db + sql)
 ```
+
+Console bindings: `store` (app store), `cfg` (config), `db` (*sql.DB). Commands: `help`, `sql <query>`, `exit`.
 
 ## Framework commands (Cais repo)
 
