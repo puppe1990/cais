@@ -28,6 +28,7 @@ type Tx struct {
 	config Config
 }
 
+// Wrap instruments *sql.DB without replacing the driver — store code keeps using familiar Exec/Query APIs.
 func Wrap(db *sql.DB, cfg Config) *DB {
 	if cfg.Writer == nil {
 		cfg.Writer = os.Stdout

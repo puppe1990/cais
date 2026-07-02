@@ -7,6 +7,8 @@ import (
 	"github.com/puppe1990/cais/pkg/cais"
 )
 
+// SecurityHeaders sets baseline headers. CSP allows 'unsafe-inline' for HTMX and inline layout scripts.
+// Nonce-based CSP needs asset bundling changes — see README security section.
 func SecurityHeaders(cfg cais.Config) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

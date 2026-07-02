@@ -23,6 +23,8 @@ func EnsureSQLiteSchema(db *sql.DB) error {
 	return migrateSQLiteSchema(db)
 }
 
+// migrateSQLiteSchema adds expires_at for databases created before session TTL shipped.
+// ALTER is idempotent via pragma check — avoids breaking existing app.db files on upgrade.
 func migrateSQLiteSchema(db *sql.DB) error {
 	var count int
 	err := db.QueryRow(

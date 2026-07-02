@@ -381,6 +381,12 @@ make docker   # ~15-20MB image
 
 Pre-commit (tests, lint, prettier): `make pre-commit-install` once, then hooks run on every commit.
 
+## Agent code style
+
+- Comment **why** on non-obvious constraints (security tradeoffs, SQLite limits, boot-time vs per-request).
+- Do not narrate what the code does — names and tests already cover that.
+- Prefer file- or func-level provenance over inline noise; agents load whole files, not single lines.
+
 ## Do not
 
 - Parse templates per request (use `cais.NewRenderer`)

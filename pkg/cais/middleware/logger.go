@@ -23,6 +23,7 @@ func LoggerTo(cfg cais.Config, w io.Writer) func(http.Handler) http.Handler {
 	}
 }
 
+// LoggerWithWriter logs requests. Development emits logentry JSON; production keeps Rails-style text.
 func LoggerWithWriter(cfg cais.Config, w io.Writer, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		if skipRequestLog(r.URL.Path) {

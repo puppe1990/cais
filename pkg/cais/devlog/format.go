@@ -8,6 +8,7 @@ import (
 
 // FormatForDisplay renders buffered log lines for /logs: JSON entries become
 // readable one-liners; legacy plain-text lines pass through unchanged.
+// Stdout and the buffer keep raw JSON so agents can grep structured fields.
 func FormatForDisplay(text string) string {
 	text = strings.TrimSuffix(text, "\n")
 	if text == "" {

@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// schema_migrations records applied migration filenames — ApplyDir is safe to call on every boot.
 const schemaTable = `CREATE TABLE IF NOT EXISTS schema_migrations (
   version TEXT PRIMARY KEY NOT NULL,
   applied_at TEXT NOT NULL DEFAULT (datetime('now'))
