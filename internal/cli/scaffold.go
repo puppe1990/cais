@@ -11,6 +11,8 @@ import (
 	"github.com/puppe1990/cais/pkg/cais/pwa"
 )
 
+// qualityToolingFiles returns CI/lint/format configs written by cais new and cais g ci.
+// Kept in a helper so minimal/blank/full scaffolds share the same tooling block.
 func qualityToolingFiles() map[string]string {
 	return map[string]string{
 		".github/workflows/ci.yml": tplCIWorkflow,

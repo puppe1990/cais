@@ -30,3 +30,13 @@ func TestDataForResource_PluralPascal(t *testing.T) {
 		t.Errorf("PluralPascal = %q, want Dishes", data.PluralPascal)
 	}
 }
+
+func TestNames(t *testing.T) {
+	data := dataForHandler("user_settings")
+	if data.Pascal != "UserSettings" {
+		t.Errorf("Pascal = %q", data.Pascal)
+	}
+	if data.Snake != "user_settings" {
+		t.Errorf("Snake = %q", data.Snake)
+	}
+}

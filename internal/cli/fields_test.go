@@ -112,3 +112,35 @@ func TestParseFields_optionalNullableInt(t *testing.T) {
 		t.Errorf("SQLType = %q, want nullable", fields[0].SQLType)
 	}
 }
+
+func TestParseFields(t *testing.T) {
+	fields, err := parseFields("title:string,url:url,notes:text?")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fields) != 3 {
+		t.Fatalf("len = %d", len(fields))
+	}
+	if fields[2].Required {
+		t.Error("notes should be optional")
+	}
+}
+
+func TestParseFields_DateType(t *testing.T) {
+	fields, err := parseFields("title:string,due_date:date")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fields) != 2 {
+		t.Fatalf("len = %d", len(fields))
+	}
+	if fields[1].GoType != "string" {
+		t.Errorf("date GoType = %q, want string", fields[1].GoType)
+	}
+	if fields[1].HTMLType != "date" {
+		t.Errorf("date HTMLType = %q, want date", fields[1].HTMLType)
+	}
+	if fields[1].SQLType != "TEXT NOT NULL" {
+		t.Errorf("date SQLType = %q", fields[1].SQLType)
+	}
+}

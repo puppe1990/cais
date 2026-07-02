@@ -440,6 +440,8 @@ func patchRoutesForResource(dir string, data scaffoldData, dryRun bool) error {
 	return patchLayoutNav(dir, data, dryRun)
 }
 
+// layoutNavMarker is embedded in scaffold layouts (tplLayout*). Generators insert
+// public resource links after it; destroy removes links by href. Do not remove from templates.
 const layoutNavMarker = "<!-- cais:nav -->"
 
 func patchLayoutNav(dir string, data scaffoldData, dryRun bool) error {
