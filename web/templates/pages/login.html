@@ -16,7 +16,11 @@
       {{ t "auth.login_submit" }}
     </button>
   </form>
-  <p class="text-sm text-slate-600 mt-4 text-center">
+  <p class="text-sm text-slate-600 mt-4 text-center space-y-1">
+    <span class="block">
+      {{ t "auth.signup_prompt" }}
+      <a class="text-indigo-600 hover:text-indigo-800" href="/signup">{{ t "auth.signup_title" }}</a>
+    </span>
     <a class="text-indigo-600 hover:text-indigo-800" href="/forgot-password">{{ t "auth.forgot_password" }}</a>
   </p>
 </div>

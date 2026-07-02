@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"log"
 	"net/url"
 	"os"
 	"strings"
@@ -52,9 +51,4 @@ func NewToken() (string, error) {
 		return "", fmt.Errorf("generate token: %w", err)
 	}
 	return hex.EncodeToString(b), nil
-}
-
-// DefaultNotifier returns LogNotifier using the default logger.
-func DefaultNotifier(appURL string) Notifier {
-	return LogNotifier{Out: log.Writer(), AppURL: appURL}
 }

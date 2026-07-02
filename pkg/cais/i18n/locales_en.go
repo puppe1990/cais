@@ -19,6 +19,11 @@ var enMessages = map[string]string{
 	"auth.reset_invalid_token":         "This reset link is invalid or has expired.",
 	"auth.password_too_short":          "Password must be at least 8 characters.",
 	"auth.password_mismatch":           "Passwords do not match.",
+	"auth.signup_title":                "Create account",
+	"auth.signup_submit":               "Sign up",
+	"auth.signup_prompt":               "Don't have an account?",
+	"auth.login_prompt":                "Already have an account?",
+	"auth.email_taken":                 "This email is already registered.",
 
 	"contact.title":          "Contact",
 	"contact.heading":        "Get in touch",

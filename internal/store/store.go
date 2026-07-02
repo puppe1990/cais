@@ -2,9 +2,11 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	_ "modernc.org/sqlite"
 
@@ -15,11 +17,15 @@ import (
 	"github.com/puppe1990/cais/pkg/cais/sqllog"
 )
 
+// ErrEmailTaken is returned when CreateUser hits the unique email constraint.
+var ErrEmailTaken = errors.New("email already registered")
+
 type Store interface {
 	InsertContact(contact models.Contact) (int64, error)
 	FindContact(id int64) (models.Contact, error)
 	CountContacts() (int64, error)
 	FindUserByEmail(email string) (models.User, error)
+	CreateUser(email, passwordHash string) (int64, error)
 	CreatePasswordResetToken(userID int64) (string, error)
 	FindPasswordResetUserID(token string) (int64, bool)
 	ResetPasswordWithToken(token, passwordHash string) error
@@ -123,6 +129,20 @@ func (s *SQLiteStore) FindUserByEmail(email string) (models.User, error) {
 		return models.User{}, fmt.Errorf("find user: %w", err)
 	}
 	return u, nil
+}
+
+func (s *SQLiteStore) CreateUser(email, passwordHash string) (int64, error) {
+	result, err := s.db.Exec(
+		"INSERT INTO users (email, password_hash) VALUES (?, ?)",
+		email, passwordHash,
+	)
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE") {
+			return 0, ErrEmailTaken
+		}
+		return 0, fmt.Errorf("create user: %w", err)
+	}
+	return result.LastInsertId()
 }
 
 func (s *SQLiteStore) Sessions() session.Store {

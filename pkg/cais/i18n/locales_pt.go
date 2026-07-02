@@ -19,6 +19,11 @@ var ptMessages = map[string]string{
 	"auth.reset_invalid_token":         "Este link é inválido ou expirou.",
 	"auth.password_too_short":          "A senha deve ter pelo menos 8 caracteres.",
 	"auth.password_mismatch":           "As senhas não coincidem.",
+	"auth.signup_title":                "Criar conta",
+	"auth.signup_submit":               "Cadastrar",
+	"auth.signup_prompt":               "Não tem conta?",
+	"auth.login_prompt":                "Já tem conta?",
+	"auth.email_taken":                 "Este email já está cadastrado.",
 
 	"contact.title":          "Contato",
 	"contact.heading":        "Fale conosco",
