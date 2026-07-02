@@ -23,6 +23,7 @@ func TestScaffoldNewApp_includesAuth(t *testing.T) {
 		"internal/store/migrations/002_auth.sql",
 		"internal/store/password_reset.go",
 		"web/templates/pages/login.html",
+		"web/templates/pages/signup.html",
 		"web/templates/pages/forgot_password.html",
 		"web/templates/pages/reset_password.html",
 	} {
@@ -80,6 +81,12 @@ func TestScaffoldNewApp_includesAuth(t *testing.T) {
 	if !strings.Contains(authBody, "ForgotPasswordPost") {
 		t.Error("auth.go missing password reset handlers")
 	}
+	if !strings.Contains(body, "/signup") {
+		t.Error("routes.go missing signup routes")
+	}
+	if !strings.Contains(authBody, "SignUpPost") {
+		t.Error("auth.go missing signup handlers")
+	}
 }
 
 func TestScaffoldAuth_patchesBlankAppStore(t *testing.T) {
@@ -106,6 +113,8 @@ func TestScaffoldAuth_patchesBlankAppStore(t *testing.T) {
 	body := string(store)
 	for _, needle := range []string{
 		"FindUserByEmail",
+		"CreateUser",
+		"ErrEmailTaken",
 		"Sessions() session.Store",
 		`"github.com/puppe1990/blankauth/internal/models"`,
 	} {

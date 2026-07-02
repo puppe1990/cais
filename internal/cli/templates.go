@@ -340,6 +340,8 @@ func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
 	r.Post("/contact", contactLimit.Middleware(http.HandlerFunc(contact.Post)).ServeHTTP)
 	r.Get("/login", auth.Login)
 	r.Post("/login", loginLimit.Middleware(http.HandlerFunc(auth.LoginPost)).ServeHTTP)
+	r.Get("/signup", auth.SignUp)
+	r.Post("/signup", loginLimit.Middleware(http.HandlerFunc(auth.SignUpPost)).ServeHTTP)
 	r.Get("/forgot-password", auth.ForgotPassword)
 	r.Post("/forgot-password", resetLimit.Middleware(http.HandlerFunc(auth.ForgotPasswordPost)).ServeHTTP)
 	r.Get("/reset-password", auth.ResetPassword)
@@ -787,9 +789,11 @@ const tplStore = `package store
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	_ "modernc.org/sqlite"
 
@@ -800,11 +804,14 @@ import (
 	"{{.ModulePath}}/internal/models"
 )
 
+var ErrEmailTaken = errors.New("email already registered")
+
 type Store interface {
 	InsertContact(contact models.Contact) (int64, error)
 	FindContact(id int64) (models.Contact, error)
 	CountContacts() (int64, error)
 	FindUserByEmail(email string) (models.User, error)
+	CreateUser(email, passwordHash string) (int64, error)
 	CreatePasswordResetToken(userID int64) (string, error)
 	FindPasswordResetUserID(token string) (int64, bool)
 	ResetPasswordWithToken(token, passwordHash string) error
@@ -908,6 +915,20 @@ func (s *SQLiteStore) FindUserByEmail(email string) (models.User, error) {
 		return models.User{}, fmt.Errorf("find user: %w", err)
 	}
 	return u, nil
+}
+
+func (s *SQLiteStore) CreateUser(email, passwordHash string) (int64, error) {
+	result, err := s.db.Exec(
+		"INSERT INTO users (email, password_hash) VALUES (?, ?)",
+		email, passwordHash,
+	)
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE") {
+			return 0, ErrEmailTaken
+		}
+		return 0, fmt.Errorf("create user: %w", err)
+	}
+	return result.LastInsertId()
 }
 
 func (s *SQLiteStore) Sessions() session.Store {

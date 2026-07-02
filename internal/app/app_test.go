@@ -457,6 +457,171 @@ func TestApp_PasswordResetFlow(t *testing.T) {
 	}
 }
 
+func TestApp_ProductionBoot(t *testing.T) {
+	root := projectRoot(t)
+	catalog := i18n.DefaultCatalog()
+	renderer, err := cais.NewRendererFromDir(filepath.Join(root, "web", "templates"), catalog)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s, err := store.NewSQLiteStore(":memory:", "production")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+
+	cfg := cais.Config{
+		Port:       ":0",
+		DBPath:     ":memory:",
+		Env:        "production",
+		AppURL:     "https://example.com",
+		AdminToken: "ci-smoke-secret",
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("cfg.Validate() = %v", err)
+	}
+
+	a, err := New(cfg, Deps{
+		Renderer:  renderer,
+		Store:     s,
+		StaticDir: filepath.Join(root, "web", "static"),
+		Site:      meta.SiteFrom("Cais", cfg.AppURL),
+		Catalog:   catalog,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := a.Handler()
+
+	healthReq := httptest.NewRequest(http.MethodGet, "/health", nil)
+	healthRR := httptest.NewRecorder()
+	h.ServeHTTP(healthRR, healthReq)
+	if healthRR.Code != http.StatusOK {
+		t.Fatalf("GET /health status = %d, want 200", healthRR.Code)
+	}
+	if !strings.Contains(healthRR.Body.String(), `"status":"ok"`) {
+		t.Errorf("health body = %q, want ok", healthRR.Body.String())
+	}
+
+	loginReq := httptest.NewRequest(http.MethodGet, "/login", nil)
+	loginRR := httptest.NewRecorder()
+	h.ServeHTTP(loginRR, loginReq)
+	if loginRR.Code != http.StatusOK {
+		t.Fatalf("GET /login status = %d, want 200", loginRR.Code)
+	}
+	if loginRR.Header().Get("Strict-Transport-Security") == "" {
+		t.Error("missing HSTS header in production")
+	}
+}
+
+func TestApp_SignUpFlow_registersAndSignsIn(t *testing.T) {
+	a := setupTestAppDev(t)
+	h := a.Handler()
+
+	getSignup := httptest.NewRequest(http.MethodGet, "/signup", nil)
+	signupRR := httptest.NewRecorder()
+	h.ServeHTTP(signupRR, getSignup)
+	csrfToken := csrfTokenFromResponse(t, signupRR.Result())
+
+	form := url.Values{}
+	form.Set("email", "newuser@example.com")
+	form.Set("password", "password123")
+	form.Set("password_confirmation", "password123")
+	form.Set("csrf_token", csrfToken)
+	postSignup := httptest.NewRequest(http.MethodPost, "/signup", strings.NewReader(form.Encode()))
+	postSignup.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	postSignup.AddCookie(&http.Cookie{Name: csrf.CookieName, Value: csrfToken})
+	postSignupRR := httptest.NewRecorder()
+	h.ServeHTTP(postSignupRR, postSignup)
+	if postSignupRR.Code != http.StatusSeeOther {
+		t.Fatalf("POST /signup status = %d, want 303", postSignupRR.Code)
+	}
+
+	dashReq := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
+	for _, c := range postSignupRR.Result().Cookies() {
+		dashReq.AddCookie(c)
+	}
+	dashRR := httptest.NewRecorder()
+	h.ServeHTTP(dashRR, dashReq)
+	if dashRR.Code != http.StatusOK {
+		t.Fatalf("GET /dashboard status = %d, want 200", dashRR.Code)
+	}
+	if !strings.Contains(dashRR.Body.String(), "Welcome!") {
+		t.Errorf("dashboard missing signup flash, body: %s", dashRR.Body.String())
+	}
+}
+
+func TestApp_Smoke_contactHTMX_loginDashboardLogout(t *testing.T) {
+	a := setupTestAppDev(t)
+	h := a.Handler()
+
+	getContact := httptest.NewRequest(http.MethodGet, "/contact", nil)
+	contactRR := httptest.NewRecorder()
+	h.ServeHTTP(contactRR, getContact)
+	csrfToken := csrfTokenFromResponse(t, contactRR.Result())
+
+	contactForm := url.Values{}
+	contactForm.Set("name", "Smoke Test")
+	contactForm.Set("email", "smoke@example.com")
+	contactForm.Set("csrf_token", csrfToken)
+	postContact := httptest.NewRequest(http.MethodPost, "/contact", strings.NewReader(contactForm.Encode()))
+	postContact.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	postContact.AddCookie(&http.Cookie{Name: csrf.CookieName, Value: csrfToken})
+	postContact.Header.Set("HX-Request", "true")
+	contactPostRR := httptest.NewRecorder()
+	h.ServeHTTP(contactPostRR, postContact)
+	if contactPostRR.Code != http.StatusOK {
+		t.Fatalf("POST /contact HTMX status = %d, want 200", contactPostRR.Code)
+	}
+	if !strings.Contains(contactPostRR.Body.String(), "successfully") {
+		t.Errorf("contact partial missing success: %s", contactPostRR.Body.String())
+	}
+
+	getLogin := httptest.NewRequest(http.MethodGet, "/login", nil)
+	loginRR := httptest.NewRecorder()
+	h.ServeHTTP(loginRR, getLogin)
+	csrfToken = csrfTokenFromResponse(t, loginRR.Result())
+
+	loginForm := url.Values{}
+	loginForm.Set("email", "demo@example.com")
+	loginForm.Set("password", "password")
+	loginForm.Set("csrf_token", csrfToken)
+	postLogin := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(loginForm.Encode()))
+	postLogin.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	postLogin.AddCookie(&http.Cookie{Name: csrf.CookieName, Value: csrfToken})
+	loginPostRR := httptest.NewRecorder()
+	h.ServeHTTP(loginPostRR, postLogin)
+	if loginPostRR.Code != http.StatusSeeOther {
+		t.Fatalf("POST /login status = %d, want 303", loginPostRR.Code)
+	}
+
+	dashReq := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
+	for _, c := range loginPostRR.Result().Cookies() {
+		dashReq.AddCookie(c)
+	}
+	dashRR := httptest.NewRecorder()
+	h.ServeHTTP(dashRR, dashReq)
+	if dashRR.Code != http.StatusOK {
+		t.Fatalf("GET /dashboard status = %d, want 200", dashRR.Code)
+	}
+	if !strings.Contains(dashRR.Body.String(), "Welcome!") {
+		t.Errorf("dashboard missing login flash: %s", dashRR.Body.String())
+	}
+
+	logoutForm := url.Values{}
+	logoutForm.Set("csrf_token", csrfToken)
+	logoutReq := httptest.NewRequest(http.MethodPost, "/logout", strings.NewReader(logoutForm.Encode()))
+	logoutReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	logoutReq.AddCookie(&http.Cookie{Name: csrf.CookieName, Value: csrfToken})
+	logoutReq.AddCookie(sessionCookieFromResponse(t, loginPostRR.Result()))
+	logoutRR := httptest.NewRecorder()
+	h.ServeHTTP(logoutRR, logoutReq)
+	if logoutRR.Code != http.StatusSeeOther {
+		t.Fatalf("POST /logout status = %d, want 303", logoutRR.Code)
+	}
+}
+
 func setupTestAppDev(t *testing.T) *App {
 	t.Helper()
 

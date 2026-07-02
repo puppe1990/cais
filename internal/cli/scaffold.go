@@ -46,6 +46,7 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		"internal/handlers/auth.go":                   tplAuthHandler,
 		"internal/handlers/auth_test.go":              tplAuthTest,
 		"web/templates/pages/login.html":              tplPageLogin,
+		"web/templates/pages/signup.html":             tplPageSignup,
 		"web/templates/pages/forgot_password.html":    tplPageForgotPassword,
 		"web/templates/pages/reset_password.html":     tplPageResetPassword,
 		"web/embed.go":                                tplWebEmbed,

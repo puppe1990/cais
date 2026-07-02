@@ -24,6 +24,7 @@ func scaffoldAuth(dir string, data scaffoldData, dryRun bool) error {
 		"internal/store/password_reset.go":         tplStorePasswordReset,
 		migrationPath:                              tplMigration002Auth,
 		"web/templates/pages/login.html":           tplPageLogin,
+		"web/templates/pages/signup.html":          tplPageSignup,
 		"web/templates/pages/forgot_password.html": tplPageForgotPassword,
 		"web/templates/pages/reset_password.html":  tplPageResetPassword,
 	}
@@ -80,13 +81,45 @@ func patchStoreForAuth(dir string, dryRun bool) error {
 		)
 	}
 
+	if !strings.Contains(content, `"errors"`) {
+		content = strings.Replace(content,
+			`import (
+	"database/sql"`,
+			`import (
+	"database/sql"
+	"errors"`,
+			1,
+		)
+	}
+	if !strings.Contains(content, `"strings"`) {
+		content = strings.Replace(content,
+			`"path/filepath"`,
+			`"path/filepath"
+	"strings"`,
+			1,
+		)
+	}
+	if !strings.Contains(content, "ErrEmailTaken") {
+		content = strings.Replace(content,
+			`)
+
+type Store interface {`,
+			`)
+
+var ErrEmailTaken = errors.New("email already registered")
+
+type Store interface {`,
+			1,
+		)
+	}
+
 	ifaceMarker := "\n\tClose() error"
 	if !strings.Contains(content, ifaceMarker) {
 		return fmt.Errorf("could not patch store interface for auth")
 	}
 	content = strings.Replace(content,
 		ifaceMarker,
-		"\n\tFindUserByEmail(email string) (models.User, error)\n\tCreatePasswordResetToken(userID int64) (string, error)\n\tFindPasswordResetUserID(token string) (int64, bool)\n\tResetPasswordWithToken(token, passwordHash string) error\n\tSessions() session.Store"+ifaceMarker,
+		"\n\tFindUserByEmail(email string) (models.User, error)\n\tCreateUser(email, passwordHash string) (int64, error)\n\tCreatePasswordResetToken(userID int64) (string, error)\n\tFindPasswordResetUserID(token string) (int64, bool)\n\tResetPasswordWithToken(token, passwordHash string) error\n\tSessions() session.Store"+ifaceMarker,
 		1,
 	)
 
@@ -101,6 +134,20 @@ func (s *SQLiteStore) FindUserByEmail(email string) (models.User, error) {
 		return models.User{}, fmt.Errorf("find user: %w", err)
 	}
 	return u, nil
+}
+
+func (s *SQLiteStore) CreateUser(email, passwordHash string) (int64, error) {
+	result, err := s.db.Exec(
+		"INSERT INTO users (email, password_hash) VALUES (?, ?)",
+		email, passwordHash,
+	)
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE") {
+			return 0, ErrEmailTaken
+		}
+		return 0, fmt.Errorf("create user: %w", err)
+	}
+	return result.LastInsertId()
 }
 
 func (s *SQLiteStore) Sessions() session.Store {
@@ -198,6 +245,8 @@ func patchRoutesForAuth(dir string, dryRun bool) error {
 	auth := handlers.NewAuthHandler(deps.Renderer, deps.Store, deps.Site, deps.Store.Sessions(), cfg, deps.Catalog)
 	r.Get("/login", auth.Login)
 	r.Post("/login", loginLimit.Middleware(http.HandlerFunc(auth.LoginPost)).ServeHTTP)
+	r.Get("/signup", auth.SignUp)
+	r.Post("/signup", loginLimit.Middleware(http.HandlerFunc(auth.SignUpPost)).ServeHTTP)
 	r.Get("/forgot-password", auth.ForgotPassword)
 	r.Post("/forgot-password", resetLimit.Middleware(http.HandlerFunc(auth.ForgotPasswordPost)).ServeHTTP)
 	r.Get("/reset-password", auth.ResetPassword)
@@ -253,6 +302,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 const tplAuthHandler = `package handlers
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -295,6 +345,12 @@ type resetPasswordData struct {
 	Error  string
 }
 
+type signupData struct {
+	meta.Site
+	Email  string
+	Errors validate.FieldErrors
+}
+
 func NewAuthHandler(renderer *cais.Renderer, s store.Store, site meta.Site, sessions session.Store, cfg cais.Config, catalog *i18n.Catalog) *AuthHandler {
 	return &AuthHandler{renderer: renderer, store: s, site: site, sessions: sessions, cfg: cfg, catalog: catalog}
 }
@@ -335,6 +391,72 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) LogoutPost(w http.ResponseWriter, r *http.Request) {
 	session.SignOut(w, h.sessions, r, session.CookieOptionsFromConfig(h.cfg))
 	httpx.SeeOther(w, r, "/login")
+}
+
+func (h *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
+	if _, ok := session.UserID(r); ok {
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		return
+	}
+	httpx.RenderOrError(w, h.renderer, "base", "signup", signupData{Site: meta.ForRequest(h.site, r)}, h.cfg)
+}
+
+func (h *AuthHandler) SignUpPost(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	email := strings.TrimSpace(r.FormValue("email"))
+	password := r.FormValue("password")
+	confirm := r.FormValue("password_confirmation")
+
+	var errs validate.FieldErrors
+	if err := validate.Email(email); err != nil {
+		errs.Add("email", h.catalog.T("contact.email_invalid"))
+	}
+	if err := validate.MinLength(password, 8); err != nil {
+		errs.Add("password", h.catalog.T("auth.password_too_short"))
+	}
+	if password != confirm {
+		errs.Add("password_confirmation", h.catalog.T("auth.password_mismatch"))
+	}
+	if errs.Any() {
+		httpx.RenderOrError(w, h.renderer, "base", "signup", signupData{
+			Site:   meta.ForRequest(h.site, r),
+			Email:  email,
+			Errors: errs,
+		}, h.cfg)
+		return
+	}
+
+	hash, err := session.HashPassword(password)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	userID, err := h.store.CreateUser(email, hash)
+	if err != nil {
+		if errors.Is(err, store.ErrEmailTaken) {
+			httpx.RenderOrError(w, h.renderer, "base", "signup", signupData{
+				Site:  meta.ForRequest(h.site, r),
+				Email: email,
+				Errors: validate.FieldErrors{
+					"email": h.catalog.T("auth.email_taken"),
+				},
+			}, h.cfg)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := session.SignIn(w, h.sessions, r, userID, session.CookieOptionsFromConfig(h.cfg)); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	flash.Set(w, "notice", h.catalog.T("auth.welcome"), h.cfg.CookieSecure())
+	httpx.SeeOther(w, r, "/dashboard")
 }
 
 func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
@@ -601,12 +723,47 @@ const tplPageLogin = `{{"{{"}} define "title" {{"}}"}}Login{{"{{"}} end {{"}}"}}
       {{"{{"}} t "auth.login_submit" {{"}}"}}
     </button>
   </form>
-  <p class="text-sm text-slate-600 mt-4 text-center">
+  <p class="text-sm text-slate-600 mt-4 text-center space-y-1">
+    <span class="block">
+      {{"{{"}} t "auth.signup_prompt" {{"}}"}}
+      <a class="text-indigo-600 hover:text-indigo-800" href="/signup">{{"{{"}} t "auth.signup_title" {{"}}"}}</a>
+    </span>
     <a class="text-indigo-600 hover:text-indigo-800" href="/forgot-password">{{"{{"}} t "auth.forgot_password" {{"}}"}}</a>
   </p>
 </div>
 {{"{{"}} end {{"}}"}}
 `
+
+const tplPageSignup = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.signup_title" {{"}}"}}{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
+<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto mt-10">
+  <h2 class="text-2xl font-bold text-slate-800 mb-4">{{"{{"}} t "auth.signup_title" {{"}}"}}</h2>
+  <form method="post" action="/signup" class="space-y-4">
+    <input type="hidden" name="csrf_token" value="{{"{{"}} .CSRFToken {{"}}"}}" />
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="email">{{"{{"}} t "contact.email_label" {{"}}"}}</label>
+      <input class="w-full border border-slate-300 rounded-lg px-3 py-2" type="email" id="email" name="email" value="{{"{{"}} .Email {{"}}"}}" required />
+      {{"{{"}} fieldError .Errors "email" {{"}}"}}
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="password">{{"{{"}} t "auth.password_label" {{"}}"}}</label>
+      <input class="w-full border border-slate-300 rounded-lg px-3 py-2" type="password" id="password" name="password" required />
+      {{"{{"}} fieldError .Errors "password" {{"}}"}}
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="password_confirmation">{{"{{"}} t "auth.password_confirmation_label" {{"}}"}}</label>
+      <input class="w-full border border-slate-300 rounded-lg px-3 py-2" type="password" id="password_confirmation" name="password_confirmation" required />
+      {{"{{"}} fieldError .Errors "password_confirmation" {{"}}"}}
+    </div>
+    <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition" type="submit">
+      {{"{{"}} t "auth.signup_submit" {{"}}"}}
+    </button>
+  </form>
+  <p class="text-sm text-slate-600 mt-4 text-center">
+    {{"{{"}} t "auth.login_prompt" {{"}}"}}
+    <a class="text-indigo-600 hover:text-indigo-800" href="/login">{{"{{"}} t "auth.login_title" {{"}}"}}</a>
+  </p>
+</div>
+{{"{{"}} end {{"}}"}}`
 
 const tplPageForgotPassword = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.forgot_password_title" {{"}}"}}{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto mt-10">

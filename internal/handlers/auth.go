@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -43,6 +44,12 @@ type resetPasswordData struct {
 	Error  string
 }
 
+type signupData struct {
+	meta.Site
+	Email  string
+	Errors validate.FieldErrors
+}
+
 func NewAuthHandler(renderer *cais.Renderer, s store.Store, site meta.Site, sessions session.Store, cfg cais.Config, catalog *i18n.Catalog) *AuthHandler {
 	return &AuthHandler{renderer: renderer, store: s, site: site, sessions: sessions, cfg: cfg, catalog: catalog}
 }
@@ -83,6 +90,72 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) LogoutPost(w http.ResponseWriter, r *http.Request) {
 	session.SignOut(w, h.sessions, r, session.CookieOptionsFromConfig(h.cfg))
 	httpx.SeeOther(w, r, "/login")
+}
+
+func (h *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
+	if _, ok := session.UserID(r); ok {
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		return
+	}
+	httpx.RenderOrError(w, h.renderer, "base", "signup", signupData{Site: meta.ForRequest(h.site, r)}, h.cfg)
+}
+
+func (h *AuthHandler) SignUpPost(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	email := strings.TrimSpace(r.FormValue("email"))
+	password := r.FormValue("password")
+	confirm := r.FormValue("password_confirmation")
+
+	var errs validate.FieldErrors
+	if err := validate.Email(email); err != nil {
+		errs.Add("email", h.catalog.T("contact.email_invalid"))
+	}
+	if err := validate.MinLength(password, 8); err != nil {
+		errs.Add("password", h.catalog.T("auth.password_too_short"))
+	}
+	if password != confirm {
+		errs.Add("password_confirmation", h.catalog.T("auth.password_mismatch"))
+	}
+	if errs.Any() {
+		httpx.RenderOrError(w, h.renderer, "base", "signup", signupData{
+			Site:   meta.ForRequest(h.site, r),
+			Email:  email,
+			Errors: errs,
+		}, h.cfg)
+		return
+	}
+
+	hash, err := session.HashPassword(password)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	userID, err := h.store.CreateUser(email, hash)
+	if err != nil {
+		if errors.Is(err, store.ErrEmailTaken) {
+			httpx.RenderOrError(w, h.renderer, "base", "signup", signupData{
+				Site:  meta.ForRequest(h.site, r),
+				Email: email,
+				Errors: validate.FieldErrors{
+					"email": h.catalog.T("auth.email_taken"),
+				},
+			}, h.cfg)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := session.SignIn(w, h.sessions, r, userID, session.CookieOptionsFromConfig(h.cfg)); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	flash.Set(w, "notice", h.catalog.T("auth.welcome"), h.cfg.CookieSecure())
+	httpx.SeeOther(w, r, "/dashboard")
 }
 
 func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {

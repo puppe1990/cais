@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -129,6 +130,48 @@ func TestStore_FindUserByEmail_notFound(t *testing.T) {
 	_, err := s.FindUserByEmail("missing@example.com")
 	if err == nil {
 		t.Fatal("expected error for missing user")
+	}
+}
+
+func TestStore_CreateUser_insertsAndFinds(t *testing.T) {
+	s := newTestStore(t)
+
+	hash, err := session.HashPassword("secret-pass")
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := s.CreateUser("new@example.com", hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id == 0 {
+		t.Fatal("id = 0, want non-zero")
+	}
+
+	user, err := s.FindUserByEmail("new@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user.ID != id {
+		t.Errorf("id = %d, want %d", user.ID, id)
+	}
+	if user.PasswordHash != hash {
+		t.Error("password hash mismatch")
+	}
+}
+
+func TestStore_CreateUser_rejectsDuplicateEmail(t *testing.T) {
+	s := newTestStore(t)
+
+	hash, err := session.HashPassword("secret-pass")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateUser("dup@example.com", hash); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateUser("dup@example.com", hash); !errors.Is(err, ErrEmailTaken) {
+		t.Fatalf("CreateUser duplicate = %v, want ErrEmailTaken", err)
 	}
 }
 
