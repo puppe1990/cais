@@ -21,7 +21,10 @@ func TestScaffoldNewApp_includesAuth(t *testing.T) {
 		"internal/handlers/auth.go",
 		"internal/models/user.go",
 		"internal/store/migrations/002_auth.sql",
+		"internal/store/password_reset.go",
 		"web/templates/pages/login.html",
+		"web/templates/pages/forgot_password.html",
+		"web/templates/pages/reset_password.html",
 	} {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
 			t.Errorf("missing %s: %v", path, err)
@@ -70,6 +73,12 @@ func TestScaffoldNewApp_includesAuth(t *testing.T) {
 	}
 	if !strings.Contains(body, "NewRateLimiter") {
 		t.Error("routes.go missing rate limiter on login")
+	}
+	if !strings.Contains(body, "/forgot-password") {
+		t.Error("routes.go missing forgot-password routes")
+	}
+	if !strings.Contains(authBody, "ForgotPasswordPost") {
+		t.Error("auth.go missing password reset handlers")
 	}
 }
 
