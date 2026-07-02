@@ -223,8 +223,8 @@ DROP TABLE IF EXISTS bookmarks;
 
 In `ENV=development`:
 
-- `middleware.LoggerTo(devlog.MirrorDefault(...))` — timestamped request logs
-- `sqllog.Wrap(db, sqllog.Config{Enabled: true})` — SQL query + duration logs
+- `middleware.LoggerTo(devlog.MirrorDefault(...))` — JSON request logs in development (`kind: request`)
+- `sqllog.ConfigForEnv(env)` — SQL JSON logs in development (`kind: sql`); plain text when `JSON: false`
 - `devlog.Register(r, cfg.Env, buf)` — mounts `/logs` (localhost only, HTMX refresh)
 
 Boot banner via `boot.Print` in `cmd/server/main.go`. Port auto-pick via `cais.ResolvePort` when preferred port is busy.

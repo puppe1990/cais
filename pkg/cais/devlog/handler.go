@@ -22,7 +22,7 @@ func Register(r *cais.Router, env string, buf *Buffer) {
 }
 
 func serveLogs(w http.ResponseWriter, r *http.Request, buf *Buffer) {
-	body := html.EscapeString(buf.Text())
+	body := html.EscapeString(FormatForDisplay(buf.Text()))
 	if body == "" {
 		body = "(no logs yet)"
 	}
