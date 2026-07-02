@@ -8,7 +8,7 @@ import (
 )
 
 // scaffoldAuth adds login/signup/password-reset to an existing app (cais g auth).
-// Templates live in tpl_scaffold_auth.go; this file only orchestrates writes and patches.
+// Templates live in tpl_scaffold_auth.go and tpl_scaffold_auth_pages.go; this file only orchestrates writes and patches.
 func scaffoldAuth(dir string, data scaffoldData, dryRun bool) error {
 	if _, err := os.Stat(filepath.Join(dir, "internal/handlers/auth.go")); err == nil {
 		return fmt.Errorf("auth already exists — remove internal/handlers/auth.go first")

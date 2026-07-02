@@ -325,18 +325,23 @@ Console bindings: `store`, `cfg`, `db`, plus any custom keys in `Bindings`. Comm
 
 The `cais` CLI lives in `internal/cli/`. Scaffold templates are split by responsibility so agents can grep a single file instead of loading a 2400-line monolith.
 
-| Path                                | Responsibility                                                 |
-| ----------------------------------- | -------------------------------------------------------------- |
-| `internal/cli/cli.go`               | Command routing (`new`, `g`, `destroy`, `db`, …)               |
-| `internal/cli/scaffold.go`          | `cais new` orchestration and `writeTemplate`                   |
-| `internal/cli/resource.go`          | `cais g resource` orchestration and store/route patches        |
-| `internal/cli/resource_gen_*.go`    | Resource code generation (store, admin, public, HTML, fields)  |
-| `internal/cli/tpl_scaffold_*.go`    | Embedded `const tpl*` for `cais new` scaffolding               |
-| `internal/cli/tpl_scaffold_auth.go` | Auth templates (`cais g auth` + full `cais new`)               |
-| `internal/cli/scaffold_auth.go`     | `cais g auth` orchestration and store/app/route patches        |
-| `internal/cli/patch.go`             | AST-safe patches into generated apps (`routes.go`, `store.go`) |
-| `internal/cli/patch/`               | `go/ast` helpers — regex patches break nested `cais.IntParam`  |
-| `internal/cli/destroy.go`           | `cais destroy` — reverses generators                           |
+| Path                                      | Responsibility                                                 |
+| ----------------------------------------- | -------------------------------------------------------------- |
+| `internal/cli/cli.go`                     | Command routing (`new`, `g`, `destroy`, `db`, …)               |
+| `internal/cli/scaffold.go`                | `cais new` orchestration and `writeTemplate`                   |
+| `internal/cli/resource.go`                | `cais g resource` orchestration and store/route patches        |
+| `internal/cli/resource_gen_*.go`          | Resource code generation (store, admin, public, HTML, fields)  |
+| `internal/cli/tpl_scaffold_*.go`          | Embedded `const tpl*` for `cais new` scaffolding               |
+| `internal/cli/tpl_scaffold_main.go`       | `cmd/server/main.go` (full + blank)                            |
+| `internal/cli/tpl_scaffold_app_core.go`   | `internal/app/app.go` (full + blank)                           |
+| `internal/cli/tpl_scaffold_routes.go`     | `internal/app/routes.go` (full, minimal, blank)                |
+| `internal/cli/tpl_scaffold_console.go`    | `cmd/console/main.go`                                          |
+| `internal/cli/tpl_scaffold_auth.go`       | Auth Go templates (handler, store, model, migration, tests)    |
+| `internal/cli/tpl_scaffold_auth_pages.go` | Auth HTML page templates (`login`, `signup`, reset)            |
+| `internal/cli/scaffold_auth.go`           | `cais g auth` orchestration and store/app/route patches        |
+| `internal/cli/patch.go`                   | AST-safe patches into generated apps (`routes.go`, `store.go`) |
+| `internal/cli/patch/`                     | `go/ast` helpers — regex patches break nested `cais.IntParam`  |
+| `internal/cli/destroy.go`                 | `cais destroy` — reverses generators                           |
 
 **Generator tests** (split by domain — run focused suites while editing generators):
 
