@@ -586,7 +586,7 @@ func (h *AuthHandler) resetNotifier() passwordreset.Notifier {
 	if h.resetNotify != nil {
 		return h.resetNotify
 	}
-	return passwordreset.DefaultNotifier(h.cfg.AppURL)
+	return passwordreset.NotifierFromConfig(h.cfg, h.site.AppName)
 }
 `
 

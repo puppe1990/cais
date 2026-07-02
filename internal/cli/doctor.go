@@ -29,6 +29,9 @@ func runDoctor(w io.Writer, dir string) error {
 	}
 	if isProduction(dir) {
 		checks = append(checks, checkAdminToken(dir), checkAppURL(dir))
+		if hasAuthHandler(dir) {
+			checks = append(checks, checkSMTP(dir))
+		}
 	}
 	if c := checkSeedsInfo(dir); c != nil {
 		checks = append(checks, *c)
@@ -203,6 +206,23 @@ func checkAppURL(dir string) doctorCheck {
 		Optional: true,
 		Detail:   "required when ENV=production",
 		FixHint:  "set APP_URL in .env",
+	}
+}
+
+func hasAuthHandler(dir string) bool {
+	_, err := os.Stat(filepath.Join(dir, "internal/handlers/auth.go"))
+	return err == nil
+}
+
+func checkSMTP(dir string) doctorCheck {
+	if resolveEnvVar(dir, "SMTP_HOST") != "" && resolveEnvVar(dir, "SMTP_FROM") != "" {
+		return doctorCheck{Name: "SMTP", OK: true}
+	}
+	return doctorCheck{
+		Name:     "SMTP",
+		Optional: true,
+		Detail:   "password reset emails log to stdout without SMTP_HOST/SMTP_FROM",
+		FixHint:  "set SMTP_HOST and SMTP_FROM in .env for outbound mail",
 	}
 }
 

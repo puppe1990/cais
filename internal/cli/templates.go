@@ -2209,6 +2209,13 @@ ADMIN_TOKEN=
 
 # Reverse proxy (comma-separated IPs; trust X-Forwarded-For for client IP)
 TRUSTED_PROXIES=
+
+# SMTP (optional; password reset emails — logs to stdout when unset)
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASSWORD=
+SMTP_FROM=
 `
 
 const tplI18nCatalog = `package i18n
