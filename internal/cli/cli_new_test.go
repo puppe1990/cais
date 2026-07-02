@@ -208,6 +208,28 @@ func TestScaffoldBlankApp_IncludesSecurityMiddleware(t *testing.T) {
 	}
 }
 
+func TestScaffoldBlankApp_IncludesSessionMiddleware(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "blankapp")
+	if err := scaffoldNewApp(appDir, scaffoldData{AppName: "blankapp", ModulePath: "github.com/puppe1990/blankapp"}, false, true); err != nil {
+		t.Fatal(err)
+	}
+	appGo, _ := os.ReadFile(filepath.Join(appDir, "internal/app/app.go"))
+	s := string(appGo)
+	for _, want := range []string{
+		"middleware.LoadSession(deps.Store.Sessions())",
+		"r.Use(middleware.Flash)",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("blank app missing %q in app.go", want)
+		}
+	}
+	storeGo, _ := os.ReadFile(filepath.Join(appDir, "internal/store/store.go"))
+	if !strings.Contains(string(storeGo), "Sessions() session.Store") {
+		t.Error("blank store missing Sessions() on interface")
+	}
+}
+
 func TestCLI_NewBlankCreatesEmptyApp(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "empty")

@@ -301,11 +301,13 @@ import (
 	"path/filepath"
 
 	"github.com/puppe1990/cais/pkg/cais/devlog"
+	"github.com/puppe1990/cais/pkg/cais/session"
 	"github.com/puppe1990/cais/pkg/cais/sqllog"
 	_ "modernc.org/sqlite"
 )
 
 type Store interface {
+	Sessions() session.Store
 	Ping() error
 	Close() error
 }
@@ -331,12 +333,20 @@ func NewSQLiteStore(dsn string, env string) (*SQLiteStore, error) {
 		_ = db.Close()
 		return nil, err
 	}
+	if err := session.EnsureSQLiteSchema(db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("sessions schema: %w", err)
+	}
 
 	cfg := sqllog.ConfigForEnv(env)
 	if cfg.Enabled {
 		cfg.Writer = devlog.MirrorDefault(os.Stdout)
 	}
 	return &SQLiteStore{db: sqllog.Wrap(db, cfg)}, nil
+}
+
+func (s *SQLiteStore) Sessions() session.Store {
+	return session.NewSQLiteStore(s.db.Raw())
 }
 
 func (s *SQLiteStore) Ping() error {
