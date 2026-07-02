@@ -4,3 +4,11 @@ package sqllog
 func EnabledForEnv(env string) bool {
 	return env == "development"
 }
+
+// ConfigForEnv returns development-friendly defaults (enabled + JSON lines for agents).
+func ConfigForEnv(env string) Config {
+	return Config{
+		Enabled: EnabledForEnv(env),
+		JSON:    EnabledForEnv(env),
+	}
+}

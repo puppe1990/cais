@@ -97,8 +97,8 @@ make docker   # optimized image
 Rails-style boot banner on startup (environment, database, listen URL). In development:
 
 - **Port auto-pick** — if `:8080` is busy, shifts to the next free port
-- **Request logs** — timestamped `Started` / `Completed` lines (skips `/health`, `/static`, `/logs`)
-- **SQL logs** — query, args, duration via `sqllog.Wrap`
+- **Request logs** — JSON lines (`kind: request`) in development; Rails-style text in production
+- **SQL logs** — JSON lines (`kind: sql`) via `sqllog.ConfigForEnv` (query, args, duration_ms)
 - **`/logs`** — localhost-only log viewer with HTMX auto-refresh (2s)
 
 ## Structure

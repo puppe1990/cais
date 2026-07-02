@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/logentry"
 	"github.com/puppe1990/cais/pkg/cais/logtime"
 )
 
@@ -31,18 +32,43 @@ func LoggerWithWriter(cfg cais.Config, w io.Writer, next http.Handler) http.Hand
 
 		start := time.Now()
 		remote := ClientIP(r, cfg)
-		_, _ = fmt.Fprintf(w, "Started %s %q for %s at %s\n", r.Method, r.URL.Path, remote, logtime.Format(start))
+		if cfg.Env == "development" {
+			_ = logentry.Write(w, logentry.Entry{
+				Kind:   "request",
+				Phase:  "started",
+				At:     start.UTC(),
+				Method: r.Method,
+				Path:   r.URL.Path,
+				Remote: remote,
+			})
+		} else {
+			_, _ = fmt.Fprintf(w, "Started %s %q for %s at %s\n", r.Method, r.URL.Path, remote, logtime.Format(start))
+		}
 
 		rec := &statusRecorder{ResponseWriter: rw, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
 
-		_, _ = fmt.Fprintf(
-			w,
-			"Completed %s in %s at %s\n",
-			statusLabel(rec.status),
-			formatDuration(time.Since(start)),
-			logtime.Now(),
-		)
+		elapsed := time.Since(start)
+		if cfg.Env == "development" {
+			_ = logentry.Write(w, logentry.Entry{
+				Kind:       "request",
+				Phase:      "completed",
+				At:         time.Now().UTC(),
+				Method:     r.Method,
+				Path:       r.URL.Path,
+				Status:     rec.status,
+				Remote:     remote,
+				DurationMS: float64(elapsed.Microseconds()) / 1000,
+			})
+		} else {
+			_, _ = fmt.Fprintf(
+				w,
+				"Completed %s in %s at %s\n",
+				statusLabel(rec.status),
+				formatDuration(elapsed),
+				logtime.Now(),
+			)
+		}
 	})
 }
 

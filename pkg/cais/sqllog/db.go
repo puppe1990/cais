@@ -8,12 +8,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/puppe1990/cais/pkg/cais/logentry"
 	"github.com/puppe1990/cais/pkg/cais/logtime"
 )
 
 type Config struct {
 	Enabled bool
 	Writer  io.Writer
+	JSON    bool // structured JSON lines for /logs and agent tooling
 }
 
 type DB struct {
@@ -103,18 +105,37 @@ func (d *DB) log(query string, args []any, at time.Time, elapsed time.Duration, 
 	if !d.config.Enabled {
 		return
 	}
-	writeLog(d.config.Writer, query, args, at, elapsed, err)
+	writeLog(d.config, query, args, at, elapsed, err)
 }
 
 func (t *Tx) log(query string, args []any, at time.Time, elapsed time.Duration, err error) {
 	if !t.config.Enabled {
 		return
 	}
-	writeLog(t.config.Writer, query, args, at, elapsed, err)
+	writeLog(t.config, query, args, at, elapsed, err)
 }
 
-func writeLog(w io.Writer, query string, args []any, at time.Time, elapsed time.Duration, err error) {
+func writeLog(cfg Config, query string, args []any, at time.Time, elapsed time.Duration, err error) {
 	query = strings.Join(strings.Fields(query), " ")
+	w := cfg.Writer
+	if w == nil {
+		w = os.Stdout
+	}
+	if cfg.JSON {
+		entry := logentry.Entry{
+			Kind:       "sql",
+			At:         at.UTC(),
+			Operation:  operationLabel(query),
+			Query:      query,
+			Args:       args,
+			DurationMS: float64(elapsed.Microseconds()) / 1000,
+		}
+		if err != nil {
+			entry.Error = err.Error()
+		}
+		_ = logentry.Write(w, entry)
+		return
+	}
 	label := operationLabel(query)
 	line := fmt.Sprintf("  %s (%s)  %s  %s  at %s", label, formatDuration(elapsed), query, formatArgs(args), logtime.Format(at))
 	if err != nil {

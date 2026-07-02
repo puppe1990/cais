@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -43,6 +44,32 @@ func TestLogger_SkipsStaticAssets(t *testing.T) {
 
 	if buf.Len() != 0 {
 		t.Errorf("expected no log for static asset, got:\n%s", buf.String())
+	}
+}
+
+func TestLogger_JSONInDevelopment(t *testing.T) {
+	var buf bytes.Buffer
+	handler := LoggerWithWriter(cais.Config{Env: "development"}, &buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/login", nil)
+	req.RemoteAddr = "127.0.0.1:12345"
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected 2 JSON lines, got:\n%s", buf.String())
+	}
+	for i, phase := range []string{"started", "completed"} {
+		var got map[string]any
+		if err := json.Unmarshal([]byte(lines[i]), &got); err != nil {
+			t.Fatalf("line %d: invalid JSON: %v", i, err)
+		}
+		if got["kind"] != "request" || got["phase"] != phase {
+			t.Errorf("line %d = %v", i, got)
+		}
 	}
 }
 

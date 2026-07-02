@@ -60,7 +60,7 @@ func NewSQLiteStore(dsn string, env string) (*SQLiteStore, error) {
 		return nil, err
 	}
 
-	cfg := sqllog.Config{Enabled: sqllog.EnabledForEnv(env)}
+	cfg := sqllog.ConfigForEnv(env)
 	if cfg.Enabled {
 		cfg.Writer = devlog.MirrorDefault(os.Stdout)
 	}
