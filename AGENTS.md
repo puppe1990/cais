@@ -329,7 +329,8 @@ The `cais` CLI lives in `internal/cli/`. Scaffold templates are split by respons
 | ----------------------------------------- | -------------------------------------------------------------- |
 | `internal/cli/cli.go`                     | Command routing (`new`, `g`, `destroy`, `db`, …)               |
 | `internal/cli/scaffold.go`                | `cais new` orchestration and `writeTemplate`                   |
-| `internal/cli/resource.go`                | `cais g resource` orchestration and store/route patches        |
+| `internal/cli/resource.go`                | `cais g resource` orchestration (writes files, calls patches)  |
+| `internal/cli/resource_patch.go`          | Patches store, routes, layout nav, seeds, main for resources   |
 | `internal/cli/resource_gen_*.go`          | Resource code generation (store, admin, public, HTML, fields)  |
 | `internal/cli/tpl_scaffold_*.go`          | Embedded `const tpl*` for `cais new` scaffolding               |
 | `internal/cli/tpl_scaffold_main.go`       | `cmd/server/main.go` (full + blank)                            |
