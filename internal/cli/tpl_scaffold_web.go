@@ -1,8 +1,11 @@
 package cli
 
-const tplLayout = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}}"}}
-{{"{{"}} define "description" {{"}}"}}{{.AppName}} — powered by Cais{{"{{"}} end {{"}}"}}
-{{"{{"}} define "base" {{"}}"}}
+// Shared base layout fragments for cais new (full, minimal, blank). Edit fragments once;
+// tplLayout / tplLayoutMinimal / tplLayoutBlank compose the generated base.html variants.
+const tplLayoutTitleDesc = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}}"}}
+{{"{{"}} define "description" {{"}}"}}{{.AppName}} — powered by Cais{{"{{"}} end {{"}}"}}`
+
+const tplLayoutBaseOpen = `{{"{{"}} define "base" {{"}}"}}
 <!doctype html>
 <html lang="{{"{{"}} htmlLang {{"}}"}}">
   <head>
@@ -38,10 +41,16 @@ const tplLayout = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}
       <div class="max-w-5xl mx-auto flex justify-between items-center">
         <a href="/" class="font-bold text-xl text-indigo-600 hover:text-indigo-700 transition">{{.AppName}}</a>
         <nav class="flex items-center gap-6 text-sm font-medium">
-          <!-- cais:nav -->
+          `
+
+const tplLayoutNavFull = `<!-- cais:nav -->
           <a href="/" class="text-slate-600 hover:text-indigo-600 transition">Home</a>
           <a href="/contact" class="text-slate-600 hover:text-indigo-600 transition">Contact</a>
-          <a href="/dashboard" class="text-slate-600 hover:text-indigo-600 transition">Dashboard</a>
+          <a href="/dashboard" class="text-slate-600 hover:text-indigo-600 transition">Dashboard</a>`
+
+const tplLayoutNavEmpty = `<!-- cais:nav -->`
+
+const tplLayoutBaseClose = `
         </nav>
       </div>
     </header>
@@ -56,8 +65,13 @@ const tplLayout = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}
     </script>
   </body>
 </html>
-{{"{{"}} end {{"}}"}}
-`
+{{"{{"}} end {{"}}"}}`
+
+const tplLayout = tplLayoutTitleDesc + tplLayoutBaseOpen + tplLayoutNavFull + tplLayoutBaseClose
+
+const tplLayoutMinimal = tplLayoutTitleDesc + tplLayoutBaseOpen + tplLayoutNavEmpty + tplLayoutBaseClose
+
+const tplLayoutBlank = tplLayoutMinimal
 
 const tplLayoutWelcome = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} if .AppName {{"}}"}}{{"{{"}} .AppName {{"}}"}}{{"{{"}} else {{"}}"}}Cais{{"{{"}} end {{"}}"}}{{"{{"}} end {{"}}"}}
 {{"{{"}} define "description" {{"}}"}}{{"{{"}} if .AppName {{"}}"}}{{"{{"}} .AppName {{"}}"}}{{"{{"}} else {{"}}"}}Cais{{"{{"}} end {{"}}"}} — powered by Cais{{"{{"}} end {{"}}"}}
@@ -243,117 +257,5 @@ const tplGenericPage = `{{"{{"}} define "title" {{"}}"}}{{.Title}}{{"{{"}} end {
   <h2 class="text-2xl font-bold text-slate-800 mb-2">{{.Title}}</h2>
   <p class="text-slate-600">{{.Title}} page — customize this template.</p>
 </div>
-{{"{{"}} end {{"}}"}}
-`
-
-const tplLayoutMinimal = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}}"}}
-{{"{{"}} define "description" {{"}}"}}{{.AppName}} — powered by Cais{{"{{"}} end {{"}}"}}
-{{"{{"}} define "base" {{"}}"}}
-<!doctype html>
-<html lang="{{"{{"}} htmlLang {{"}}"}}">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    {{"{{"}} if .CSRFToken {{"}}"}}<meta name="csrf-token" content="{{"{{"}} .CSRFToken {{"}}"}}" />{{"{{"}} end {{"}}"}}
-    <title>{{"{{"}} template "title" . {{"}}"}}</title>
-    <meta name="description" content="{{"{{"}} template "description" . {{"}}"}}" />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="{{.AppName}}" />
-    <meta property="og:title" content="{{"{{"}} template "title" . {{"}}"}}" />
-    <meta property="og:description" content="{{"{{"}} template "description" . {{"}}"}}" />
-    <meta property="og:image" content="{{"{{"}} absURL .AppURL "/static/og.png" {{"}}"}}" />
-    <meta property="og:locale" content="{{"{{"}} ogLocale {{"}}"}}" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="{{"{{"}} template "title" . {{"}}"}}" />
-    <meta name="twitter:description" content="{{"{{"}} template "description" . {{"}}"}}" />
-    <meta name="twitter:image" content="{{"{{"}} absURL .AppURL "/static/og.png" {{"}}"}}" />
-    <link rel="stylesheet" href="/static/css/styles.css" />
-    <link rel="manifest" href="/static/manifest.webmanifest" />
-    <meta name="theme-color" content="#4f46e5" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="{{.AppName}}" />
-    <link rel="apple-touch-icon" href="/static/icons/icon.png" />
-    <link rel="icon" href="/static/icons/icon.png" type="image/png" />
-    <script src="/static/js/htmx.min.js" defer></script>
-    <script src="/static/js/cais.js" defer></script>
-  </head>
-  <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
-    <header class="bg-white border-b border-slate-200 p-4 shadow-sm">
-      <div class="max-w-5xl mx-auto flex justify-between items-center">
-        <a href="/" class="font-bold text-xl text-indigo-600 hover:text-indigo-700 transition">{{.AppName}}</a>
-        <nav class="flex items-center gap-6 text-sm font-medium">
-          <!-- cais:nav -->
-        </nav>
-      </div>
-    </header>
-    <main class="flex-grow max-w-5xl w-full mx-auto p-6">{{"{{"}} template "content" . {{"}}"}}</main>
-    <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
-      {{.AppName}} — powered by Cais
-    </footer>
-    <script>
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/static/js/sw.js");
-      }
-    </script>
-  </body>
-</html>
-{{"{{"}} end {{"}}"}}
-`
-
-const tplLayoutBlank = `{{"{{"}} define "title" {{"}}"}}{{.AppName}}{{"{{"}} end {{"}}"}}
-{{"{{"}} define "description" {{"}}"}}{{.AppName}} — powered by Cais{{"{{"}} end {{"}}"}}
-{{"{{"}} define "base" {{"}}"}}
-<!doctype html>
-<html lang="{{"{{"}} htmlLang {{"}}"}}">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    {{"{{"}} if .CSRFToken {{"}}"}}<meta name="csrf-token" content="{{"{{"}} .CSRFToken {{"}}"}}" />{{"{{"}} end {{"}}"}}
-    <title>{{"{{"}} template "title" . {{"}}"}}</title>
-    <meta name="description" content="{{"{{"}} template "description" . {{"}}"}}" />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="{{.AppName}}" />
-    <meta property="og:title" content="{{"{{"}} template "title" . {{"}}"}}" />
-    <meta property="og:description" content="{{"{{"}} template "description" . {{"}}"}}" />
-    <meta property="og:image" content="{{"{{"}} absURL .AppURL "/static/og.png" {{"}}"}}" />
-    <meta property="og:locale" content="{{"{{"}} ogLocale {{"}}"}}" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="{{"{{"}} template "title" . {{"}}"}}" />
-    <meta name="twitter:description" content="{{"{{"}} template "description" . {{"}}"}}" />
-    <meta name="twitter:image" content="{{"{{"}} absURL .AppURL "/static/og.png" {{"}}"}}" />
-    <link rel="stylesheet" href="/static/css/styles.css" />
-    <link rel="manifest" href="/static/manifest.webmanifest" />
-    <meta name="theme-color" content="#4f46e5" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="{{.AppName}}" />
-    <link rel="apple-touch-icon" href="/static/icons/icon.png" />
-    <link rel="icon" href="/static/icons/icon.png" type="image/png" />
-    <script src="/static/js/htmx.min.js" defer></script>
-    <script src="/static/js/cais.js" defer></script>
-  </head>
-  <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
-    <header class="bg-white border-b border-slate-200 p-4 shadow-sm">
-      <div class="max-w-5xl mx-auto flex justify-between items-center">
-        <a href="/" class="font-bold text-xl text-indigo-600 hover:text-indigo-700 transition">{{.AppName}}</a>
-        <nav class="flex items-center gap-6 text-sm font-medium">
-          <!-- cais:nav -->
-        </nav>
-      </div>
-    </header>
-    <main class="flex-grow max-w-5xl w-full mx-auto p-6">{{"{{"}} template "content" . {{"}}"}}</main>
-    <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
-      {{.AppName}} — powered by Cais
-    </footer>
-    <script>
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/static/js/sw.js");
-      }
-    </script>
-  </body>
-</html>
 {{"{{"}} end {{"}}"}}
 `
