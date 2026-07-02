@@ -103,6 +103,48 @@ Rails-style boot banner on startup (environment, database, listen URL). In devel
 
 ## Structure
 
+```mermaid
+flowchart TB
+  subgraph cli["CLI (codegen)"]
+    CaisCLI["cmd/cais → internal/cli"]
+  end
+
+  subgraph runtime["HTTP runtime"]
+    Browser(("Browser"))
+    Server["cmd/server"]
+    App["internal/app<br/>bootstrap · routes · middleware"]
+    Handlers["internal/handlers"]
+    Store["internal/store<br/>migrations"]
+    DB[(SQLite)]
+  end
+
+  subgraph framework["pkg/cais"]
+    Router["router · httpx · render"]
+    Security["session · csrf · validate"]
+    DX["devlog · sqllog · boot · jobs"]
+  end
+
+  subgraph web["web/"]
+    Templates["templates/"]
+    Static["static/ · HTMX · Tailwind · PWA"]
+  end
+
+  CaisCLI -.->|cais new / g / destroy| App
+  CaisCLI -.-> Handlers
+  CaisCLI -.-> Store
+
+  Browser -->|HTTP| Server
+  Server --> App
+  App --> Router
+  App --> Security
+  App --> Handlers
+  Handlers --> Templates
+  Handlers --> Store
+  Store --> DX
+  Store --> DB
+  Browser -->|/static| Static
+```
+
 ```
 pkg/cais/          → framework (router, render, config, htmx, validate)
 pkg/cais/meta/     → Open Graph / Twitter preview helpers
