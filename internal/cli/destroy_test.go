@@ -219,8 +219,8 @@ func TestDestroyAuth_removesGeneratedFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(appGo), "LoadSession") {
-		t.Error("app.go should not reference LoadSession after destroy auth on blank app")
+	if !strings.Contains(string(appGo), "LoadSession") {
+		t.Error("blank app should keep LoadSession after destroy auth (baseline middleware)")
 	}
 }
 

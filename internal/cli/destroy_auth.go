@@ -58,7 +58,13 @@ func unpatchStoreForAuth(dir string, dryRun bool) error {
 }
 
 func removeStoreAuthMethods(content string) string {
-	patterns := []string{"FindUserByEmail", "Sessions"}
+	patterns := []string{
+		"FindUserByEmail",
+		"CreateUser",
+		"CreatePasswordResetToken",
+		"FindPasswordResetUserID",
+		"ResetPasswordWithToken",
+	}
 	for _, p := range patterns {
 		content = removeGoFunc(content, p)
 	}
@@ -87,31 +93,8 @@ func unpatchAppForAuth(dir string, dryRun bool) error {
 	return updateScaffoldFile(path, []byte(content), "internal/app/app.go", dryRun)
 }
 
+// unpatchAuthMiddleware is a no-op: LoadSession/Flash are baseline middleware in full and blank apps.
 func unpatchAuthMiddleware(content string) string {
-	lines := strings.Split(content, "\n")
-	var out []string
-	for _, line := range lines {
-		if strings.Contains(line, "middleware.LoadSession(deps.Store.Sessions())") ||
-			strings.Contains(line, "r.Use(middleware.Flash)") {
-			continue
-		}
-		out = append(out, line)
-	}
-	content = strings.Join(out, "\n")
-	if !strings.Contains(content, "session.") {
-		content = strings.Replace(content,
-			`"github.com/puppe1990/cais/pkg/cais/session"
-	"github.com/puppe1990/cais/pkg/cais/middleware"`,
-			`"github.com/puppe1990/cais/pkg/cais/middleware"`,
-			1,
-		)
-		content = strings.Replace(content,
-			`"github.com/puppe1990/cais/pkg/cais/middleware"
-	"github.com/puppe1990/cais/pkg/cais/session"`,
-			`"github.com/puppe1990/cais/pkg/cais/middleware"`,
-			1,
-		)
-	}
 	return content
 }
 

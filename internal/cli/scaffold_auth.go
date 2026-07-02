@@ -119,11 +119,11 @@ type Store interface {`,
 	if !strings.Contains(content, ifaceMarker) {
 		return fmt.Errorf("could not patch store interface for auth")
 	}
-	content = strings.Replace(content,
-		ifaceMarker,
-		"\n\tFindUserByEmail(email string) (models.User, error)\n\tCreateUser(email, passwordHash string) (int64, error)\n\tCreatePasswordResetToken(userID int64) (string, error)\n\tFindPasswordResetUserID(token string) (int64, bool)\n\tResetPasswordWithToken(token, passwordHash string) error\n\tSessions() session.Store"+ifaceMarker,
-		1,
-	)
+	ifaceInsert := "\n\tFindUserByEmail(email string) (models.User, error)\n\tCreateUser(email, passwordHash string) (int64, error)\n\tCreatePasswordResetToken(userID int64) (string, error)\n\tFindPasswordResetUserID(token string) (int64, bool)\n\tResetPasswordWithToken(token, passwordHash string) error"
+	if !strings.Contains(content, "Sessions() session.Store") {
+		ifaceInsert += "\n\tSessions() session.Store"
+	}
+	content = strings.Replace(content, ifaceMarker, ifaceInsert+ifaceMarker, 1)
 
 	insert := `
 func (s *SQLiteStore) FindUserByEmail(email string) (models.User, error) {
@@ -151,11 +151,14 @@ func (s *SQLiteStore) CreateUser(email, passwordHash string) (int64, error) {
 	}
 	return result.LastInsertId()
 }
-
+`
+	if !strings.Contains(content, "func (s *SQLiteStore) Sessions()") {
+		insert += `
 func (s *SQLiteStore) Sessions() session.Store {
 	return session.NewSQLiteStore(s.db.Raw())
 }
 `
+	}
 	content = strings.Replace(content, "\nfunc (s *SQLiteStore) Close()", insert+"\nfunc (s *SQLiteStore) Close()", 1)
 
 	return updateScaffoldFile(path, []byte(content), "internal/store/store.go", dryRun)
