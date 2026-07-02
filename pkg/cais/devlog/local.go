@@ -5,6 +5,8 @@ import (
 	"net/http"
 )
 
+// LocalOnly restricts /logs to loopback — the buffer contains SQL args and request paths.
+// Development convenience, not auth; never expose this endpoint on a public interface.
 func LocalOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !IsLoopback(r) {

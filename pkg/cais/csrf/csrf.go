@@ -10,6 +10,8 @@ import (
 	"net/http"
 )
 
+// CSRF uses double-submit cookie (token in cookie + form/header), not a server-side token store.
+// Keeps mini apps stateless beyond the cookie — no extra SQLite table for CSRF.
 const (
 	CookieName   = "cais_csrf"
 	HeaderName   = "X-CSRF-Token"

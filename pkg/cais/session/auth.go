@@ -2,6 +2,8 @@ package session
 
 import "net/http"
 
+// SignIn rotates the session: deletes any existing token before issuing a new one.
+// Prevents reuse of a pre-login token after authentication succeeds.
 func SignIn(w http.ResponseWriter, store Store, r *http.Request, userID int64, opts CookieOptions) error {
 	if token := TokenFromRequest(r); token != "" {
 		store.Delete(token)

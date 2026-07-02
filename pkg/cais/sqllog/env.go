@@ -6,6 +6,7 @@ func EnabledForEnv(env string) bool {
 }
 
 // ConfigForEnv returns development-friendly defaults (enabled + JSON lines for agents).
+// JSON avoids regex on Rails-style SQL text when tooling parses query duration and args.
 func ConfigForEnv(env string) Config {
 	return Config{
 		Enabled: EnabledForEnv(env),

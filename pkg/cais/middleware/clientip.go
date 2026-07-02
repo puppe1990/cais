@@ -8,6 +8,8 @@ import (
 	"github.com/puppe1990/cais/pkg/cais"
 )
 
+// ClientIP returns the client address. X-Forwarded-For is trusted only when RemoteAddr is in TRUSTED_PROXIES.
+// Without the allowlist, clients can spoof XFF and evade rate limits.
 func ClientIP(r *http.Request, cfg cais.Config) string {
 	remote := remoteAddrIP(r)
 	if isTrustedProxy(remote, cfg.TrustedProxies) {

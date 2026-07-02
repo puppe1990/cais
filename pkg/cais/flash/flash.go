@@ -7,6 +7,7 @@ import (
 	"net/http"
 )
 
+// Flash uses a short-lived cookie consumed on the next request (see middleware.Flash), not session storage.
 const (
 	CookieName   = "cais_flash"
 	CookieMaxAge = 60

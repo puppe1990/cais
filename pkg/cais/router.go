@@ -26,6 +26,7 @@ func (r *Router) Use(mw Middleware) {
 }
 
 // Group registers routes with extra middleware (e.g. admin auth).
+// Child routers share the parent ServeMux — only middleware differs, not URL namespace.
 func (r *Router) Group(mw Middleware, fn func(*Router)) {
 	child := &Router{
 		mux:         r.mux,

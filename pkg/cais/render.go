@@ -25,6 +25,8 @@ type Renderer struct {
 	catalog  *i18n.Catalog
 }
 
+// NewRenderer parses all templates once at boot, not per request.
+// Per-request parsing adds latency and scatters template paths across handlers (harder for agents to grep).
 func NewRenderer(fsys fs.FS, catalog *i18n.Catalog) (*Renderer, error) {
 	if catalog == nil {
 		catalog = i18n.DefaultCatalog()
