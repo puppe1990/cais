@@ -10,22 +10,24 @@
 
 **Spec:** `docs/superpowers/specs/2026-07-01-framework-roadmap-design.md`
 
-**Last updated:** 2026-07-01
+**Last updated:** 2026-07-03
 
 ---
 
 ## Implementation status
 
-| Phase | Theme                      | Status                                                                               |
-| ----- | -------------------------- | ------------------------------------------------------------------------------------ |
-| 1     | Admin auth & scaffold sync | **Shipped** (blank app LoadSession/Flash still optional)                             |
-| 2     | Security hardening         | **Shipped**                                                                          |
-| 3     | Generator robustness       | **Mostly shipped** (AST patch exists, not wired to production)                       |
-| 4     | Rails data parity          | **Shipped**                                                                          |
-| 5     | Rails UI & DX              | **Shipped** (+ `FieldData`, `destroy`, `MinLength`/`MaxLength` beyond original spec) |
-| 6     | Docs & coverage            | **Docs shipped**; coverage targets & `pwa.FS()` panic fix **pending**                |
+| Phase | Theme                      | Status                                                          |
+| ----- | -------------------------- | --------------------------------------------------------------- |
+| 1     | Admin auth & scaffold sync | **Shipped**                                                     |
+| 2     | Security hardening         | **Shipped**                                                     |
+| 3     | Generator robustness       | **Shipped**                                                     |
+| 4     | Rails data parity          | **Shipped**                                                     |
+| 5     | Rails UI & DX              | **Shipped** (+ `FieldData`, `destroy`, `MinLength`/`MaxLength`) |
+| 6     | Docs & coverage            | **Shipped**; cache render integration **deferred**              |
 
-**Also shipped (post-roadmap):** `cais destroy` (resource/handler/model/auth/migration), `cais g --dry-run` for console/ci, migration numbering via `nextMigrationFile`, `cais version`, `cais db seed --list`, `cais routes --verbose`, `g resource --force`.
+**Roadmap complete** except deferred items listed under [Remaining](#remaining).
+
+**Also shipped (post-roadmap):** `cais destroy`, `cais g --dry-run`, migration numbering via `nextMigrationFile`, `cais version`, `cais db seed --list`, `cais routes --verbose`, `g resource --force`, jobs queue (`cais jobs work`), mail + password reset/signup in `cais g auth`, structured JSON dev + production logs (`LOG_FORMAT`), CLI scaffold splits (PRs #39–#44), provenance comments (#46), blank app session middleware (#47), coverage push for console/devlog/store (#48), `boot/version.go` tests (#50).
 
 ---
 
@@ -46,7 +48,7 @@
 ### Task 3: Sync blank app scaffold
 
 - [x] Blank app: `Recover`, `SecurityHeaders`, server timeouts, `/health`
-- [ ] Blank app: `LoadSession` + `Flash` (only added via `cais g auth`, not in `tplAppBlank` by default)
+- [x] Blank app: `LoadSession` + `Flash` + minimal `Sessions()` on store (#47)
 
 ### Task 4: Auth migration expires_at
 
@@ -77,7 +79,7 @@
 
 - [x] `CookieSecure()` + `CookieOptionsFromConfig`
 - [x] Rate limiter on login/contact routes
-- [ ] Periodic rate-limiter bucket cleanup (low priority)
+- [x] Periodic rate-limiter bucket cleanup (`cleanupBuckets` on each request)
 
 ---
 
@@ -85,8 +87,8 @@
 
 ### Task 9: Route patch anchor
 
-- [x] String-based `insertBeforeFunctionEnd` (production default)
-- [ ] AST route patch in `internal/cli/patch/` wired safely (gofmt breaks `cais.IntParam` lines today)
+- [x] `insertBeforeFunctionEnd` delegates to `internal/cli/patch.InsertBeforeFuncEnd` (go/ast; source not reformatted so `cais.IntParam` lines stay intact)
+- [x] Integration tests: nested `IntParam` in admin groups (`patch_integration_test.go`, `patch/ast_test.go`)
 
 ### Task 10: Nav marker `<!-- cais:nav -->`
 
@@ -159,8 +161,8 @@
 
 ### Task 21: `pkg/cais/cache` minimal API
 
-- [x] `cache.New`, `Get`, `Set` + tests
-- [ ] `Delete` + render integration (deferred)
+- [x] `cache.New`, `Get`, `Set`, `Delete` + tests
+- [ ] Render-layer cache integration (deferred; no template fragment caching yet)
 
 ---
 
@@ -170,14 +172,16 @@
 
 - [x] Admin auth matrix, new CLI commands, form/validation examples
 - [x] Destroy, dry-run, seed, routes, version documented
-- [ ] CSP `'unsafe-inline'` tradeoff note in README
+- [x] CSP `'unsafe-inline'` tradeoff note in README
+- [x] `LOG_FORMAT` / JSON logging documented (#49)
 
 ### Task 23: Test coverage gaps
 
-- [ ] `pkg/cais/console` → 70%+
-- [ ] `pkg/cais/devlog`, `pkg/cais/boot/version.go`
-- [ ] `pkg/cais/pwa` — `FS()` return error instead of panic
-- [ ] `internal/store` pagination/seed coverage
+- [x] `pkg/cais/console` → 84.5% (target 70%+)
+- [x] `pkg/cais/devlog` → 94.8%
+- [x] `pkg/cais/boot/version.go` → `versionFrom` 100% (#50)
+- [x] `pkg/cais/pwa` — `FS()` returns `(fs.FS, error)` (no panic)
+- [x] `internal/store` pagination/seed coverage → 76.9%
 
 ### Task 24: `cais doctor` production checks
 
@@ -186,18 +190,18 @@
 
 ---
 
-## Out of scope (separate specs)
+## Remaining
 
-- Action Mailer / SMTP
-- Background jobs / queue
-- Password reset / registration
-- Structured JSON production logging
-- External docs site
-- Nonce-based CSP (HTMX conflict)
-- Accept-Language i18n v2 / `cais g locale`
-- esbuild / JS bundling
-- REST PUT/DELETE in generated admin (still POST)
-- Resource show page, FK/associations in generator
+Deferred or not part of the original six phases:
+
+- [ ] Cache render integration (fragment caching in renderer)
+- [ ] External docs site
+- [ ] Nonce-based CSP (HTMX inline scripts conflict)
+- [ ] Accept-Language i18n v2 / `cais g locale` (basic `LOCALE` catalog shipped)
+- [ ] esbuild / JS bundling
+- [ ] REST PUT/DELETE in generated admin (still POST)
+- [ ] Resource show page in generator
+- [ ] Richer FK/associations in generator (basic `references` / `belongs_to` field shipped)
 
 ---
 
