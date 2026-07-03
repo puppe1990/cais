@@ -1,8 +1,27 @@
 package cli
 
-const tplInputCSS = `@tailwind base;
+const tplInputCSS = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans antialiased text-slate-900 bg-slate-50;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
 
 @layer components {
   .htmx-swapping {
@@ -30,6 +49,25 @@ const tplInputCSS = `@tailwind base;
   .htmx-request .htmx-request-hide {
     @apply hidden;
   }
+
+  .cais-toast-enter {
+    animation: cais-toast-in 200ms ease-out;
+  }
+
+  @keyframes cais-toast-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -0.75rem);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
+
+  .htmx-request .cais-skeleton {
+    @apply animate-pulse bg-slate-200 rounded-lg;
+  }
 }
 `
 
@@ -37,7 +75,17 @@ const tplTailwind = `/** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./web/templates/**/*.html"],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ['"Inter"', "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ['"Space Grotesk"', "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "monospace"],
+      },
+      boxShadow: {
+        "2xs": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        xs: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+      },
+    },
   },
   plugins: [],
 };
@@ -267,6 +315,7 @@ data/
 web/templates/
 web/static/css/styles.css
 web/static/js/htmx.min.js
+web/static/js/idiomorph-ext.min.js
 package-lock.json
 go.sum
 `

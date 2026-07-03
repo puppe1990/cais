@@ -2,8 +2,10 @@
 package cli
 
 const tplPageLogin = `{{"{{"}} define "title" {{"}}"}}Login{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
-<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto mt-10">
-  <h2 class="text-2xl font-bold text-slate-800 mb-4">{{"{{"}} t "auth.login_title" {{"}}"}}</h2>
+<div class="w-full max-w-md mx-auto p-4 md:p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+  <div class="mb-4 pb-4 border-b border-slate-100">
+    <h2 class="text-lg font-black tracking-tight text-slate-900 font-display">{{"{{"}} t "auth.login_title" {{"}}"}}</h2>
+  </div>
   {{"{{"}} if .Error {{"}}"}}<p class="text-red-600 text-sm mb-4">{{"{{"}} .Error {{"}}"}}</p>{{"{{"}} end {{"}}"}}
   <form method="post" action="/login" class="space-y-4">
     <input type="hidden" name="csrf_token" value="{{"{{"}} .CSRFToken {{"}}"}}" />
@@ -15,7 +17,7 @@ const tplPageLogin = `{{"{{"}} define "title" {{"}}"}}Login{{"{{"}} end {{"}}"}}
       <label class="block text-sm font-medium text-slate-700 mb-1" for="password">{{"{{"}} t "auth.password_label" {{"}}"}}</label>
       <input class="w-full border border-slate-300 rounded-lg px-3 py-2" type="password" id="password" name="password" required />
     </div>
-    <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition" type="submit">
+    <button class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 px-4 rounded-lg transition shadow-2xs" type="submit">
       {{"{{"}} t "auth.login_submit" {{"}}"}}
     </button>
   </form>
@@ -31,8 +33,10 @@ const tplPageLogin = `{{"{{"}} define "title" {{"}}"}}Login{{"{{"}} end {{"}}"}}
 `
 
 const tplPageSignup = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.signup_title" {{"}}"}}{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
-<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto mt-10">
-  <h2 class="text-2xl font-bold text-slate-800 mb-4">{{"{{"}} t "auth.signup_title" {{"}}"}}</h2>
+<div class="w-full max-w-md mx-auto p-4 md:p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+  <div class="mb-4 pb-4 border-b border-slate-100">
+    <h2 class="text-lg font-black tracking-tight text-slate-900 font-display">{{"{{"}} t "auth.signup_title" {{"}}"}}</h2>
+  </div>
   <form method="post" action="/signup" class="space-y-4">
     <input type="hidden" name="csrf_token" value="{{"{{"}} .CSRFToken {{"}}"}}" />
     <div>
@@ -50,7 +54,7 @@ const tplPageSignup = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.signup_t
       <input class="w-full border border-slate-300 rounded-lg px-3 py-2" type="password" id="password_confirmation" name="password_confirmation" required />
       {{"{{"}} fieldError .Errors "password_confirmation" {{"}}"}}
     </div>
-    <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition" type="submit">
+    <button class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 px-4 rounded-lg transition shadow-2xs" type="submit">
       {{"{{"}} t "auth.signup_submit" {{"}}"}}
     </button>
   </form>
@@ -62,9 +66,11 @@ const tplPageSignup = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.signup_t
 {{"{{"}} end {{"}}"}}`
 
 const tplPageForgotPassword = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.forgot_password_title" {{"}}"}}{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
-<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto mt-10">
-  <h2 class="text-2xl font-bold text-slate-800 mb-4">{{"{{"}} t "auth.forgot_password_title" {{"}}"}}</h2>
-  <p class="text-sm text-slate-600 mb-4">{{"{{"}} t "auth.forgot_password_help" {{"}}"}}</p>
+<div class="w-full max-w-md mx-auto p-4 md:p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+  <div class="mb-4 pb-4 border-b border-slate-100">
+    <h2 class="text-lg font-black tracking-tight text-slate-900 font-display">{{"{{"}} t "auth.forgot_password_title" {{"}}"}}</h2>
+    <p class="text-[11px] text-slate-500 font-medium mt-1">{{"{{"}} t "auth.forgot_password_help" {{"}}"}}</p>
+  </div>
   <form method="post" action="/forgot-password" class="space-y-4">
     <input type="hidden" name="csrf_token" value="{{"{{"}} .CSRFToken {{"}}"}}" />
     <div>
@@ -72,7 +78,7 @@ const tplPageForgotPassword = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.
       <input class="w-full border border-slate-300 rounded-lg px-3 py-2" type="email" id="email" name="email" value="{{"{{"}} .Email {{"}}"}}" required />
       {{"{{"}} fieldError .Errors "email" {{"}}"}}
     </div>
-    <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition" type="submit">
+    <button class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 px-4 rounded-lg transition shadow-2xs" type="submit">
       {{"{{"}} t "auth.forgot_password_submit" {{"}}"}}
     </button>
   </form>
@@ -83,8 +89,10 @@ const tplPageForgotPassword = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.
 {{"{{"}} end {{"}}"}}`
 
 const tplPageResetPassword = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.reset_password_title" {{"}}"}}{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
-<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto mt-10">
-  <h2 class="text-2xl font-bold text-slate-800 mb-4">{{"{{"}} t "auth.reset_password_title" {{"}}"}}</h2>
+<div class="w-full max-w-md mx-auto p-4 md:p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+  <div class="mb-4 pb-4 border-b border-slate-100">
+    <h2 class="text-lg font-black tracking-tight text-slate-900 font-display">{{"{{"}} t "auth.reset_password_title" {{"}}"}}</h2>
+  </div>
   {{"{{"}} if .Error {{"}}"}}<p class="text-red-600 text-sm mb-4">{{"{{"}} .Error {{"}}"}}</p>{{"{{"}} end {{"}}"}}
   {{"{{"}} if .Token {{"}}"}}
   <form method="post" action="/reset-password" class="space-y-4">
@@ -100,7 +108,7 @@ const tplPageResetPassword = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.r
       <input class="w-full border border-slate-300 rounded-lg px-3 py-2" type="password" id="password_confirmation" name="password_confirmation" required />
       {{"{{"}} fieldError .Errors "password_confirmation" {{"}}"}}
     </div>
-    <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition" type="submit">
+    <button class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 px-4 rounded-lg transition shadow-2xs" type="submit">
       {{"{{"}} t "auth.reset_password_submit" {{"}}"}}
     </button>
   </form>

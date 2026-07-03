@@ -93,7 +93,7 @@ func TestScaffoldResource_BlankAppLogoLinksToPublicList(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(layout)
-	if !strings.Contains(body, `<a href="/" class="font-bold`) {
+	if !strings.Contains(body, `<a href="/"`) {
 		t.Error("blank app logo should link to welcome screen at /")
 	}
 	if !strings.Contains(body, `href="/books"`) {

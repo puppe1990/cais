@@ -164,7 +164,9 @@ func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site, c
 }
 
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
-	httpx.RenderOrError(w, h.renderer, "base", "contact", meta.ForRequest(h.site, r), h.cfg)
+	site := meta.ForRequest(h.site, r)
+	site.ActiveNav = "contact"
+	httpx.RenderOrError(w, h.renderer, "base", "contact", site, h.cfg)
 }
 
 func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
@@ -198,6 +200,7 @@ func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cais.SetToast(w, h.catalog.T("contact.success"))
 	h.renderContactResponse(w, r, http.StatusOK, "contact_success", nil)
 }
 
@@ -341,8 +344,10 @@ func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	site := meta.ForRequest(h.site, r)
+	site.ActiveNav = "dashboard"
 	httpx.RenderOrError(w, h.renderer, "base", "dashboard", DashboardData{
-		Site:          meta.ForRequest(h.site, r),
+		Site:          site,
 		TotalContacts: count,
 		Env:           h.cfg.Env,
 	}, h.cfg)

@@ -111,10 +111,17 @@ func TestScaffold_InputCSSIncludesHTMXStyles(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(css)
-	for _, needle := range []string{".htmx-swapping", ".htmx-settling", ".htmx-indicator"} {
+	for _, needle := range []string{".htmx-swapping", ".htmx-settling", ".htmx-indicator", ".no-scrollbar", ".cais-toast-enter", ".cais-skeleton", "Inter", "Space+Grotesk"} {
 		if !strings.Contains(body, needle) {
 			t.Errorf("input.css missing %q", needle)
 		}
+	}
+	tailwind, err := os.ReadFile(filepath.Join(appDir, "tailwind.config.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(tailwind), "Space Grotesk") {
+		t.Error("tailwind.config.js missing Space Grotesk display font")
 	}
 }
 

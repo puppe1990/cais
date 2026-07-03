@@ -29,9 +29,10 @@
     <link rel="apple-touch-icon" href="/static/icons/icon.png" />
     <link rel="icon" href="/static/icons/icon.png" type="image/png" />
     <script src="/static/js/htmx.min.js" defer></script>
+    <script src="/static/js/idiomorph-ext.min.js" defer></script>
     <script src="/static/js/cais.js" defer></script>
   </head>
-  <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+  <body hx-ext="morph" class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
     <header class="bg-white border-b border-slate-200 p-4 shadow-sm">
       <div class="max-w-5xl mx-auto flex justify-between items-center">
         <h1 class="font-bold text-xl text-indigo-600">Cais</h1>
