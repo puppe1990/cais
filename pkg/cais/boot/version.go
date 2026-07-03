@@ -12,6 +12,13 @@ func CaisVersion() string {
 	if !ok {
 		return "dev"
 	}
+	return versionFrom(info)
+}
+
+func versionFrom(info *debug.BuildInfo) string {
+	if info == nil {
+		return "dev"
+	}
 	if info.Main.Path == modulePath {
 		v := strings.TrimPrefix(info.Main.Version, "v")
 		if v != "" && v != "(devel)" {
