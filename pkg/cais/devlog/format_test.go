@@ -28,6 +28,21 @@ func TestFormatForDisplay_sqlJSON(t *testing.T) {
 	}
 }
 
+func TestFormatForDisplay_sqlWithError(t *testing.T) {
+	in := `{"kind":"sql","operation":"User Load","query":"SELECT 1","duration_ms":0.5,"error":"timeout"}`
+	got := FormatForDisplay(in)
+	if !strings.Contains(got, "ERROR: timeout") {
+		t.Fatalf("got:\n%s", got)
+	}
+}
+
+func TestFormatForDisplay_unknownJSONKind(t *testing.T) {
+	in := `{"kind":"other","at":"2026-07-02T15:04:05Z"}`
+	if got := FormatForDisplay(in); got != in+"\n" {
+		t.Fatalf("got %q", got)
+	}
+}
+
 func TestFormatForDisplay_plainTextPassthrough(t *testing.T) {
 	in := "Started GET \"/login\" for 127.0.0.1"
 	if got := FormatForDisplay(in); got != in+"\n" {
