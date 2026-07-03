@@ -44,8 +44,8 @@ import (
 	"net/http"
 
 	"%s/pkg/cais"
-	"%s/pkg/cais/csrf"
 	"%s/pkg/cais/httpx"
+	"%s/pkg/cais/meta"
 	"%s/internal/models"
 	"%s/internal/store"
 )
@@ -53,16 +53,17 @@ import (
 type %sHandler struct {
 	renderer *cais.Renderer
 	store    store.Store
+	site     meta.Site
 	cfg      cais.Config
 }
 
 type %sListData struct {
-	CSRFToken string
-	Items     []models.%s%s
+	meta.Site
+	Items []models.%s%s
 }
 
-func New%sHandler(renderer *cais.Renderer, s store.Store, cfg cais.Config) *%sHandler {
-	return &%sHandler{renderer: renderer, store: s, cfg: cfg}
+func New%sHandler(renderer *cais.Renderer, s store.Store, site meta.Site, cfg cais.Config) *%sHandler {
+	return &%sHandler{renderer: renderer, store: s, site: site, cfg: cfg}
 }
 
 func (h *%sHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +72,10 @@ func (h *%sHandler) List(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}%s
-	httpx.RenderOrError(w, h.renderer, "base", "%s", %sListData{CSRFToken: csrf.TokenFromRequest(r), Items: items%s}, h.cfg)
+	httpx.RenderOrError(w, h.renderer, "base", "%s", %sListData{
+		Site:  meta.ForRequest(h.site, r),
+		Items: items%s,
+	}, h.cfg)
 }
 %s`,
 		frameworkModule, frameworkModule, frameworkModule, data.ModulePath, data.ModulePath,
