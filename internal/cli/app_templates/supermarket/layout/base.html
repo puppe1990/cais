@@ -76,11 +76,11 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex space-x-1 py-1.5 overflow-x-auto no-scrollbar">
             <!-- cais:nav -->
-            {{ navTab (makeNavTab "/" "Escanear Preço" "camera" (eq .ActiveTab "scan")) }}
-            {{ navTab (makeNavTab "/map" "Mapa de Ofertas" "map" (eq .ActiveTab "map")) }}
-            {{ navTab (makeNavTab "/feed" "Feed Comunitário" "message" (eq .ActiveTab "feed")) }}
-            {{ navTab (makeNavTab "/achievements" "Medalhas & Ranking" "award" (eq .ActiveTab "achievements")) }}
-            {{ navTab (makeNavTab "/nfce" "Importar Nota (NFC-e)" "file" (eq .ActiveTab "nfce")) }}
+            {{ navTab (makeNavTab "/" "Escanear Preço" "camera" (eq .ActiveNav "scan")) }}
+            {{ navTab (makeNavTab "/map" "Mapa de Ofertas" "map" (eq .ActiveNav "map")) }}
+            {{ navTab (makeNavTab "/feed" "Feed Comunitário" "message" (eq .ActiveNav "feed")) }}
+            {{ navTab (makeNavTab "/achievements" "Medalhas & Ranking" "award" (eq .ActiveNav "achievements")) }}
+            {{ navTab (makeNavTab "/nfce" "Importar Nota (NFC-e)" "file" (eq .ActiveNav "nfce")) }}
           </div>
         </div>
       </nav>

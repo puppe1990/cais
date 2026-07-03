@@ -11,10 +11,6 @@ import (
 // SupermarketPageData carries layout chrome shared with the React prototype.
 type SupermarketPageData struct {
 	meta.Site
-	ActiveTab  string
-	UserLevel  int
-	UserPoints int
-	UserRank   int
 	Scans      []PriceScanView
 	Markets    []MarketView
 	Products   []ProductView
@@ -77,11 +73,12 @@ func NewSupermarketHandler(renderer *cais.Renderer, site meta.Site, cfg cais.Con
 }
 
 func (h *SupermarketHandler) base(r *http.Request) SupermarketPageData {
+	site := meta.ForRequest(h.site, r)
+	site.UserLevel = 3
+	site.UserPoints = 420
+	site.UserRank = 12
 	return SupermarketPageData{
-		Site:       meta.ForRequest(h.site, r),
-		UserLevel:  3,
-		UserPoints: 420,
-		UserRank:   12,
+		Site:       site,
 		Scans:      demoScans(),
 		Markets:    demoMarkets(),
 		Products:   demoProducts(),
@@ -92,31 +89,31 @@ func (h *SupermarketHandler) base(r *http.Request) SupermarketPageData {
 
 func (h *SupermarketHandler) Scan(w http.ResponseWriter, r *http.Request) {
 	data := h.base(r)
-	data.ActiveTab = "scan"
+	data.ActiveNav = "scan"
 	httpx.RenderOrError(w, h.renderer, "base", "scan", data, h.cfg)
 }
 
 func (h *SupermarketHandler) Map(w http.ResponseWriter, r *http.Request) {
 	data := h.base(r)
-	data.ActiveTab = "map"
+	data.ActiveNav = "map"
 	httpx.RenderOrError(w, h.renderer, "base", "map", data, h.cfg)
 }
 
 func (h *SupermarketHandler) Feed(w http.ResponseWriter, r *http.Request) {
 	data := h.base(r)
-	data.ActiveTab = "feed"
+	data.ActiveNav = "feed"
 	httpx.RenderOrError(w, h.renderer, "base", "feed", data, h.cfg)
 }
 
 func (h *SupermarketHandler) Achievements(w http.ResponseWriter, r *http.Request) {
 	data := h.base(r)
-	data.ActiveTab = "achievements"
+	data.ActiveNav = "achievements"
 	httpx.RenderOrError(w, h.renderer, "base", "achievements", data, h.cfg)
 }
 
 func (h *SupermarketHandler) NFCe(w http.ResponseWriter, r *http.Request) {
 	data := h.base(r)
-	data.ActiveTab = "nfce"
+	data.ActiveNav = "nfce"
 	httpx.RenderOrError(w, h.renderer, "base", "nfce", data, h.cfg)
 }
 

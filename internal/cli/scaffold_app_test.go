@@ -61,7 +61,7 @@ func TestScaffoldApp_supermarket(t *testing.T) {
 		t.Fatal(err)
 	}
 	layoutBody := string(layout)
-	for _, want := range []string{"navTab", "makeNavTab", "ActiveTab", "cais-toast-host", "Escanear Preço"} {
+	for _, want := range []string{"navTab", "makeNavTab", "ActiveNav", "cais-toast-host", "Escanear Preço"} {
 		if !strings.Contains(layoutBody, want) {
 			t.Errorf("base layout missing %q", want)
 		}

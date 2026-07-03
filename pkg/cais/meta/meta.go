@@ -14,11 +14,14 @@ const DefaultImagePath = "/static/og.png"
 
 // Site carries app-level values available in layout templates.
 type Site struct {
-	AppName   string
-	AppURL    string
-	CSRFToken string
-	Flash     *flash.Message
-	ActiveNav string // optional tab key for layout navTab helpers (e.g. "home", "contact")
+	AppName    string
+	AppURL     string
+	CSRFToken  string
+	Flash      *flash.Message
+	ActiveNav  string // optional tab key for layout navTab helpers (e.g. "home", "contact")
+	UserLevel  int    // optional demo gamification chrome (0 = layout defaults)
+	UserPoints int
+	UserRank   int
 }
 
 // Preview describes Open Graph / Twitter card metadata for a page.
