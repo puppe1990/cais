@@ -6,7 +6,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ## Unreleased
 
+## [0.5.0] - 2026-07-03
+
 ### Added
+
+#### HTMX UX (app shell)
+
+- `pkg/cais/ui` — `navTab`, `makeNavTab`, `icon` helpers; `Site.ActiveNav` for tab highlighting
+- `pkg/cais/htmxattrs` — `hxForm`, `hxDelete`, `hxBoostLink`, `hxPaginate`, `hxMorphOuter`
+- Idiomorph extension bundled for `hx-swap="morph"` (`hx-ext="morph"` on layout body)
+- Supermarket-style scaffold layout with `#cais-nav`, `#cais-main`, and hx-boost navigation
+- Resource generator HTMX admin CRUD (inline delete, form partials, `RenderPageOrPartial` on 422)
+- HTMX pagination with morph swap for admin and public lists (`--paginate`)
+- `float` / `float?` field type in `cais g resource`
+- `cais g app supermarket` — tabbed demo overlay for existing apps
+- `cais.SetToast`, `SetFocus`, `SetRetarget`, `SetTrigger` response header helpers
 
 #### Security & sessions
 
