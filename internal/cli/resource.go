@@ -77,7 +77,7 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 	if err := patchStoreTestForResource(dir, data, opts.dryRun); err != nil {
 		return err
 	}
-	if err := patchRoutesForResource(dir, data, opts.dryRun); err != nil {
+	if err := patchRoutesForResource(dir, data, opts.dryRun, opts.Force); err != nil {
 		return err
 	}
 	var finalErr error
