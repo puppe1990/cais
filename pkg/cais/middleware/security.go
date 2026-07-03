@@ -15,10 +15,22 @@ func SecurityHeaders(cfg cais.Config) func(http.Handler) http.Handler {
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.Header().Set("X-Frame-Options", "DENY")
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
-			w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+			policy := cfg.PermissionsPolicy
+			if policy == "" {
+				policy = "camera=(), microphone=(), geolocation=()"
+			}
+			w.Header().Set("Permissions-Policy", policy)
+			styleSrc := "'self' 'unsafe-inline'"
+			if cfg.CSPStyleSrc != "" {
+				styleSrc += " " + cfg.CSPStyleSrc
+			}
+			connectSrc := "'self'"
+			if cfg.CSPConnectSrc != "" {
+				connectSrc += " " + cfg.CSPConnectSrc
+			}
 			w.Header().Set("Content-Security-Policy", fmt.Sprintf(
-				"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'%s",
-				"",
+				"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src %s; img-src 'self' data:; connect-src %s; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+				styleSrc, connectSrc,
 			))
 			if cfg.Env == "production" {
 				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")

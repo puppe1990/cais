@@ -1,0 +1,421 @@
+package handlers
+
+import (
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/httpx"
+	"github.com/puppe1990/cais/pkg/cais/meta"
+	"github.com/puppe1990/cais/pkg/cais/middleware"
+	"github.com/puppe1990/cais/pkg/cais/money"
+	"github.com/puppe1990/cais/pkg/cais/session"
+	"{{.ModulePath}}/internal/models"
+	"{{.ModulePath}}/internal/store"
+)
+
+type SupermarketPageData struct {
+	meta.Site
+	Scans            []PriceScanView
+	Markets          []MarketView
+	Products         []ProductView
+	Badges           []BadgeView
+	Leaders          []LeaderView
+	LookupProduct    *ProductView
+	LookupError      string
+	ReportProductID  int64
+	SupermarketOpts  []SupermarketOption
+	SubmissionCount int
+}
+
+type SupermarketOption struct {
+	ID   int64
+	Name string
+}
+
+type PriceScanView struct {
+	ID              int
+	ProductName     string
+	SupermarketName string
+	Price           string
+	TimeAgo         string
+	Contributor     string
+	Level           int
+	ConfirmedCount  int
+	Verified        bool
+	Outdated        bool
+	Flagged         bool
+}
+
+type MarketView struct {
+	Name     string
+	Address  string
+	Distance string
+	Offers   int
+	BestDeal string
+}
+
+type ProductView struct {
+	ID       int64
+	Name     string
+	Barcode  string
+	Category string
+	AvgPrice string
+}
+
+type BadgeView struct {
+	ID          string
+	Name        string
+	Description string
+	Unlocked    bool
+	Icon        string
+}
+
+type LeaderView struct {
+	Name   string
+	Points int
+	Rank   int
+	Level  int
+	IsYou  bool
+}
+
+type SupermarketHandler struct {
+	renderer *cais.Renderer
+	store    store.Store
+	site     meta.Site
+	cfg      cais.Config
+}
+
+func NewSupermarketHandler(renderer *cais.Renderer, st store.Store, site meta.Site, cfg cais.Config) *SupermarketHandler {
+	return &SupermarketHandler{renderer: renderer, store: st, site: site, cfg: cfg}
+}
+
+func (h *SupermarketHandler) base(r *http.Request) SupermarketPageData {
+	site := meta.ForRequest(h.site, r)
+	if stats, ok := middleware.UserStatsFrom(r); ok {
+		site.UserLevel = stats.Level
+		site.UserPoints = stats.Points
+		site.UserRank = stats.Rank
+	}
+	if _, ok := session.UserID(r); ok {
+		site.LoggedIn = true
+	}
+	return SupermarketPageData{Site: site}
+}
+
+func (h *SupermarketHandler) Scan(w http.ResponseWriter, r *http.Request) {
+	data := h.base(r)
+	data.ActiveNav = "scan"
+	data.Products = h.listProductViews(r)
+	data.SupermarketOpts = h.supermarketOptions()
+	if uid, ok := session.UserID(r); ok {
+		data.Scans = h.userScans(uid)
+	}
+	httpx.RenderOrError(w, h.renderer, "base", "scan", data, h.cfg)
+}
+
+func (h *SupermarketHandler) Map(w http.ResponseWriter, r *http.Request) {
+	data := h.base(r)
+	data.ActiveNav = "map"
+	data.Markets = h.marketViews()
+	httpx.RenderOrError(w, h.renderer, "base", "map", data, h.cfg)
+}
+
+func (h *SupermarketHandler) Feed(w http.ResponseWriter, r *http.Request) {
+	data := h.base(r)
+	data.ActiveNav = "feed"
+	data.Scans = h.feedScans()
+	httpx.RenderOrError(w, h.renderer, "base", "feed", data, h.cfg)
+}
+
+func (h *SupermarketHandler) Achievements(w http.ResponseWriter, r *http.Request) {
+	data := h.base(r)
+	data.ActiveNav = "achievements"
+	uid, _ := session.UserID(r)
+	data.Badges = h.badgeViews(uid)
+	data.Leaders = h.leaderViews(uid)
+	if uid > 0 {
+		reports, _ := h.store.ListUserReports(uid, 1000)
+		data.SubmissionCount = len(reports)
+	}
+	httpx.RenderOrError(w, h.renderer, "base", "achievements", data, h.cfg)
+}
+
+func (h *SupermarketHandler) NFCe(w http.ResponseWriter, r *http.Request) {
+	data := h.base(r)
+	data.ActiveNav = "nfce"
+	httpx.RenderOrError(w, h.renderer, "base", "nfce", data, h.cfg)
+}
+
+func (h *SupermarketHandler) LookupPost(w http.ResponseWriter, r *http.Request) {
+	data := h.base(r)
+	data.ActiveNav = "scan"
+	barcode := strings.TrimSpace(r.FormValue("barcode"))
+	name := strings.TrimSpace(r.FormValue("name"))
+	if barcode == "" {
+		data.LookupError = "Informe o código de barras"
+		data.Products = h.listProductViews(r)
+		data.SupermarketOpts = h.supermarketOptions()
+		httpx.RenderOrError(w, h.renderer, "base", "scan", data, h.cfg)
+		return
+	}
+	product, found, err := h.store.FindProductByBarcode(barcode)
+	if err != nil {
+		http.Error(w, "lookup failed", http.StatusInternalServerError)
+		return
+	}
+	if !found {
+		if name == "" {
+			data.LookupError = "Produto não encontrado — informe o nome para cadastrar"
+			data.Products = h.listProductViews(r)
+			data.SupermarketOpts = h.supermarketOptions()
+			httpx.RenderOrError(w, h.renderer, "base", "scan", data, h.cfg)
+			return
+		}
+		id, err := h.store.CreateProduct(name, barcode, "Geral")
+		if err != nil {
+			http.Error(w, "create product failed", http.StatusInternalServerError)
+			return
+		}
+		product = models.Product{ID: id, Name: name, Barcode: barcode, Category: "Geral"}
+	}
+	pv := h.productView(product)
+	data.LookupProduct = &pv
+	data.ReportProductID = product.ID
+	data.Products = h.listProductViews(r)
+	data.SupermarketOpts = h.supermarketOptions()
+	httpx.RenderOrError(w, h.renderer, "base", "scan", data, h.cfg)
+}
+
+func (h *SupermarketHandler) ReportPost(w http.ResponseWriter, r *http.Request) {
+	userID, ok := session.UserID(r)
+	if !ok {
+		httpx.SeeOther(w, r, "/login")
+		return
+	}
+	productID, _ := strconv.ParseInt(r.FormValue("product_id"), 10, 64)
+	supermarketID, _ := strconv.ParseInt(r.FormValue("supermarket_id"), 10, 64)
+	priceCents, err := parsePriceCents(r.FormValue("price"))
+	if err != nil || productID == 0 || supermarketID == 0 {
+		data := h.base(r)
+		data.ActiveNav = "scan"
+		data.LookupError = "Preencha supermercado e preço válidos"
+		data.Products = h.listProductViews(r)
+		data.SupermarketOpts = h.supermarketOptions()
+		httpx.RenderOrError(w, h.renderer, "base", "scan", data, h.cfg)
+		return
+	}
+	if _, err := h.store.CreatePriceReport(userID, productID, supermarketID, priceCents); err != nil {
+		http.Error(w, "report failed", http.StatusInternalServerError)
+		return
+	}
+	cais.SetToast(w, "+10 pts — preço registrado!")
+	httpx.SeeOther(w, r, "/feed")
+}
+
+func (h *SupermarketHandler) ConfirmPost(w http.ResponseWriter, r *http.Request, reportID int64) {
+	userID, ok := session.UserID(r)
+	if !ok {
+		httpx.SeeOther(w, r, "/login")
+		return
+	}
+	count, err := h.store.ConfirmPriceReport(reportID, userID)
+	if err == store.ErrOwnReport || err == store.ErrAlreadyConfirmed {
+		httpx.RenderOrError(w, h.renderer, "", "feed_confirm_btn", confirmBtnData{ID: int(reportID), Count: count, Disabled: true}, h.cfg)
+		return
+	}
+	if err != nil {
+		http.Error(w, "confirm failed", http.StatusInternalServerError)
+		return
+	}
+	cais.SetToast(w, "+2 pts — obrigado por confirmar!")
+	httpx.RenderOrError(w, h.renderer, "", "feed_confirm_btn", confirmBtnData{ID: int(reportID), Count: count}, h.cfg)
+}
+
+func (h *SupermarketHandler) FlagPost(w http.ResponseWriter, r *http.Request, reportID int64) {
+	userID, ok := session.UserID(r)
+	if !ok {
+		httpx.SeeOther(w, r, "/login")
+		return
+	}
+	if err := h.store.FlagPriceReport(reportID); err != nil {
+		http.Error(w, "flag failed", http.StatusInternalServerError)
+		return
+	}
+	_ = userID
+	if r.Header.Get("HX-Request") == "true" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	httpx.SeeOther(w, r, "/feed")
+}
+
+type confirmBtnData struct {
+	ID       int
+	Count    int
+	Disabled bool
+}
+
+func (h *SupermarketHandler) feedScans() []PriceScanView {
+	reports, err := h.store.ListFeedReports(50)
+	if err != nil {
+		return nil
+	}
+	return priceReportsToViews(reports)
+}
+
+func (h *SupermarketHandler) userScans(userID int64) []PriceScanView {
+	reports, err := h.store.ListUserReports(userID, 20)
+	if err != nil {
+		return nil
+	}
+	return priceReportsToViews(reports)
+}
+
+func priceReportsToViews(reports []models.PriceReport) []PriceScanView {
+	out := make([]PriceScanView, 0, len(reports))
+	for _, r := range reports {
+		out = append(out, PriceScanView{
+			ID:              int(r.ID),
+			ProductName:     r.ProductName,
+			SupermarketName: r.SupermarketName,
+			Price:           money.FormatBRL(r.PriceCents),
+			TimeAgo:         timeAgo(r.CreatedAt),
+			Contributor:     r.Contributor,
+			Level:           r.ContributorLvl,
+			ConfirmedCount:  r.Confirmations,
+			Verified:        store.ReportVerified(r.Confirmations),
+			Outdated:        store.ReportOutdated(r.CreatedAt),
+			Flagged:         r.Flagged,
+		})
+	}
+	return out
+}
+
+func (h *SupermarketHandler) listProductViews(_ *http.Request) []ProductView {
+	products, err := h.store.ListProducts(10)
+	if err != nil {
+		return nil
+	}
+	out := make([]ProductView, 0, len(products))
+	for _, p := range products {
+		out = append(out, h.productView(p))
+	}
+	return out
+}
+
+func (h *SupermarketHandler) productView(p models.Product) ProductView {
+	avg, _ := h.store.ProductAvgPriceCents(p.ID)
+	avgStr := ""
+	if avg > 0 {
+		avgStr = money.FormatBRL(avg)
+	}
+	return ProductView{
+		ID: p.ID, Name: p.Name, Barcode: p.Barcode, Category: p.Category, AvgPrice: avgStr,
+	}
+}
+
+func (h *SupermarketHandler) supermarketOptions() []SupermarketOption {
+	markets, err := h.store.ListSupermarkets()
+	if err != nil {
+		return nil
+	}
+	out := make([]SupermarketOption, 0, len(markets))
+	for _, m := range markets {
+		out = append(out, SupermarketOption{ID: m.ID, Name: m.Name})
+	}
+	return out
+}
+
+func (h *SupermarketHandler) marketViews() []MarketView {
+	markets, err := h.store.ListSupermarkets()
+	if err != nil {
+		return nil
+	}
+	out := make([]MarketView, 0, len(markets))
+	for i, m := range markets {
+		offers, _ := h.store.SupermarketOfferCount(m.ID)
+		best, _ := h.store.SupermarketBestDeal(m.ID)
+		out = append(out, MarketView{
+			Name: m.Name, Address: m.Address,
+			Distance: fmt.Sprintf("%.1f km", float64(i+1)*1.2),
+			Offers: offers, BestDeal: best,
+		})
+	}
+	return out
+}
+
+func (h *SupermarketHandler) badgeViews(userID int64) []BadgeView {
+	badges, err := h.store.ListBadges(userID)
+	if err != nil {
+		return nil
+	}
+	out := make([]BadgeView, 0, len(badges))
+	for _, b := range badges {
+		out = append(out, BadgeView{
+			ID: b.Slug, Name: b.Name, Description: b.Description, Unlocked: b.Unlocked, Icon: b.Icon,
+		})
+	}
+	return out
+}
+
+func (h *SupermarketHandler) leaderViews(userID int64) []LeaderView {
+	leaders, err := h.store.Leaderboard(10, userID)
+	if err != nil {
+		return nil
+	}
+	out := make([]LeaderView, 0, len(leaders))
+	for _, l := range leaders {
+		name := l.Name
+		if l.IsYou {
+			name = "Você"
+		}
+		out = append(out, LeaderView{
+			Name: name, Points: l.Points, Rank: l.Rank, Level: l.Level, IsYou: l.IsYou,
+		})
+	}
+	return out
+}
+
+func parsePriceCents(raw string) (int, error) {
+	raw = strings.TrimSpace(strings.ReplaceAll(raw, "R$", ""))
+	raw = strings.ReplaceAll(raw, " ", "")
+	if raw == "" {
+		return 0, fmt.Errorf("price required")
+	}
+	raw = strings.ReplaceAll(raw, ",", ".")
+	parts := strings.SplitN(raw, ".", 2)
+	reais, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, err
+	}
+	frac := 0
+	if len(parts) == 2 {
+		p := parts[1]
+		if len(p) > 2 {
+			p = p[:2]
+		}
+		for len(p) < 2 {
+			p += "0"
+		}
+		frac, _ = strconv.Atoi(p)
+	}
+	return reais*100 + frac, nil
+}
+
+func timeAgo(t time.Time) string {
+	d := time.Since(t)
+	switch {
+	case d < time.Hour:
+		return "Há poucos minutos"
+	case d < 24*time.Hour:
+		return fmt.Sprintf("Há %d horas", int(d.Hours()))
+	case d < 48*time.Hour:
+		return "Ontem"
+	default:
+		return fmt.Sprintf("Há %d dias", int(d.Hours()/24))
+	}
+}

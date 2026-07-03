@@ -14,6 +14,7 @@ import (
 	"github.com/puppe1990/cais/pkg/cais/htmxattrs"
 	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
+	"github.com/puppe1990/cais/pkg/cais/money"
 	"github.com/puppe1990/cais/pkg/cais/ui"
 )
 
@@ -103,6 +104,7 @@ func templateFuncs(catalog *i18n.Catalog) template.FuncMap {
 	for k, v := range htmxattrs.Funcs() {
 		extra[k] = v
 	}
+	extra["formatMoney"] = money.FormatBRL
 	return i18n.MergeFuncs(catalog, extra)
 }
 

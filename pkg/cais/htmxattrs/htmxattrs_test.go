@@ -10,7 +10,7 @@ func TestHxForm(t *testing.T) {
 	for _, want := range []string{
 		`hx-post="/contact"`,
 		`hx-target="#form-errors"`,
-		`hx-swap="innerHTML swap:150ms"`,
+		`hx-swap="innerHTML swap:150ms transition:true"`,
 		`data-cais-view-transition`,
 		`hx-indicator="#contact-spinner"`,
 		`hx-disabled-elt="button[type='submit']"`,
@@ -41,6 +41,8 @@ func TestHxBoostLink(t *testing.T) {
 		`hx-boost="true"`,
 		`hx-target="#cais-main"`,
 		`hx-select="#cais-main"`,
+		`hx-push-url="true"`,
+		`hx-swap="innerHTML swap:150ms transition:true"`,
 		`data-cais-view-transition`,
 	} {
 		if !strings.Contains(got, want) {
@@ -70,9 +72,36 @@ func TestHxMorphOuter(t *testing.T) {
 	}
 }
 
+func TestHxPost(t *testing.T) {
+	got := string(HxPost("/feed/1/confirm", "#scan-actions-1"))
+	for _, want := range []string{
+		`hx-post="/feed/1/confirm"`,
+		`hx-target="#scan-actions-1"`,
+		`hx-swap="outerHTML"`,
+		`data-cais-optimistic="count"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("HxPost missing %q, got %q", want, got)
+		}
+	}
+}
+
+func TestHxPostConfirm(t *testing.T) {
+	got := string(HxPostConfirm("/feed/1/flag", "this", "Reportar este preço?"))
+	for _, want := range []string{
+		`hx-post="/feed/1/flag"`,
+		`hx-target="this"`,
+		`hx-confirm="Reportar este preço?"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("HxPostConfirm missing %q, got %q", want, got)
+		}
+	}
+}
+
 func TestFuncs_registersHelpers(t *testing.T) {
 	fns := Funcs()
-	for _, name := range []string{"hxForm", "hxDelete", "hxBoostLink", "hxPaginate", "hxMorphOuter"} {
+	for _, name := range []string{"hxForm", "hxDelete", "hxBoostLink", "hxPaginate", "hxMorphOuter", "hxPost", "hxPostConfirm"} {
 		if fns[name] == nil {
 			t.Errorf("Funcs() missing %q", name)
 		}

@@ -50,7 +50,7 @@ func NavTab(tab NavTabData) template.HTML {
 	b.WriteString(template.HTMLEscapeString(tab.Href))
 	b.WriteString(`" data-cais-nav="`)
 	b.WriteString(template.HTMLEscapeString(tab.Href))
-	b.WriteString(`" hx-boost="true" hx-target="#cais-main" hx-select="#cais-main" hx-swap="innerHTML swap:150ms" data-cais-view-transition class="`)
+	b.WriteString(`" hx-boost="true" hx-target="#cais-main" hx-select="#cais-main" hx-push-url="true" hx-swap="innerHTML swap:150ms transition:true" data-cais-view-transition class="`)
 	b.WriteString(NavTabClass(tab.Active))
 	b.WriteString(`">`)
 	if tab.Icon != "" {

@@ -247,9 +247,14 @@ func (c *CLI) cmdGenerate(args []string) error {
 		genErr = scaffoldJob(cwd, args[1], opts)
 	case "app":
 		if len(args) < 2 {
-			return fmt.Errorf("usage: cais g app <template> (available: %s)", strings.Join(listAppTemplates(), ", "))
+			return fmt.Errorf("usage: cais g app <template> [--data] [--force] (available: %s)", strings.Join(listAppTemplates(), ", "))
 		}
-		genErr = scaffoldApp(cwd, args[1], dryRun)
+		opts, parseErr := parseAppOpts(args[2:])
+		if parseErr != nil {
+			return parseErr
+		}
+		opts.dryRun = dryRun
+		genErr = scaffoldApp(cwd, args[1], opts)
 	case "handler", "page", "migration", "resource", "model":
 		if len(args) < 2 {
 			return fmt.Errorf("usage: cais g %s <name>", kind)

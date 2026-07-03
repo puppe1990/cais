@@ -1,0 +1,110 @@
+package store
+
+import (
+	"database/sql"
+	"fmt"
+)
+
+// SeedMercadoDemo inserts supermarket domain demo data (idempotent).
+func (s *SQLiteStore) SeedMercadoDemo() error {
+	db := s.db.Raw()
+	if err := seedMercadoCatalog(db); err != nil {
+		return err
+	}
+	return seedMercadoReports(db)
+}
+
+func seedMercadoCatalog(db *sql.DB) error {
+	products := []struct{ name, barcode, category string }{
+		{"Leite Tirol Integro 1L", "7896256801011", "Laticínios"},
+		{"Coca-Cola Original 2L", "7894900011517", "Bebidas"},
+		{"Arroz Tio João 5kg", "7891081001015", "Mercearia"},
+		{"Café Melitta 500g", "7891000000001", "Mercearia"},
+	}
+	for _, p := range products {
+		if _, err := db.Exec(
+			`INSERT OR IGNORE INTO products (name, barcode, category) VALUES (?, ?, ?)`,
+			p.name, p.barcode, p.category,
+		); err != nil {
+			return fmt.Errorf("seed product: %w", err)
+		}
+	}
+	markets := []struct{ name, address string; lat, lng float64 }{
+		{"Angeloni Bacacheri", "R. Imaculada Conceição, 830", -25.4284, -49.2733},
+		{"Bistek Hauer", "Av. Presidente Kennedy, 2455", -25.4500, -49.2900},
+		{"Carrefour Portão", "Av. República Argentina, 1330", -25.4700, -49.3000},
+		{"Condor Água Verde", "R. Nilo Peçanha, 1250", -25.4400, -49.2800},
+	}
+	for _, m := range markets {
+		if _, err := db.Exec(
+			`INSERT OR IGNORE INTO supermarkets (name, address, lat, lng) VALUES (?, ?, ?, ?)`,
+			m.name, m.address, m.lat, m.lng,
+		); err != nil {
+			return fmt.Errorf("seed supermarket: %w", err)
+		}
+	}
+	badges := []struct{ slug, name, desc, icon string; min int }{
+		{"first_scan", "Primeiro Registro", "Registrou seu primeiro preço", "camera", 10},
+		{"fiscal", "Fiscal do Povo", "10+ contribuições", "shield", 100},
+		{"verifier", "Verificador Oficial", "Confirmou 3+ preços", "check", 6},
+		{"nfce", "Auditor Digital", "Importou uma NFC-e", "qr", 500},
+	}
+	for _, b := range badges {
+		if _, err := db.Exec(
+			`INSERT OR IGNORE INTO badges (slug, name, description, icon, min_points) VALUES (?, ?, ?, ?, ?)`,
+			b.slug, b.name, b.desc, b.icon, b.min,
+		); err != nil {
+			return fmt.Errorf("seed badge: %w", err)
+		}
+	}
+	return nil
+}
+
+func seedMercadoReports(db *sql.DB) error {
+	var demoUserID int64
+	err := db.QueryRow(`SELECT id FROM users WHERE email = ?`, "demo@example.com").Scan(&demoUserID)
+	if err != nil {
+		return nil // auth seed may not exist yet
+	}
+	_, _ = db.Exec(
+		`INSERT OR IGNORE INTO user_profiles (user_id, display_name, points, city) VALUES (?, ?, ?, ?)`,
+		demoUserID, "Você", 420, "Curitiba",
+	)
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM price_reports`).Scan(&count); err != nil || count > 0 {
+		return err
+	}
+	type seedReport struct {
+		barcode string
+		market  string
+		cents   int
+		conf    int
+	}
+	reports := []seedReport{
+		{"7896256801011", "Angeloni Bacacheri", 549, 8},
+		{"7894900011517", "Bistek Hauer", 821, 3},
+		{"7891081001015", "Carrefour Portão", 2890, 12},
+		{"7891000000001", "Condor Água Verde", 1850, 1},
+	}
+	for _, r := range reports {
+		var productID, marketID int64
+		if err := db.QueryRow(`SELECT id FROM products WHERE barcode = ?`, r.barcode).Scan(&productID); err != nil {
+			continue
+		}
+		if err := db.QueryRow(`SELECT id FROM supermarkets WHERE name = ?`, r.market).Scan(&marketID); err != nil {
+			continue
+		}
+		if _, err := db.Exec(
+			`INSERT INTO price_reports (product_id, supermarket_id, user_id, price_cents, confirmations) VALUES (?, ?, ?, ?, ?)`,
+			productID, marketID, demoUserID, r.cents, r.conf,
+		); err != nil {
+			return err
+		}
+	}
+	_, _ = db.Exec(`
+		INSERT OR IGNORE INTO user_badges (user_id, badge_id)
+		SELECT ?, id FROM badges WHERE slug IN ('first_scan', 'verifier')`,
+		demoUserID,
+	)
+	return nil
+}

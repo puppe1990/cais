@@ -74,13 +74,25 @@
       </header>
       <nav id="cais-nav" class="bg-white border-b border-slate-200 shadow-2xs sticky top-[53px] z-30">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex space-x-1 py-1.5 overflow-x-auto no-scrollbar">
+          <div class="flex items-center justify-between gap-3">
+          <div class="flex space-x-1 py-1.5 overflow-x-auto no-scrollbar flex-1">
             <!-- cais:nav -->
             {{ navTab (makeNavTab "/" "Escanear Preço" "camera" (eq .ActiveNav "scan")) }}
             {{ navTab (makeNavTab "/map" "Mapa de Ofertas" "map" (eq .ActiveNav "map")) }}
             {{ navTab (makeNavTab "/feed" "Feed Comunitário" "message" (eq .ActiveNav "feed")) }}
             {{ navTab (makeNavTab "/achievements" "Medalhas & Ranking" "award" (eq .ActiveNav "achievements")) }}
             {{ navTab (makeNavTab "/nfce" "Importar Nota (NFC-e)" "file" (eq .ActiveNav "nfce")) }}
+          </div>
+          <div class="flex items-center gap-2 py-1.5 flex-shrink-0 pr-1">
+            {{ if .LoggedIn }}
+            <form method="post" action="/logout" class="inline">
+              {{ csrfField .CSRFToken }}
+              <button type="submit" class="text-[10px] font-bold text-slate-600 hover:text-slate-900 px-2 py-1 rounded-md hover:bg-slate-100">Sair</button>
+            </form>
+            {{ else }}
+            <a href="/login" class="text-[10px] font-bold text-indigo-700 hover:text-indigo-900 px-2 py-1 rounded-md hover:bg-indigo-50">Entrar</a>
+            {{ end }}
+          </div>
           </div>
         </div>
       </nav>

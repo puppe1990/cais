@@ -18,7 +18,7 @@ var supermarketPagesFS embed.FS
 //go:embed app_templates/supermarket/layout/*
 var supermarketLayoutFS embed.FS
 
-var appTemplateInstallers = map[string]func(string, scaffoldData, bool) error{
+var appTemplateInstallers = map[string]func(string, scaffoldData, appScaffoldOpts) error{
 	"supermarket": scaffoldAppSupermarket,
 }
 
@@ -31,7 +31,7 @@ func listAppTemplates() []string {
 	return names
 }
 
-func scaffoldApp(dir, name string, dryRun bool) error {
+func scaffoldApp(dir, name string, opts appScaffoldOpts) error {
 	install, ok := appTemplateInstallers[name]
 	if !ok {
 		return fmt.Errorf("unknown app template %q (available: %s)", name, strings.Join(listAppTemplates(), ", "))
@@ -40,18 +40,23 @@ func scaffoldApp(dir, name string, dryRun bool) error {
 		AppName:    filepath.Base(dir),
 		ModulePath: moduleFromDir(dir),
 	}
-	return install(dir, data, dryRun)
+	return install(dir, data, opts)
 }
 
-func scaffoldAppSupermarket(dir string, data scaffoldData, dryRun bool) error {
-	if _, err := os.Stat(filepath.Join(dir, "internal/handlers/supermarket.go")); err == nil {
-		return fmt.Errorf("supermarket app already installed — remove internal/handlers/supermarket.go first")
+func scaffoldAppSupermarket(dir string, data scaffoldData, opts appScaffoldOpts) error {
+	if _, err := os.Stat(filepath.Join(dir, "internal/handlers/supermarket.go")); err == nil && !opts.force {
+		return fmt.Errorf("supermarket app already installed — use --force to overwrite or add --data only after manual merge")
 	}
 
-	if err := writeEmbeddedDir(supermarketHandlerFS, "app_templates/supermarket/handler", dir, map[string]string{
-		"supermarket.go.tmpl":      "internal/handlers/supermarket.go",
+	handlerFiles := map[string]string{
 		"supermarket_test.go.tmpl": "internal/handlers/supermarket_test.go",
-	}, dryRun); err != nil {
+	}
+	if opts.data {
+		handlerFiles["supermarket_data.go.tmpl"] = "internal/handlers/supermarket.go"
+	} else {
+		handlerFiles["supermarket.go.tmpl"] = "internal/handlers/supermarket.go"
+	}
+	if err := writeEmbeddedDir(supermarketHandlerFS, "app_templates/supermarket/handler", dir, handlerFiles, opts.dryRun); err != nil {
 		return err
 	}
 
@@ -61,15 +66,24 @@ func scaffoldAppSupermarket(dir string, data scaffoldData, dryRun bool) error {
 		"feed.html":         "web/templates/pages/feed.html",
 		"achievements.html": "web/templates/pages/achievements.html",
 		"nfce.html":         "web/templates/pages/nfce.html",
-	}, dryRun); err != nil {
+	}, opts.dryRun); err != nil {
 		return err
 	}
 
-	if err := writeEmbeddedFile(supermarketLayoutFS, "app_templates/supermarket/layout/base.html", filepath.Join(dir, "web/templates/layouts/base.html"), "web/templates/layouts/base.html", dryRun); err != nil {
+	if err := writeEmbeddedFile(supermarketLayoutFS, "app_templates/supermarket/layout/base.html", filepath.Join(dir, "web/templates/layouts/base.html"), "web/templates/layouts/base.html", opts.dryRun); err != nil {
 		return err
 	}
 
-	return patchRoutesForAppSupermarket(dir, dryRun)
+	if err := patchRoutesForAppSupermarket(dir, opts.dryRun); err != nil {
+		return err
+	}
+	if opts.data {
+		if err := scaffoldAppSupermarketData(dir, data, opts.dryRun); err != nil {
+			return err
+		}
+		return patchRoutesForAppSupermarketData(dir, opts.dryRun)
+	}
+	return nil
 }
 
 func writeEmbeddedFile(fsys embed.FS, src, dst, rel string, dryRun bool) error {

@@ -7,14 +7,17 @@ import (
 )
 
 type Config struct {
-	Port           string
-	DBPath         string
-	Env            string
-	AppURL         string
-	AdminToken     string
-	Locale         string
-	LogFormat      string
-	TrustedProxies []string
+	Port              string
+	DBPath            string
+	Env               string
+	AppURL            string
+	AdminToken        string
+	Locale            string
+	LogFormat         string
+	TrustedProxies    []string
+	PermissionsPolicy string
+	CSPStyleSrc       string
+	CSPConnectSrc     string
 }
 
 func Load() Config {
@@ -52,6 +55,17 @@ func Load() Config {
 				cfg.TrustedProxies = append(cfg.TrustedProxies, ip)
 			}
 		}
+	}
+	if v := os.Getenv("PERMISSIONS_POLICY"); v != "" {
+		cfg.PermissionsPolicy = v
+	} else {
+		cfg.PermissionsPolicy = "camera=(), microphone=(), geolocation=()"
+	}
+	if v := os.Getenv("CSP_STYLE_SRC"); v != "" {
+		cfg.CSPStyleSrc = v
+	}
+	if v := os.Getenv("CSP_CONNECT_SRC"); v != "" {
+		cfg.CSPConnectSrc = v
 	}
 
 	return cfg

@@ -129,13 +129,6 @@
 
   document.addEventListener("DOMContentLoaded", syncNavTabs);
 
-  function wantsViewTransition(evt) {
-    var elt = evt.detail.requestConfig && evt.detail.requestConfig.elt;
-    if (elt && elt.closest("[data-cais-view-transition]")) return true;
-    var target = evt.detail.target;
-    return target && target.id === "cais-main";
-  }
-
   function syncNavTabs() {
     var nav = document.getElementById("cais-nav");
     if (!nav) return;
@@ -146,15 +139,6 @@
       setClasses(a, active ? NAV_ON : NAV_OFF, active ? NAV_OFF : NAV_ON);
     });
   }
-
-  document.body.addEventListener("htmx:beforeSwap", function (evt) {
-    if (!document.startViewTransition) return;
-    if (!wantsViewTransition(evt)) return;
-    evt.detail.shouldSwap = false;
-    document.startViewTransition(function () {
-      evt.detail.swap();
-    });
-  });
 
   var toastTimer = null;
 

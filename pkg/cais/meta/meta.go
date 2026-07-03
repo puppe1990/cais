@@ -19,9 +19,10 @@ type Site struct {
 	CSRFToken  string
 	Flash      *flash.Message
 	ActiveNav  string // optional tab key for layout navTab helpers (e.g. "home", "contact")
-	UserLevel  int    // optional demo gamification chrome (0 = layout defaults)
+	UserLevel  int    // optional gamification chrome (0 = layout may show defaults)
 	UserPoints int
 	UserRank   int
+	LoggedIn   bool // optional session flag for layout auth chrome
 }
 
 // Preview describes Open Graph / Twitter card metadata for a page.

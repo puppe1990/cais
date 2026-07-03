@@ -58,6 +58,8 @@ func TestNavTab_hxBoostShell(t *testing.T) {
 		`hx-boost="true"`,
 		`hx-target="#cais-main"`,
 		`hx-select="#cais-main"`,
+		`hx-push-url="true"`,
+		`hx-swap="innerHTML swap:150ms transition:true"`,
 		`data-cais-nav="/contact"`,
 		`data-cais-view-transition`,
 	} {

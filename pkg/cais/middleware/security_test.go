@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/puppe1990/cais/pkg/cais"
@@ -26,6 +27,26 @@ func TestSecurityHeaders_production(t *testing.T) {
 		if rr.Header().Get(key) == "" {
 			t.Errorf("missing header %s", key)
 		}
+	}
+}
+
+func TestSecurityHeaders_customPolicy(t *testing.T) {
+	cfg := cais.Config{
+		Env:               "development",
+		PermissionsPolicy: "camera=(self), geolocation=(self)",
+		CSPStyleSrc:       "https://fonts.googleapis.com",
+	}
+	h := SecurityHeaders(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if got := rr.Header().Get("Permissions-Policy"); got != "camera=(self), geolocation=(self)" {
+		t.Errorf("Permissions-Policy = %q", got)
+	}
+	csp := rr.Header().Get("Content-Security-Policy")
+	if !strings.Contains(csp, "https://fonts.googleapis.com") {
+		t.Errorf("CSP missing style src extra: %q", csp)
 	}
 }
 

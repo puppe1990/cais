@@ -16,7 +16,7 @@ func TestScaffoldApp_supermarket(t *testing.T) {
 	}, false, false); err != nil {
 		t.Fatal(err)
 	}
-	if err := scaffoldApp(appDir, "supermarket", false); err != nil {
+	if err := scaffoldApp(appDir, "supermarket", appScaffoldOpts{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -85,7 +85,7 @@ func TestScaffoldApp_unknownTemplate(t *testing.T) {
 	}, true, false); err != nil {
 		t.Fatal(err)
 	}
-	err := scaffoldApp(appDir, "notreal", false)
+	err := scaffoldApp(appDir, "notreal", appScaffoldOpts{})
 	if err == nil {
 		t.Fatal("expected error for unknown template")
 	}
@@ -103,12 +103,49 @@ func TestScaffoldApp_supermarketIdempotentGuard(t *testing.T) {
 	}, true, false); err != nil {
 		t.Fatal(err)
 	}
-	if err := scaffoldApp(appDir, "supermarket", false); err != nil {
+	if err := scaffoldApp(appDir, "supermarket", appScaffoldOpts{}); err != nil {
 		t.Fatal(err)
 	}
-	err := scaffoldApp(appDir, "supermarket", false)
+	err := scaffoldApp(appDir, "supermarket", appScaffoldOpts{})
 	if err == nil {
 		t.Fatal("expected error when supermarket already installed")
+	}
+}
+
+func TestScaffoldApp_supermarketData(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "mercado")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "mercado",
+		ModulePath: "github.com/puppe1990/mercado",
+	}, false, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldApp(appDir, "supermarket", appScaffoldOpts{data: true}); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{
+		"internal/store/mercado.go",
+		"internal/models/product.go",
+		"web/templates/partials/feed_confirm_btn.html",
+	} {
+		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
+			t.Errorf("missing %s: %v", path, err)
+		}
+	}
+	handler, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/supermarket.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(handler), "demoScans") {
+		t.Error("data handler should use store, not demoScans")
+	}
+	routes, err := os.ReadFile(filepath.Join(appDir, "internal/app/routes.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(routes), "super.LookupPost") {
+		t.Error("routes should include scan lookup POST")
 	}
 }
 

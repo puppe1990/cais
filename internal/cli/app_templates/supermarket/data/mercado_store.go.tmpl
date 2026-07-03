@@ -1,0 +1,425 @@
+package store
+
+import (
+	"database/sql"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/puppe1990/mercado/internal/models"
+)
+
+const (
+	pointsPerReport   = 10
+	pointsPerConfirm  = 2
+	verifiedThreshold = 3
+	staleAfter        = 7 * 24 * time.Hour
+)
+
+var ErrAlreadyConfirmed = errors.New("already confirmed")
+var ErrOwnReport = errors.New("cannot confirm own report")
+
+func levelFromPoints(points int) int {
+	return points/100 + 1
+}
+
+// LoadStats implements middleware.UserStatsLoader for gamification chrome.
+func (s *SQLiteStore) LoadStats(userID int64) (int, int, int, error) {
+	profile, err := s.GetOrCreateProfile(userID)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	rank, err := s.UserRank(userID)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	return levelFromPoints(profile.Points), profile.Points, rank, nil
+}
+
+func (s *SQLiteStore) GetOrCreateProfile(userID int64) (models.UserProfile, error) {
+	var p models.UserProfile
+	err := s.db.QueryRow(
+		`SELECT user_id, display_name, points, city FROM user_profiles WHERE user_id = ?`,
+		userID,
+	).Scan(&p.UserID, &p.DisplayName, &p.Points, &p.City)
+	if err == nil {
+		return p, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return models.UserProfile{}, fmt.Errorf("get profile: %w", err)
+	}
+	_, err = s.db.Exec(
+		`INSERT INTO user_profiles (user_id, display_name, points, city) VALUES (?, ?, 0, 'Curitiba')`,
+		userID, fmt.Sprintf("Usuário %d", userID),
+	)
+	if err != nil {
+		return models.UserProfile{}, fmt.Errorf("create profile: %w", err)
+	}
+	return s.GetOrCreateProfile(userID)
+}
+
+func (s *SQLiteStore) UserRank(userID int64) (int, error) {
+	var points int
+	if err := s.db.QueryRow(`SELECT points FROM user_profiles WHERE user_id = ?`, userID).Scan(&points); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	var rank int
+	err := s.db.QueryRow(
+		`SELECT COUNT(*) + 1 FROM user_profiles WHERE points > ?`,
+		points,
+	).Scan(&rank)
+	return rank, err
+}
+
+func (s *SQLiteStore) addPoints(userID int64, delta int) error {
+	if _, err := s.GetOrCreateProfile(userID); err != nil {
+		return err
+	}
+	_, err := s.db.Exec(`UPDATE user_profiles SET points = points + ? WHERE user_id = ?`, delta, userID)
+	if err != nil {
+		return fmt.Errorf("add points: %w", err)
+	}
+	return s.unlockBadgesForUser(userID)
+}
+
+func (s *SQLiteStore) unlockBadgesForUser(userID int64) error {
+	_, err := s.db.Exec(`
+		INSERT OR IGNORE INTO user_badges (user_id, badge_id)
+		SELECT ?, b.id FROM badges b
+		JOIN user_profiles p ON p.user_id = ?
+		WHERE p.points >= b.min_points`,
+		userID, userID,
+	)
+	return err
+}
+
+func (s *SQLiteStore) ListProducts(limit int) ([]models.Product, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	rows, err := s.db.Query(
+		`SELECT id, name, barcode, category, created_at FROM products ORDER BY name LIMIT ?`,
+		limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list products: %w", err)
+	}
+	defer rows.Close()
+	var out []models.Product
+	for rows.Next() {
+		var p models.Product
+		if err := rows.Scan(&p.ID, &p.Name, &p.Barcode, &p.Category, &p.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+func (s *SQLiteStore) FindProductByBarcode(barcode string) (models.Product, bool, error) {
+	barcode = strings.TrimSpace(barcode)
+	var p models.Product
+	err := s.db.QueryRow(
+		`SELECT id, name, barcode, category, created_at FROM products WHERE barcode = ?`,
+		barcode,
+	).Scan(&p.ID, &p.Name, &p.Barcode, &p.Category, &p.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return models.Product{}, false, nil
+	}
+	if err != nil {
+		return models.Product{}, false, fmt.Errorf("find product: %w", err)
+	}
+	return p, true, nil
+}
+
+func (s *SQLiteStore) CreateProduct(name, barcode, category string) (int64, error) {
+	result, err := s.db.Exec(
+		`INSERT INTO products (name, barcode, category) VALUES (?, ?, ?)`,
+		strings.TrimSpace(name), strings.TrimSpace(barcode), strings.TrimSpace(category),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("create product: %w", err)
+	}
+	return result.LastInsertId()
+}
+
+func (s *SQLiteStore) ProductAvgPriceCents(productID int64) (int, error) {
+	var avg sql.NullFloat64
+	err := s.db.QueryRow(
+		`SELECT AVG(price_cents) FROM price_reports WHERE product_id = ? AND flagged = 0`,
+		productID,
+	).Scan(&avg)
+	if err != nil {
+		return 0, err
+	}
+	if !avg.Valid {
+		return 0, nil
+	}
+	return int(avg.Float64 + 0.5), nil
+}
+
+func (s *SQLiteStore) ListSupermarkets() ([]models.Supermarket, error) {
+	rows, err := s.db.Query(
+		`SELECT id, name, address, COALESCE(lat, 0), COALESCE(lng, 0), created_at FROM supermarkets ORDER BY name`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list supermarkets: %w", err)
+	}
+	defer rows.Close()
+	var out []models.Supermarket
+	for rows.Next() {
+		var m models.Supermarket
+		if err := rows.Scan(&m.ID, &m.Name, &m.Address, &m.Lat, &m.Lng, &m.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+func (s *SQLiteStore) ListFeedReports(limit int) ([]models.PriceReport, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := s.db.Query(`
+		SELECT pr.id, pr.product_id, pr.supermarket_id, pr.user_id, pr.price_cents,
+		       pr.confirmations, pr.flagged, pr.created_at,
+		       p.name, sm.name,
+		       COALESCE(up.display_name, u.email), COALESCE(up.points, 0)
+		FROM price_reports pr
+		JOIN products p ON p.id = pr.product_id
+		JOIN supermarkets sm ON sm.id = pr.supermarket_id
+		JOIN users u ON u.id = pr.user_id
+		LEFT JOIN user_profiles up ON up.user_id = pr.user_id
+		WHERE pr.flagged = 0
+		ORDER BY pr.created_at DESC
+		LIMIT ?`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list feed: %w", err)
+	}
+	defer rows.Close()
+	return scanPriceReports(rows)
+}
+
+func (s *SQLiteStore) ListUserReports(userID int64, limit int) ([]models.PriceReport, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	rows, err := s.db.Query(`
+		SELECT pr.id, pr.product_id, pr.supermarket_id, pr.user_id, pr.price_cents,
+		       pr.confirmations, pr.flagged, pr.created_at,
+		       p.name, sm.name,
+		       COALESCE(up.display_name, u.email), COALESCE(up.points, 0)
+		FROM price_reports pr
+		JOIN products p ON p.id = pr.product_id
+		JOIN supermarkets sm ON sm.id = pr.supermarket_id
+		JOIN users u ON u.id = pr.user_id
+		LEFT JOIN user_profiles up ON up.user_id = pr.user_id
+		WHERE pr.user_id = ?
+		ORDER BY pr.created_at DESC
+		LIMIT ?`, userID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list user reports: %w", err)
+	}
+	defer rows.Close()
+	return scanPriceReports(rows)
+}
+
+func scanPriceReports(rows *sql.Rows) ([]models.PriceReport, error) {
+	var out []models.PriceReport
+	for rows.Next() {
+		var r models.PriceReport
+		var flagged int
+		var pts int
+		if err := rows.Scan(
+			&r.ID, &r.ProductID, &r.SupermarketID, &r.UserID, &r.PriceCents,
+			&r.Confirmations, &flagged, &r.CreatedAt,
+			&r.ProductName, &r.SupermarketName, &r.Contributor, &pts,
+		); err != nil {
+			return nil, err
+		}
+		r.Flagged = flagged != 0
+		r.ContributorLvl = levelFromPoints(pts)
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+func (s *SQLiteStore) CreatePriceReport(userID, productID, supermarketID int64, priceCents int) (int64, error) {
+	result, err := s.db.Exec(`
+		INSERT INTO price_reports (product_id, supermarket_id, user_id, price_cents)
+		VALUES (?, ?, ?, ?)`,
+		productID, supermarketID, userID, priceCents,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("create report: %w", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	if err := s.addPoints(userID, pointsPerReport); err != nil {
+		return id, err
+	}
+	return id, nil
+}
+
+func (s *SQLiteStore) ConfirmPriceReport(reportID, userID int64) (int, error) {
+	var ownerID int64
+	if err := s.db.QueryRow(`SELECT user_id FROM price_reports WHERE id = ?`, reportID).Scan(&ownerID); err != nil {
+		return 0, fmt.Errorf("find report: %w", err)
+	}
+	if ownerID == userID {
+		return 0, ErrOwnReport
+	}
+	res, err := s.db.Exec(
+		`INSERT OR IGNORE INTO price_confirmations (price_report_id, user_id) VALUES (?, ?)`,
+		reportID, userID,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("confirm: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		var count int
+		_ = s.db.QueryRow(`SELECT confirmations FROM price_reports WHERE id = ?`, reportID).Scan(&count)
+		return count, ErrAlreadyConfirmed
+	}
+	_, err = s.db.Exec(`UPDATE price_reports SET confirmations = confirmations + 1 WHERE id = ?`, reportID)
+	if err != nil {
+		return 0, err
+	}
+	if err := s.addPoints(userID, pointsPerConfirm); err != nil {
+		return 0, err
+	}
+	var count int
+	if err := s.db.QueryRow(`SELECT confirmations FROM price_reports WHERE id = ?`, reportID).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (s *SQLiteStore) FlagPriceReport(reportID int64) error {
+	_, err := s.db.Exec(`UPDATE price_reports SET flagged = 1 WHERE id = ?`, reportID)
+	return err
+}
+
+func (s *SQLiteStore) ListBadges(userID int64) ([]models.Badge, error) {
+	rows, err := s.db.Query(`
+		SELECT b.id, b.slug, b.name, b.description, b.icon, b.min_points,
+		       CASE WHEN ub.user_id IS NOT NULL THEN 1 ELSE 0 END
+		FROM badges b
+		LEFT JOIN user_badges ub ON ub.badge_id = b.id AND ub.user_id = ?
+		ORDER BY b.min_points`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list badges: %w", err)
+	}
+	defer rows.Close()
+	var out []models.Badge
+	for rows.Next() {
+		var b models.Badge
+		var unlocked int
+		if err := rows.Scan(&b.ID, &b.Slug, &b.Name, &b.Description, &b.Icon, &b.MinPoints, &unlocked); err != nil {
+			return nil, err
+		}
+		b.Unlocked = unlocked != 0
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
+func (s *SQLiteStore) Leaderboard(limit int, currentUserID int64) ([]models.LeaderboardEntry, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	rows, err := s.db.Query(`
+		SELECT up.user_id, COALESCE(up.display_name, u.email), up.points,
+		       (SELECT COUNT(*) + 1 FROM user_profiles p2 WHERE p2.points > up.points) AS rank
+		FROM user_profiles up
+		JOIN users u ON u.id = up.user_id
+		ORDER BY up.points DESC
+		LIMIT ?`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("leaderboard: %w", err)
+	}
+	defer rows.Close()
+	var out []models.LeaderboardEntry
+	for rows.Next() {
+		var e models.LeaderboardEntry
+		if err := rows.Scan(&e.UserID, &e.Name, &e.Points, &e.Rank); err != nil {
+			return nil, err
+		}
+		e.Level = levelFromPoints(e.Points)
+		e.IsYou = e.UserID == currentUserID
+		out = append(out, e)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if currentUserID > 0 {
+		inBoard := false
+		for _, e := range out {
+			if e.IsYou {
+				inBoard = true
+				break
+			}
+		}
+		if !inBoard {
+			profile, err := s.GetOrCreateProfile(currentUserID)
+			if err == nil {
+				rank, _ := s.UserRank(currentUserID)
+				out = append(out, models.LeaderboardEntry{
+					UserID: currentUserID,
+					Name:   profile.DisplayName,
+					Points: profile.Points,
+					Rank:   rank,
+					Level:  levelFromPoints(profile.Points),
+					IsYou:  true,
+				})
+			}
+		}
+	}
+	return out, nil
+}
+
+func (s *SQLiteStore) SupermarketOfferCount(supermarketID int64) (int, error) {
+	var n int
+	err := s.db.QueryRow(
+		`SELECT COUNT(DISTINCT product_id) FROM price_reports WHERE supermarket_id = ? AND flagged = 0`,
+		supermarketID,
+	).Scan(&n)
+	return n, err
+}
+
+func (s *SQLiteStore) SupermarketBestDeal(supermarketID int64) (string, error) {
+	var name string
+	var cents int
+	err := s.db.QueryRow(`
+		SELECT p.name, pr.price_cents
+		FROM price_reports pr
+		JOIN products p ON p.id = pr.product_id
+		WHERE pr.supermarket_id = ? AND pr.flagged = 0
+		ORDER BY pr.price_cents ASC
+		LIMIT 1`, supermarketID).Scan(&name, &cents)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	reais := cents / 100
+	frac := cents % 100
+	return fmt.Sprintf("%s R$ %d,%02d", name, reais, frac), nil
+}
+
+func ReportVerified(confirmations int) bool {
+	return confirmations >= verifiedThreshold
+}
+
+func ReportOutdated(createdAt time.Time) bool {
+	return time.Since(createdAt) > staleAfter
+}

@@ -182,6 +182,37 @@ func TestConfig_LoadLogFormatFromEnv(t *testing.T) {
 	}
 }
 
+func TestConfig_SecurityPolicy_defaults(t *testing.T) {
+	t.Setenv("PERMISSIONS_POLICY", "")
+	t.Setenv("CSP_STYLE_SRC", "")
+	t.Setenv("CSP_CONNECT_SRC", "")
+
+	cfg := Load()
+	if cfg.PermissionsPolicy != "camera=(), microphone=(), geolocation=()" {
+		t.Errorf("PermissionsPolicy = %q", cfg.PermissionsPolicy)
+	}
+	if cfg.CSPStyleSrc != "" {
+		t.Errorf("CSPStyleSrc = %q, want empty", cfg.CSPStyleSrc)
+	}
+}
+
+func TestConfig_SecurityPolicy_loadFromEnv(t *testing.T) {
+	t.Setenv("PERMISSIONS_POLICY", "camera=(self), geolocation=(self)")
+	t.Setenv("CSP_STYLE_SRC", "https://fonts.googleapis.com")
+	t.Setenv("CSP_CONNECT_SRC", "https://tile.openstreetmap.org")
+
+	cfg := Load()
+	if cfg.PermissionsPolicy != "camera=(self), geolocation=(self)" {
+		t.Errorf("PermissionsPolicy = %q", cfg.PermissionsPolicy)
+	}
+	if cfg.CSPStyleSrc != "https://fonts.googleapis.com" {
+		t.Errorf("CSPStyleSrc = %q", cfg.CSPStyleSrc)
+	}
+	if cfg.CSPConnectSrc != "https://tile.openstreetmap.org" {
+		t.Errorf("CSPConnectSrc = %q", cfg.CSPConnectSrc)
+	}
+}
+
 func TestConfig_TrustedProxies_loadFromEnv(t *testing.T) {
 	t.Setenv("TRUSTED_PROXIES", "127.0.0.1, 10.0.0.1")
 
