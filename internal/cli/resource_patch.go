@@ -143,7 +143,7 @@ func buildInsertTestLiteral(fields []FieldDef) string {
 	return strings.Join(parts, ", ")
 }
 
-func patchRoutesForResource(dir string, data scaffoldData, dryRun bool) error {
+func patchRoutesForResource(dir string, data scaffoldData, dryRun bool, force bool) error {
 	path := filepath.Join(dir, "internal/app/routes.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -151,7 +151,14 @@ func patchRoutesForResource(dir string, data scaffoldData, dryRun bool) error {
 	}
 	content := string(body)
 	if strings.Contains(content, "/admin/"+data.Plural) {
-		return nil
+		if !force {
+			return nil
+		}
+		upgraded := upgradeResourceRouteHandlers(content, data)
+		if upgraded == content {
+			return nil
+		}
+		return updateScaffoldFile(path, []byte(upgraded), "internal/app/routes.go", dryRun)
 	}
 
 	if !strings.Contains(content, frameworkModule+"/pkg/cais/middleware") {
@@ -197,6 +204,20 @@ func patchRoutesForResource(dir string, data scaffoldData, dryRun bool) error {
 		return err
 	}
 	return patchLayoutNav(dir, data, dryRun)
+}
+
+// upgradeResourceRouteHandlers rewrites legacy handler constructors when --force
+// regenerates handlers but routes.go already exists (pre meta.Site wiring).
+func upgradeResourceRouteHandlers(content string, data scaffoldData) string {
+	oldAdmin := fmt.Sprintf("handlers.NewAdmin%sHandler(deps.Renderer, deps.Store, cfg)", data.PluralPascal)
+	newAdmin := fmt.Sprintf("handlers.NewAdmin%sHandler(deps.Renderer, deps.Store, deps.Site, cfg)", data.PluralPascal)
+	content = strings.ReplaceAll(content, oldAdmin, newAdmin)
+	if data.Public {
+		oldPub := fmt.Sprintf("handlers.New%sHandler(deps.Renderer, deps.Store, cfg)", data.PluralPascal)
+		newPub := fmt.Sprintf("handlers.New%sHandler(deps.Renderer, deps.Store, deps.Site, cfg)", data.PluralPascal)
+		content = strings.ReplaceAll(content, oldPub, newPub)
+	}
+	return content
 }
 
 // layoutNavMarker is embedded in scaffold layouts (tplLayout*). Generators insert
