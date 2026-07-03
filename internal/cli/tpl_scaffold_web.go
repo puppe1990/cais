@@ -34,29 +34,60 @@ const tplLayoutBaseOpen = `{{"{{"}} define "base" {{"}}"}}
     <link rel="apple-touch-icon" href="/static/icons/icon.png" />
     <link rel="icon" href="/static/icons/icon.png" type="image/png" />
     <script src="/static/js/htmx.min.js" defer></script>
+    <script src="/static/js/idiomorph-ext.min.js" defer></script>
     <script src="/static/js/cais.js" defer></script>
   </head>
-  <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
-    <header class="bg-white border-b border-slate-200 p-4 shadow-sm">
-      <div class="max-w-5xl mx-auto flex justify-between items-center">
-        <a href="/" class="font-bold text-xl text-indigo-600 hover:text-indigo-700 transition">{{.AppName}}</a>
-        <nav class="flex items-center gap-6 text-sm font-medium">
-          `
+  <body hx-ext="morph" class="min-h-screen bg-slate-50 font-sans antialiased text-slate-900 flex flex-col justify-between">
+    <div>
+      <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <a href="/" class="flex items-center gap-2.5 group">
+            <div class="p-2 bg-indigo-600 rounded-lg text-white shadow-xs flex items-center justify-center group-hover:bg-indigo-700 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-lg font-black text-slate-900 tracking-tight font-display flex items-center gap-1.5 leading-none">
+                {{.AppName}}
+                <span class="text-[9px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">Beta</span>
+              </h1>
+              <p class="text-[10px] text-slate-500 font-semibold mt-1">Powered by Cais</p>
+            </div>
+          </a>
+        </div>
+      </header>
+      <nav id="cais-nav" class="bg-white border-b border-slate-200 shadow-2xs sticky top-[53px] z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex space-x-1 py-1.5 overflow-x-auto no-scrollbar">
+            `
 
 const tplLayoutNavFull = `<!-- cais:nav -->
-          <a href="/" class="text-slate-600 hover:text-indigo-600 transition">Home</a>
-          <a href="/contact" class="text-slate-600 hover:text-indigo-600 transition">Contact</a>
-          <a href="/dashboard" class="text-slate-600 hover:text-indigo-600 transition">Dashboard</a>`
+            {{"{{"}} navTab (makeNavTab "/" "Home" "home" (eq .ActiveNav "home")) {{"}}"}}
+            {{"{{"}} navTab (makeNavTab "/contact" "Contact" "message" (eq .ActiveNav "contact")) {{"}}"}}
+            {{"{{"}} navTab (makeNavTab "/dashboard" "Dashboard" "chart" (eq .ActiveNav "dashboard")) {{"}}"}}`
 
 const tplLayoutNavEmpty = `<!-- cais:nav -->`
 
 const tplLayoutBaseClose = `
-        </nav>
+          </div>
+        </div>
+      </nav>
+      <div id="cais-toast-host" aria-live="polite">
+        {{"{{"}} if .Flash {{"}}"}}
+        <div class="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2 border border-slate-700/50" role="status">
+          {{"{{"}} icon "sparkles" "w-5 h-5 text-amber-400 flex-shrink-0" {{"}}"}}
+          <span class="text-xs font-bold">{{"{{"}} .Flash {{"}}"}}</span>
+        </div>
+        {{"{{"}} end {{"}}"}}
       </div>
-    </header>
-    <main class="flex-grow max-w-5xl w-full mx-auto p-6">{{"{{"}} template "content" . {{"}}"}}</main>
-    <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
-      {{.AppName}} — powered by Cais
+      <main id="cais-main" data-cais-view-transition class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-grow">{{"{{"}} template "content" . {{"}}"}}</main>
+    </div>
+    <footer class="mt-auto border-t border-slate-200/80 pt-8 pb-6 text-center text-xs text-slate-400">
+      <div class="max-w-7xl mx-auto px-4">
+        <p>© 2026 {{.AppName}}. Built with Cais.</p>
+        <p class="mt-1">HTMX + Go + SQLite — server-rendered, app-like UX.</p>
+      </div>
     </footer>
     <script>
       if ("serviceWorker" in navigator) {
@@ -104,9 +135,10 @@ const tplLayoutWelcome = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} if .AppName {
     <link rel="apple-touch-icon" href="/static/icons/icon.png" />
     <link rel="icon" href="/static/icons/icon.png" type="image/png" />
     <script src="/static/js/htmx.min.js" defer></script>
+    <script src="/static/js/idiomorph-ext.min.js" defer></script>
     <script src="/static/js/cais.js" defer></script>
   </head>
-  <body class="min-h-screen bg-gradient-to-b from-[#FAF3E8] via-[#EDCFA8] to-[#C9895E] text-stone-800 antialiased">
+  <body hx-ext="morph" class="min-h-screen bg-gradient-to-b from-[#FAF3E8] via-[#EDCFA8] to-[#C9895E] text-stone-800 antialiased">
     <main>{{"{{"}} template "content" . {{"}}"}}</main>
     <script>
       if ("serviceWorker" in navigator) {
@@ -167,15 +199,14 @@ const tplPageHome = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} .AppName {{"}}"}}{
 `
 
 const tplPageContact = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "contact.title" {{"}}"}}{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
-<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto mt-10">
-  <h2 class="text-2xl font-bold text-slate-800 mb-4">{{"{{"}} t "contact.heading" {{"}}"}}</h2>
+<div class="w-full max-w-md mx-auto p-4 md:p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+  <div class="mb-4 pb-4 border-b border-slate-100">
+    <h2 class="text-lg font-black tracking-tight text-slate-900 font-display">{{"{{"}} t "contact.heading" {{"}}"}}</h2>
+    <p class="text-[11px] text-slate-500 font-medium mt-1">{{"{{"}} t "contact.title" {{"}}"}}</p>
+  </div>
   <form
     id="contact-form"
-    hx-post="/contact"
-    hx-target="#form-errors"
-    hx-swap="innerHTML swap:150ms"
-    hx-indicator="#contact-spinner"
-    hx-disabled-elt="button[type='submit']"
+    {{"{{"}} hxForm "/contact" "#form-errors" "#contact-spinner" {{"}}"}}
   >
     <div id="form-errors"></div>
     <label class="block mb-2 text-sm font-medium text-slate-700" for="name">{{"{{"}} t "contact.name_label" {{"}}"}}</label>
@@ -195,7 +226,7 @@ const tplPageContact = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "contact.titl
       required
     />
     <button
-      class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition"
+      class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 px-4 rounded-lg transition shadow-2xs"
       type="submit"
     >
       <span class="htmx-indicator" id="contact-spinner">{{"{{"}} t "contact.sending" {{"}}"}}</span>
@@ -207,35 +238,31 @@ const tplPageContact = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "contact.titl
 `
 
 const tplPageDashboard = `{{"{{"}} define "title" {{"}}"}}Dashboard{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
-<div class="space-y-8">
-  <div>
-    <h2 class="text-3xl font-bold text-slate-800">Dashboard</h2>
-    <p class="text-slate-500 mt-1">Visão geral do seu app {{.AppName}}</p>
+<div class="w-full max-w-4xl mx-auto p-4 md:p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+  <div class="mb-4 pb-4 border-b border-slate-100">
+    <h2 class="text-lg font-black tracking-tight text-slate-900 font-display">Dashboard</h2>
+    <p class="text-[11px] text-slate-500 font-medium">Visão geral do seu app {{.AppName}}</p>
   </div>
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div class="bg-slate-50 rounded-xl border border-slate-200 p-4 hover:shadow-2xs transition">
       <div class="flex items-center justify-between">
-        <p class="text-sm font-semibold text-slate-500 uppercase tracking-wide">Total Contacts</p>
-        <span class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
+        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Contacts</p>
+        <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-100 text-indigo-600">
+          {{"{{"}} icon "users" "w-5 h-5" {{"}}"}}
         </span>
       </div>
-      <p class="mt-4 text-4xl font-bold text-indigo-600">{{"{{"}} .TotalContacts {{"}}"}}</p>
-      <p class="mt-1 text-sm text-slate-400">contatos cadastrados</p>
+      <p class="mt-3 text-3xl font-black text-indigo-600 font-mono">{{"{{"}} .TotalContacts {{"}}"}}</p>
+      <p class="mt-1 text-[10px] text-slate-400 font-medium">contatos cadastrados</p>
     </div>
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition">
+    <div class="bg-slate-50 rounded-xl border border-slate-200 p-4 hover:shadow-2xs transition">
       <div class="flex items-center justify-between">
-        <p class="text-sm font-semibold text-slate-500 uppercase tracking-wide">Environment</p>
-        <span class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-          </svg>
+        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Environment</p>
+        <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-100 text-emerald-600">
+          {{"{{"}} icon "shield" "w-5 h-5" {{"}}"}}
         </span>
       </div>
-      <p class="mt-4 text-4xl font-bold text-emerald-600 capitalize">{{"{{"}} .Env {{"}}"}}</p>
-      <p class="mt-1 text-sm text-slate-400">ambiente atual</p>
+      <p class="mt-3 text-3xl font-black text-emerald-600 capitalize font-mono">{{"{{"}} .Env {{"}}"}}</p>
+      <p class="mt-1 text-[10px] text-slate-400 font-medium">ambiente atual</p>
     </div>
   </div>
 </div>

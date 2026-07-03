@@ -14,6 +14,11 @@ func strPtr(s string) *string { return &s }
 func int64Ptr(n int64) *int64 { return &n }
 `)
 	}
+	if fieldNeedsFloat64Ptr(fields) {
+		b.WriteString(`
+func float64Ptr(n float64) *float64 { return &n }
+`)
+	}
 	return b.String()
 }
 
@@ -24,6 +29,8 @@ func seedValueForField(f FieldDef) string {
 		return "strPtr(" + seedStringValue(f, name) + ")"
 	case "*int64":
 		return "int64Ptr(" + seedIntValue(f, name) + ")"
+	case "*float64":
+		return "float64Ptr(" + seedFloatValue(f, name) + ")"
 	case "bool":
 		if strings.Contains(name, "active") || strings.Contains(name, "enabled") {
 			return "true"
@@ -31,6 +38,8 @@ func seedValueForField(f FieldDef) string {
 		return "false"
 	case "int64":
 		return seedIntValue(f, name)
+	case "float64":
+		return seedFloatValue(f, name)
 	default:
 		return seedStringValue(f, name)
 	}
@@ -56,6 +65,22 @@ func seedIntValue(f FieldDef, name string) string {
 		return "4"
 	}
 	return "1"
+}
+
+func seedFloatValue(f FieldDef, name string) string {
+	if strings.Contains(name, "lat") {
+		return "-25.4284"
+	}
+	if strings.Contains(name, "lng") || strings.Contains(name, "lon") {
+		return "-49.2733"
+	}
+	if strings.Contains(name, "price") || strings.Contains(name, "amount") || strings.Contains(name, "cost") {
+		return "9.99"
+	}
+	if strings.Contains(name, "rating") || strings.Contains(name, "score") {
+		return "4.5"
+	}
+	return "1.0"
 }
 
 func seedStringValue(f FieldDef, name string) string {
@@ -207,7 +232,7 @@ func scanLoopAssign(fields []FieldDef) string {
 
 func needsStrconv(fields []FieldDef) bool {
 	for _, f := range fields {
-		if f.GoType == "int64" || f.GoType == "*int64" {
+		if f.GoType == "int64" || f.GoType == "*int64" || f.GoType == "float64" || f.GoType == "*float64" {
 			return true
 		}
 	}
@@ -244,18 +269,11 @@ func firstIntField(fields []FieldDef) *FieldDef {
 		if f.Widget == "select" {
 			continue
 		}
-		if f.GoType == "int64" || f.GoType == "*int64" {
+		if f.GoType == "int64" || f.GoType == "*int64" || f.GoType == "float64" || f.GoType == "*float64" {
 			return &fields[i]
 		}
 	}
 	return nil
-}
-
-func sumArg(intField *FieldDef) string {
-	if intField == nil {
-		return ""
-	}
-	return ", Total: total"
 }
 
 func displayFieldForList(fields []FieldDef) FieldDef {

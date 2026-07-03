@@ -46,6 +46,22 @@ func FieldInput(f FieldData) template.HTML {
 		b.WriteString(`">`)
 		b.WriteString(template.HTMLEscapeString(f.Value))
 		b.WriteString(`</textarea>`)
+	case "float":
+		b.WriteString(`<div><label class="block text-sm font-medium text-slate-700 mb-1" for="`)
+		b.WriteString(template.HTMLEscapeString(f.Name))
+		b.WriteString(`">`)
+		b.WriteString(template.HTMLEscapeString(f.Label))
+		b.WriteString(`</label><input class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" type="number" step="any" id="`)
+		b.WriteString(template.HTMLEscapeString(f.Name))
+		b.WriteString(`" name="`)
+		b.WriteString(template.HTMLEscapeString(f.Name))
+		b.WriteString(`" value="`)
+		b.WriteString(template.HTMLEscapeString(f.Value))
+		b.WriteString(`"`)
+		if f.Required {
+			b.WriteString(` required`)
+		}
+		b.WriteString(` />`)
 	case "checkbox":
 		b.WriteString(`<label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" name="`)
 		b.WriteString(template.HTMLEscapeString(f.Name))

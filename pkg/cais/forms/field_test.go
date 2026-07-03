@@ -42,6 +42,16 @@ func TestFieldInput_textarea(t *testing.T) {
 	}
 }
 
+func TestFieldInput_float(t *testing.T) {
+	html := string(FieldInput(MakeField("lat", "Latitude", "-25.42", "float", true, nil)))
+	if !strings.Contains(html, `type="number"`) || !strings.Contains(html, `step="any"`) {
+		t.Errorf("expected float number input: %s", html)
+	}
+	if !strings.Contains(html, `value="-25.42"`) {
+		t.Error("missing float value")
+	}
+}
+
 func TestFieldInput_checkbox(t *testing.T) {
 	f := FieldData{Name: "active", Label: "Active", Type: "checkbox", Value: "true"}
 	html := string(FieldInput(f))

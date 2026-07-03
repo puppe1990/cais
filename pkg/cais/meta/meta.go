@@ -18,6 +18,7 @@ type Site struct {
 	AppURL    string
 	CSRFToken string
 	Flash     *flash.Message
+	ActiveNav string // optional tab key for layout navTab helpers (e.g. "home", "contact")
 }
 
 // Preview describes Open Graph / Twitter card metadata for a page.

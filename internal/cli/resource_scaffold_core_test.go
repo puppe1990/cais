@@ -60,6 +60,57 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 	}
 }
 
+func TestScaffoldResource_adminHTMXDefaults(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "htmxshop")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "htmxshop",
+		ModulePath: "github.com/puppe1990/htmxshop",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "widget", resourceOpts{}); err != nil {
+		t.Fatal(err)
+	}
+
+	indexHTML, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages/admin_widgets.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	indexBody := string(indexHTML)
+	for _, want := range []string{`hx-post="/admin/widgets/`, `hx-swap="delete"`, `data-cais-optimistic="remove"`} {
+		if !strings.Contains(indexBody, want) {
+			t.Errorf("admin index missing %q", want)
+		}
+	}
+
+	formHTML, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages/admin_widget_form.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	formBody := string(formHTML)
+	if !strings.Contains(formBody, `hxForm`) || !strings.Contains(formBody, `admin-widget-errors`) {
+		t.Error("admin form should use hxForm and errors target")
+	}
+
+	partialPath := filepath.Join(appDir, "web/templates/partials/admin_widget_form_errors.html")
+	if _, err := os.Stat(partialPath); err != nil {
+		t.Errorf("missing form errors partial: %v", err)
+	}
+
+	adminGo, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/admin_widgets.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	adminBody := string(adminGo)
+	if !strings.Contains(adminBody, "RenderPageOrPartial") {
+		t.Error("admin handler should use RenderPageOrPartial on validation errors")
+	}
+	if !strings.Contains(adminBody, "IsHTMX") {
+		t.Error("admin Delete should handle HTMX with empty response")
+	}
+}
+
 func TestScaffoldResource_DryRunWritesNothing(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "dryrun")

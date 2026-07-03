@@ -87,6 +87,81 @@ func TestScaffoldResource_IntFields(t *testing.T) {
 	}
 }
 
+func TestScaffoldResource_FloatFields(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "markets")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "markets",
+		ModulePath: "github.com/puppe1990/markets",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "store", resourceOpts{
+		Fields: "name:string,lat:float,lng:float?",
+		Seed:   true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	migrations, err := filepath.Glob(filepath.Join(appDir, "internal/store/migrations", "*_stores.sql"))
+	if err != nil || len(migrations) == 0 {
+		t.Fatal("missing stores migration")
+	}
+	migration, err := os.ReadFile(migrations[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	mig := string(migration)
+	if !strings.Contains(mig, "lat REAL NOT NULL") {
+		t.Errorf("migration missing lat REAL: %s", mig)
+	}
+	if !strings.Contains(mig, "lng REAL") || strings.Contains(mig, "lng REAL NOT NULL") {
+		t.Errorf("migration lng should be nullable REAL: %s", mig)
+	}
+
+	model, err := os.ReadFile(filepath.Join(appDir, "internal/models/store.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	modelBody := string(model)
+	if !strings.Contains(modelBody, "Lat") || !strings.Contains(modelBody, "float64") ||
+		!strings.Contains(modelBody, "Lng") || !strings.Contains(modelBody, "*float64") {
+		t.Errorf("model missing float fields: %s", model)
+	}
+
+	admin, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/admin_stores.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	adminBody := string(admin)
+	if !strings.Contains(adminBody, "strconv.ParseFloat") {
+		t.Error("admin handler missing strconv.ParseFloat for float fields")
+	}
+	if strings.Contains(adminBody, `Lat: strings.TrimSpace`) {
+		t.Error("admin handler should not assign float field from string TrimSpace")
+	}
+
+	store, err := os.ReadFile(filepath.Join(appDir, "internal/store/store.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(store), "Lat: -25.4284") {
+		t.Error("seed data should use float literal for lat")
+	}
+
+	form, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages/admin_store_form.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	formBody := string(form)
+	if !strings.Contains(formBody, `makeField "lat" "Lat"`) || !strings.Contains(formBody, `"float"`) {
+		t.Error("admin form should use float HTML type for lat field")
+	}
+	if !strings.Contains(formBody, `makeField "lng" "Lng"`) {
+		t.Error("admin form should include lng float field")
+	}
+}
+
 func TestScaffoldResource_ReferencesField(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "library")

@@ -63,16 +63,96 @@ func TestScaffoldResource_Paginate(t *testing.T) {
 			t.Errorf("admin index data missing field %s", needle)
 		}
 	}
+	for _, needle := range []string{"RenderPageOrPartial", "admin_articles_index"} {
+		if !strings.Contains(adminBody, needle) {
+			t.Errorf("paginated admin handler missing %q", needle)
+		}
+	}
 
 	html, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages/admin_articles.html"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	htmlBody := string(html)
-	for _, needle := range []string{`{{ if .HasPrev }}`, `{{ if .HasNext }}`, `?page={{ .PrevPage }}`, `?page={{ .NextPage }}`} {
+	for _, needle := range []string{`id="admin-articles"`, `admin_articles_index`} {
 		if !strings.Contains(htmlBody, needle) {
-			t.Errorf("admin template missing pagination control %q", needle)
+			t.Errorf("admin page missing %q", needle)
 		}
+	}
+
+	partial, err := os.ReadFile(filepath.Join(appDir, "web/templates/partials/admin_articles_index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	partialBody := string(partial)
+	if !strings.Contains(partialBody, `<table class="w-full`) {
+		t.Error("admin index partial should include table markup")
+	}
+	for _, needle := range []string{
+		`{{ if .HasPrev }}`,
+		`{{ if .HasNext }}`,
+		`hxPaginate`,
+		`?page={{ .PrevPage }}`,
+		`?page={{ .NextPage }}`,
+	} {
+		if !strings.Contains(partialBody, needle) {
+			t.Errorf("admin index partial missing pagination control %q", needle)
+		}
+	}
+}
+
+func TestScaffoldResource_PublicPaginate(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "pubpages")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "pubpages",
+		ModulePath: "github.com/puppe1990/pubpages",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "post", resourceOpts{
+		Fields:   "title:string",
+		Public:   true,
+		Paginate: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	handler, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/posts.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	handlerBody := string(handler)
+	if strings.Contains(handlerBody, "ListAllPosts()") {
+		t.Error("paginated public handler should not call ListAllPosts")
+	}
+	for _, needle := range []string{"ListPosts(page, perPage)", "RenderPageOrPartial", "posts_list"} {
+		if !strings.Contains(handlerBody, needle) {
+			t.Errorf("public handler missing %q", needle)
+		}
+	}
+
+	html, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages/posts.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	htmlBody := string(html)
+	for _, needle := range []string{`id="posts-panel"`, `posts_list`} {
+		if !strings.Contains(htmlBody, needle) {
+			t.Errorf("public page missing %q", needle)
+		}
+	}
+
+	partial, err := os.ReadFile(filepath.Join(appDir, "web/templates/partials/posts_list.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	partialBody := string(partial)
+	if !strings.Contains(partialBody, `id="posts-list"`) {
+		t.Error("public list partial should include list markup")
+	}
+	if !strings.Contains(partialBody, "hxPaginate") {
+		t.Error("public list partial should use hxPaginate for pagination links")
 	}
 }
 

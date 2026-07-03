@@ -93,7 +93,7 @@ func TestScaffoldResource_BlankAppLogoLinksToPublicList(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(layout)
-	if !strings.Contains(body, `<a href="/" class="font-bold`) {
+	if !strings.Contains(body, `<a href="/"`) {
 		t.Error("blank app logo should link to welcome screen at /")
 	}
 	if !strings.Contains(body, `href="/books"`) {
@@ -138,7 +138,7 @@ func TestScaffoldResource_PublicListRichFields(t *testing.T) {
 	if !strings.Contains(body, ".Notes") {
 		t.Error("public list should render notes text field")
 	}
-	for _, needle := range []string{"swap:150ms", `data-cais-optimistic="toggle"`} {
+	for _, needle := range []string{`hxMorphOuter`, `data-cais-optimistic="toggle"`} {
 		if !strings.Contains(body, needle) {
 			t.Errorf("public list missing HTMX UX attribute %q", needle)
 		}

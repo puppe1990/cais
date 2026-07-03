@@ -3,6 +3,7 @@ const CACHE = "cais-static-v1";
 const PRECACHE = [
   "/static/css/styles.css",
   "/static/js/htmx.min.js",
+  "/static/js/idiomorph-ext.min.js",
   "/static/js/cais.js",
   "/static/manifest.webmanifest",
   "/static/icons/icon.png",

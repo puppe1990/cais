@@ -85,6 +85,7 @@ Usage:
   cais g [--dry-run] auth                Add login/logout and protect dashboard
   cais g [--dry-run] console             Scaffold cmd/console/main.go
   cais g [--dry-run] ci                  Add GitHub Actions CI, pre-commit, lint, Prettier
+  cais g [--dry-run] app <template>      Install a full app template (supermarket, …)
   cais install               npm install + go mod tidy
   cais css                   Build Tailwind CSS
   cais dev                   Hot reload (air + tailwind watch)
@@ -210,7 +211,7 @@ func (c *CLI) cmdGenerate(args []string) error {
 	setScaffoldOut(c.Out)
 
 	if len(args) < 1 {
-		return fmt.Errorf("usage: cais g [--dry-run] <handler|page|migration|resource|model|job|console|auth|ci> [name]")
+		return fmt.Errorf("usage: cais g [--dry-run] <handler|page|migration|resource|model|job|console|auth|ci|app> [name]")
 	}
 
 	kind := args[0]
@@ -244,6 +245,11 @@ func (c *CLI) cmdGenerate(args []string) error {
 		}
 		opts.dryRun = dryRun
 		genErr = scaffoldJob(cwd, args[1], opts)
+	case "app":
+		if len(args) < 2 {
+			return fmt.Errorf("usage: cais g app <template> (available: %s)", strings.Join(listAppTemplates(), ", "))
+		}
+		genErr = scaffoldApp(cwd, args[1], dryRun)
 	case "handler", "page", "migration", "resource", "model":
 		if len(args) < 2 {
 			return fmt.Errorf("usage: cais g %s <name>", kind)
@@ -272,7 +278,7 @@ func (c *CLI) cmdGenerate(args []string) error {
 			genErr = scaffoldModel(cwd, name, opts)
 		}
 	default:
-		return fmt.Errorf("unknown generator %q (use handler, page, migration, resource, model, auth, ci, or console)", kind)
+		return fmt.Errorf("unknown generator %q (use handler, page, migration, resource, model, auth, ci, app, or console)", kind)
 	}
 	if genErr != nil {
 		return genErr
@@ -288,6 +294,8 @@ func printGenerateNextSteps(w io.Writer, kind string) {
 	switch kind {
 	case "resource", "model", "migration", "auth":
 		_, _ = fmt.Fprintln(w, "=> Next: cais db migrate && cais test")
+	case "app":
+		_, _ = fmt.Fprintln(w, "=> Next: cais css && cais dev")
 	default:
 		_, _ = fmt.Fprintln(w, "=> Next: cais test")
 	}

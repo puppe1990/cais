@@ -126,6 +126,33 @@ func TestParseFields(t *testing.T) {
 	}
 }
 
+func TestParseFields_floatType(t *testing.T) {
+	fields, err := parseFields("lat:float,lng:float?")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fields) != 2 {
+		t.Fatalf("len = %d", len(fields))
+	}
+	lat := fields[0]
+	if lat.GoType != "float64" {
+		t.Errorf("lat GoType = %q, want float64", lat.GoType)
+	}
+	if lat.SQLType != "REAL NOT NULL DEFAULT 0" {
+		t.Errorf("lat SQLType = %q", lat.SQLType)
+	}
+	if lat.HTMLType != "float" {
+		t.Errorf("lat HTMLType = %q, want float", lat.HTMLType)
+	}
+	lng := fields[1]
+	if lng.GoType != "*float64" {
+		t.Errorf("lng GoType = %q, want *float64", lng.GoType)
+	}
+	if strings.Contains(lng.SQLType, "NOT NULL") {
+		t.Errorf("optional lng SQLType = %q, want nullable", lng.SQLType)
+	}
+}
+
 func TestParseFields_DateType(t *testing.T) {
 	fields, err := parseFields("title:string,due_date:date")
 	if err != nil {

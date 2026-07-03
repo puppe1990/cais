@@ -134,6 +134,23 @@ func TestApp_HomeRoute(t *testing.T) {
 	}
 }
 
+func TestApp_ContactRoute_boostedRequest(t *testing.T) {
+	a := setupTestApp(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/contact", nil)
+	req.Header.Set("HX-Request", "true")
+	req.Header.Set("HX-Boosted", "true")
+	rr := httptest.NewRecorder()
+	a.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "contact") {
+		t.Errorf("body should include contact page markup")
+	}
+}
+
 func TestApp_ContactPost_requiresCSRF(t *testing.T) {
 	a := setupTestApp(t)
 	h := a.Handler()
