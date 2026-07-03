@@ -87,12 +87,14 @@ func fieldFromNameType(name, typ string, required bool) (FieldDef, error) {
 		return FieldDef{Name: toSnake(name), Pascal: pascal, SQLType: "INTEGER NOT NULL DEFAULT 0", GoType: "bool", HTMLType: "checkbox", Widget: "checkbox", Required: false}, nil
 	case "int":
 		return intField(name, pascal, required), nil
+	case "float":
+		return floatField(name, pascal, required), nil
 	case "date":
 		return stringField(name, pascal, required, "date", "input"), nil
 	case "references":
 		return refFieldFromName(toSnake(name), required)
 	default:
-		return FieldDef{}, fmt.Errorf("unknown field type %q (use string, text, url, bool, int, date, references)", typ)
+		return FieldDef{}, fmt.Errorf("unknown field type %q (use string, text, url, bool, int, float, date, references)", typ)
 	}
 }
 
@@ -187,6 +189,24 @@ func stringField(name, pascal string, required bool, htmlType, widget string) Fi
 	return f
 }
 
+func floatField(name, pascal string, required bool) FieldDef {
+	f := FieldDef{
+		Name:     toSnake(name),
+		Pascal:   pascal,
+		HTMLType: "float",
+		Widget:   "input",
+		Required: required,
+	}
+	if required {
+		f.SQLType = "REAL NOT NULL DEFAULT 0"
+		f.GoType = "float64"
+	} else {
+		f.SQLType = "REAL"
+		f.GoType = "*float64"
+	}
+	return f
+}
+
 func intField(name, pascal string, required bool) FieldDef {
 	f := FieldDef{
 		Name:     toSnake(name),
@@ -225,6 +245,15 @@ func fieldNeedsStrPtr(fields []FieldDef) bool {
 func fieldNeedsInt64Ptr(fields []FieldDef) bool {
 	for _, f := range fields {
 		if f.GoType == "*int64" {
+			return true
+		}
+	}
+	return false
+}
+
+func fieldNeedsFloat64Ptr(fields []FieldDef) bool {
+	for _, f := range fields {
+		if f.GoType == "*float64" {
 			return true
 		}
 	}

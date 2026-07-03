@@ -138,7 +138,7 @@ func TestScaffoldResource_PublicListRichFields(t *testing.T) {
 	if !strings.Contains(body, ".Notes") {
 		t.Error("public list should render notes text field")
 	}
-	for _, needle := range []string{"swap:150ms", `data-cais-optimistic="toggle"`} {
+	for _, needle := range []string{`hxMorphOuter`, `data-cais-optimistic="toggle"`} {
 		if !strings.Contains(body, needle) {
 			t.Errorf("public list missing HTMX UX attribute %q", needle)
 		}

@@ -29,13 +29,17 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 	data.MigrationNum = migrationNum
 
 	files := map[string]string{
-		filepath.Join("internal/models", data.Snake+".go"):                     buildResourceModel(data),
-		filepath.Join("internal/handlers", "admin_"+data.Plural+".go"):         buildResourceAdminHandler(data),
-		filepath.Join("internal/handlers", "admin_"+data.Plural+"_test.go"):    buildResourceAdminTest(data),
-		filepath.Join("web/templates/pages", "admin_"+data.Plural+".html"):     buildAdminIndexHTML(data),
-		filepath.Join("web/templates/pages", "admin_"+data.Snake+"_show.html"): buildAdminShowHTML(data),
-		filepath.Join("web/templates/pages", "admin_"+data.Snake+"_form.html"): buildAdminFormHTML(data),
+		filepath.Join("internal/models", data.Snake+".go"):                               buildResourceModel(data),
+		filepath.Join("internal/handlers", "admin_"+data.Plural+".go"):                   buildResourceAdminHandler(data),
+		filepath.Join("internal/handlers", "admin_"+data.Plural+"_test.go"):              buildResourceAdminTest(data),
+		filepath.Join("web/templates/pages", "admin_"+data.Plural+".html"):               buildAdminIndexHTML(data),
+		filepath.Join("web/templates/pages", "admin_"+data.Snake+"_show.html"):           buildAdminShowHTML(data),
+		filepath.Join("web/templates/pages", "admin_"+data.Snake+"_form.html"):           buildAdminFormHTML(data),
+		filepath.Join("web/templates/partials", "admin_"+data.Snake+"_form_errors.html"): buildAdminFormErrorsPartial(data),
 		migrationPath: buildResourceMigration(data),
+	}
+	if data.Paginate {
+		files[filepath.Join("web/templates/partials", "admin_"+data.Plural+"_index.html")] = buildAdminIndexPartial(data)
 	}
 
 	if hasReferenceFields(data.Fields) {
@@ -52,6 +56,9 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 		togglePartial := buildPublicTogglePartial(data)
 		if togglePartial != "" {
 			files[filepath.Join("web/templates/partials", data.Plural+"_toggle.html")] = togglePartial
+		}
+		if data.Paginate {
+			files[filepath.Join("web/templates/partials", data.Plural+"_list.html")] = buildPublicListPartial(data)
 		}
 	}
 
@@ -190,6 +197,8 @@ func buildAdminTestFormBody(fields []FieldDef) string {
 		switch f.GoType {
 		case "int64":
 			val = "30"
+		case "float64":
+			val = "25.49"
 		default:
 			if f.HTMLType == "url" {
 				val = "https://example.com"

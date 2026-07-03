@@ -30,7 +30,24 @@ func buildAdminParseForm(data scaffoldData) string {
 		} else {
 			item.%s = &%sVal
 		}
-	}`, f.Pascal, f.Name, f.Pascal, f.Name, f.Pascal, f.Name, f.Name+" must be a number", f.Pascal, f.Name))
+	}`, f.Pascal, f.Name, f.Pascal, f.Pascal, f.Pascal, f.Name, f.Name+" must be a number", f.Pascal, f.Pascal))
+		case "float64":
+			after = append(after, fmt.Sprintf(`raw%s := strings.TrimSpace(r.FormValue(%q))
+	if raw%s == "" {
+		errs.Add(%q, %q)
+	} else if %sVal, err := strconv.ParseFloat(raw%s, 64); err != nil {
+		errs.Add(%q, %q)
+	} else {
+		item.%s = %sVal
+	}`, f.Pascal, f.Name, f.Pascal, f.Name, f.Name+" is required", f.Pascal, f.Pascal, f.Name, f.Name+" must be a number", f.Pascal, f.Pascal))
+		case "*float64":
+			after = append(after, fmt.Sprintf(`if raw%s := strings.TrimSpace(r.FormValue(%q)); raw%s != "" {
+		if %sVal, err := strconv.ParseFloat(raw%s, 64); err != nil {
+			errs.Add(%q, %q)
+		} else {
+			item.%s = &%sVal
+		}
+	}`, f.Pascal, f.Name, f.Pascal, f.Pascal, f.Pascal, f.Name, f.Name+" must be a number", f.Pascal, f.Pascal))
 		case "*string":
 			if f.HTMLType == "url" {
 				after = append(after, fmt.Sprintf(`if raw%s := strings.TrimSpace(r.FormValue(%q)); raw%s != "" {
@@ -129,7 +146,7 @@ func buildAdminIndexMethod(data scaffoldData) string {
 		return
 	}
 	pg := pagination.New(page, perPage, total)
-	httpx.RenderOrError(w, h.renderer, "base", "admin_%s", Admin%sIndexData{
+	data := Admin%sIndexData{
 		Site:     meta.ForRequest(h.site, r),
 		Items:    items,
 		Page:     pg.Page,
@@ -139,8 +156,14 @@ func buildAdminIndexMethod(data scaffoldData) string {
 		HasNext:  pg.HasNext,
 		PrevPage: pg.PrevPage,
 		NextPage: pg.NextPage,
+	}
+	httpx.RenderPageOrPartial(w, r, h.renderer, httpx.RenderOptions{
+		Layout:  "base",
+		Page:    "admin_%s",
+		Partial: "admin_%s_index",
+		Data:    data,
 	}, h.cfg)
-}`, data.PluralPascal, data.PluralPascal, data.Plural, data.PluralPascal)
+}`, data.PluralPascal, data.PluralPascal, data.PluralPascal, data.Plural, data.Plural)
 	}
 	return fmt.Sprintf(`func (h *Admin%sHandler) Index(w http.ResponseWriter, r *http.Request) {
 	items, err := h.store.ListAll%s()
@@ -246,8 +269,13 @@ func (h *Admin%sHandler) Edit(w http.ResponseWriter, r *http.Request, id int64) 
 func (h *Admin%sHandler) Create(w http.ResponseWriter, r *http.Request) {
 	item, errs := h.parseForm(r)
 	if errs.Any() {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", %s, h.cfg)
+		httpx.RenderPageOrPartial(w, r, h.renderer, httpx.RenderOptions{
+			Layout:  "base",
+			Page:    "admin_%s_form",
+			Partial: "admin_%s_form_errors",
+			Data:    %s,
+			Status:  http.StatusUnprocessableEntity,
+		}, h.cfg)
 		return
 	}
 	if _, err := h.store.Insert%s(item); err != nil {
@@ -261,8 +289,13 @@ func (h *Admin%sHandler) Update(w http.ResponseWriter, r *http.Request, id int64
 	item, errs := h.parseForm(r)
 	item.ID = id
 	if errs.Any() {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		httpx.RenderOrError(w, h.renderer, "base", "admin_%s_form", %s, h.cfg)
+		httpx.RenderPageOrPartial(w, r, h.renderer, httpx.RenderOptions{
+			Layout:  "base",
+			Page:    "admin_%s_form",
+			Partial: "admin_%s_form_errors",
+			Data:    %s,
+			Status:  http.StatusUnprocessableEntity,
+		}, h.cfg)
 		return
 	}
 	if err := h.store.Update%s(item); err != nil {
@@ -275,6 +308,10 @@ func (h *Admin%sHandler) Update(w http.ResponseWriter, r *http.Request, id int64
 func (h *Admin%sHandler) Delete(w http.ResponseWriter, r *http.Request, id int64) {
 	if err := h.store.Delete%s(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if cais.IsHTMX(r) {
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	httpx.SeeOther(w, r, "/admin/%s")
@@ -299,9 +336,9 @@ func (h *Admin%sHandler) parseForm(r *http.Request) (models.%s, validate.FieldEr
 		formDataMethod,
 		data.PluralPascal, data.Snake, newRender,
 		data.PluralPascal, data.Pascal, data.Snake, editRender,
-		data.PluralPascal, data.Snake, createErrRender,
+		data.PluralPascal, data.Snake, data.Snake, createErrRender,
 		data.Pascal, data.Plural,
-		data.PluralPascal, data.Snake, updateErrRender,
+		data.PluralPascal, data.Snake, data.Snake, updateErrRender,
 		data.Pascal, data.Plural,
 		data.PluralPascal, data.Pascal, data.Plural,
 		data.PluralPascal, data.Pascal, parse,
