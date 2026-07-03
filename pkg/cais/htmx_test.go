@@ -22,6 +22,30 @@ func TestSetTrigger(t *testing.T) {
 	}
 }
 
+func TestSetToast(t *testing.T) {
+	rr := httptest.NewRecorder()
+	SetToast(rr, "Saved!")
+	got := rr.Header().Get("HX-Trigger")
+	if got == "" {
+		t.Fatal("HX-Trigger empty")
+	}
+	if got != `{"caisToast":"Saved!"}` {
+		t.Errorf("HX-Trigger = %q, want JSON caisToast payload", got)
+	}
+}
+
+func TestSetFocus(t *testing.T) {
+	rr := httptest.NewRecorder()
+	SetFocus(rr, "#email")
+	got := rr.Header().Get("HX-Trigger")
+	if got == "" {
+		t.Fatal("HX-Trigger empty")
+	}
+	if got != `{"caisFocus":"#email"}` {
+		t.Errorf("HX-Trigger = %q, want caisFocus payload", got)
+	}
+}
+
 func TestSetRetarget(t *testing.T) {
 	rr := httptest.NewRecorder()
 	SetRetarget(rr, "#form-errors")

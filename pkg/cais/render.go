@@ -11,8 +11,10 @@ import (
 	"strings"
 
 	"github.com/puppe1990/cais/pkg/cais/forms"
+	"github.com/puppe1990/cais/pkg/cais/htmxattrs"
 	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
+	"github.com/puppe1990/cais/pkg/cais/ui"
 )
 
 func NewRendererFromDir(dir string, catalog *i18n.Catalog) (*Renderer, error) {
@@ -93,6 +95,12 @@ func parsePage(fsys fs.FS, layoutPaths []string, pagePath string, partialPaths [
 func templateFuncs(catalog *i18n.Catalog) template.FuncMap {
 	extra := meta.TemplateFuncs()
 	for k, v := range forms.Funcs() {
+		extra[k] = v
+	}
+	for k, v := range ui.Funcs() {
+		extra[k] = v
+	}
+	for k, v := range htmxattrs.Funcs() {
 		extra[k] = v
 	}
 	return i18n.MergeFuncs(catalog, extra)
