@@ -167,13 +167,13 @@ func patchRoutesForResource(dir string, data scaffoldData, dryRun bool) error {
 	var insert strings.Builder
 	if data.Public {
 		pubVar := lowerFirst(data.PluralPascal)
-		fmt.Fprintf(&insert, "\t%s := handlers.New%sHandler(deps.Renderer, deps.Store, cfg)\n", pubVar, data.PluralPascal)
+		fmt.Fprintf(&insert, "\t%s := handlers.New%sHandler(deps.Renderer, deps.Store, deps.Site, cfg)\n", pubVar, data.PluralPascal)
 		fmt.Fprintf(&insert, "\tr.Get(\"/%s\", %s.List)\n", data.Plural, pubVar)
 		if firstBoolField(data.Fields) != nil {
 			fmt.Fprintf(&insert, "\tr.Post(\"/%s/{id}/toggle\", cais.IntParam(\"id\", %s.Toggle))\n", data.Plural, pubVar)
 		}
 	}
-	fmt.Fprintf(&insert, "\t%s := handlers.NewAdmin%sHandler(deps.Renderer, deps.Store, cfg)\n", adminVar, data.PluralPascal)
+	fmt.Fprintf(&insert, "\t%s := handlers.NewAdmin%sHandler(deps.Renderer, deps.Store, deps.Site, cfg)\n", adminVar, data.PluralPascal)
 	if data.AdminAuth == "bearer" {
 		fmt.Fprintf(&insert, "\tr.Group(middleware.AdminAuth(cfg), func(g *cais.Router) {\n")
 	} else {

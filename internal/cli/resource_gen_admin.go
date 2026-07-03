@@ -74,8 +74,8 @@ func buildAdminParseForm(data scaffoldData) string {
 
 func buildAdminShowDataStruct(data scaffoldData) string {
 	return fmt.Sprintf(`type Admin%sShowData struct {
-	CSRFToken string
-	Item      models.%s
+	meta.Site
+	Item models.%s
 }`, data.PluralPascal, data.Pascal)
 }
 
@@ -87,8 +87,8 @@ func buildAdminShowMethod(data scaffoldData) string {
 		return
 	}
 	httpx.RenderOrError(w, h.renderer, "base", "admin_%s_show", Admin%sShowData{
-		CSRFToken: csrf.TokenFromRequest(r),
-		Item:      item,
+		Site: meta.ForRequest(h.site, r),
+		Item: item,
 	}, h.cfg)
 }`, data.PluralPascal, data.Pascal, data.Snake, data.PluralPascal)
 }
@@ -96,20 +96,20 @@ func buildAdminShowMethod(data scaffoldData) string {
 func buildAdminIndexDataStruct(data scaffoldData) string {
 	if data.Paginate {
 		return fmt.Sprintf(`type Admin%sIndexData struct {
-	CSRFToken string
-	Items     []models.%s
-	Page      int
-	Total     int
-	PerPage   int
-	HasPrev   bool
-	HasNext   bool
-	PrevPage  int
-	NextPage  int
+	meta.Site
+	Items    []models.%s
+	Page     int
+	Total    int
+	PerPage  int
+	HasPrev  bool
+	HasNext  bool
+	PrevPage int
+	NextPage int
 }`, data.PluralPascal, data.Pascal)
 	}
 	return fmt.Sprintf(`type Admin%sIndexData struct {
-	CSRFToken string
-	Items     []models.%s
+	meta.Site
+	Items []models.%s
 }`, data.PluralPascal, data.Pascal)
 }
 
@@ -130,15 +130,15 @@ func buildAdminIndexMethod(data scaffoldData) string {
 	}
 	pg := pagination.New(page, perPage, total)
 	httpx.RenderOrError(w, h.renderer, "base", "admin_%s", Admin%sIndexData{
-		CSRFToken: csrf.TokenFromRequest(r),
-		Items:     items,
-		Page:      pg.Page,
-		Total:     pg.Total,
-		PerPage:   pg.PerPage,
-		HasPrev:   pg.HasPrev,
-		HasNext:   pg.HasNext,
-		PrevPage:  pg.PrevPage,
-		NextPage:  pg.NextPage,
+		Site:     meta.ForRequest(h.site, r),
+		Items:    items,
+		Page:     pg.Page,
+		Total:    pg.Total,
+		PerPage:  pg.PerPage,
+		HasPrev:  pg.HasPrev,
+		HasNext:  pg.HasNext,
+		PrevPage: pg.PrevPage,
+		NextPage: pg.NextPage,
 	}, h.cfg)
 }`, data.PluralPascal, data.PluralPascal, data.Plural, data.PluralPascal)
 	}
@@ -148,7 +148,10 @@ func buildAdminIndexMethod(data scaffoldData) string {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	httpx.RenderOrError(w, h.renderer, "base", "admin_%s", Admin%sIndexData{CSRFToken: csrf.TokenFromRequest(r), Items: items}, h.cfg)
+	httpx.RenderOrError(w, h.renderer, "base", "admin_%s", Admin%sIndexData{
+		Site:  meta.ForRequest(h.site, r),
+		Items: items,
+	}, h.cfg)
 }`, data.PluralPascal, data.PluralPascal, data.Plural, data.PluralPascal)
 }
 
@@ -157,13 +160,13 @@ func adminFormRender(data scaffoldData, itemExpr, isNewExpr, errsExpr string) st
 		return fmt.Sprintf("h.formData(r, %s, %s, %s)", itemExpr, isNewExpr, errsExpr)
 	}
 	if errsExpr == "nil" {
-		return fmt.Sprintf("Admin%sFormData{CSRFToken: csrf.TokenFromRequest(r), Item: %s, IsNew: %s}", data.PluralPascal, itemExpr, isNewExpr)
+		return fmt.Sprintf("Admin%sFormData{Site: meta.ForRequest(h.site, r), Item: %s, IsNew: %s}", data.PluralPascal, itemExpr, isNewExpr)
 	}
 	return fmt.Sprintf(`Admin%sFormData{
-			CSRFToken: csrf.TokenFromRequest(r),
-			Item:      %s,
-			IsNew:     %s,
-			Errors:    %s,
+			Site:   meta.ForRequest(h.site, r),
+			Item:   %s,
+			IsNew:  %s,
+			Errors: %s,
 		}`, data.PluralPascal, itemExpr, isNewExpr, errsExpr)
 }
 
@@ -200,8 +203,8 @@ import (
 	"%s/pkg/cais/validate"
 %s%s
 	"%s/pkg/cais"
-	"%s/pkg/cais/csrf"
 	"%s/pkg/cais/httpx"
+	"%s/pkg/cais/meta"
 	"%s/internal/models"
 	"%s/internal/store"
 )
@@ -209,6 +212,7 @@ import (
 type Admin%sHandler struct {
 	renderer *cais.Renderer
 	store    store.Store
+	site     meta.Site
 	cfg      cais.Config
 }
 
@@ -218,8 +222,8 @@ type Admin%sHandler struct {
 
 %s
 
-func NewAdmin%sHandler(renderer *cais.Renderer, s store.Store, cfg cais.Config) *Admin%sHandler {
-	return &Admin%sHandler{renderer: renderer, store: s, cfg: cfg}
+func NewAdmin%sHandler(renderer *cais.Renderer, s store.Store, site meta.Site, cfg cais.Config) *Admin%sHandler {
+	return &Admin%sHandler{renderer: renderer, store: s, site: site, cfg: cfg}
 }
 
 %s
@@ -316,10 +320,10 @@ func buildAdminFormDataStruct(data scaffoldData) string {
 		extraBlock = "\n" + strings.Join(extra, "\n")
 	}
 	return fmt.Sprintf(`type Admin%sFormData struct {
-	CSRFToken string
-	Item      models.%s
-	IsNew     bool
-	Errors    validate.FieldErrors%s
+	meta.Site
+	Item   models.%s
+	IsNew  bool
+	Errors validate.FieldErrors%s
 }`, data.PluralPascal, data.Pascal, extraBlock)
 }
 
@@ -349,10 +353,10 @@ func buildAdminFormDataMethod(data scaffoldData) string {
 	loader := buildAdminFormDataLoader(data)
 	return fmt.Sprintf(`func (h *Admin%sHandler) formData(r *http.Request, item models.%s, isNew bool, errs validate.FieldErrors) Admin%sFormData {
 	data := Admin%sFormData{
-		CSRFToken: csrf.TokenFromRequest(r),
-		Item:      item,
-		IsNew:     isNew,
-		Errors:    errs,
+		Site:   meta.ForRequest(h.site, r),
+		Item:   item,
+		IsNew:  isNew,
+		Errors: errs,
 	}
 %s	return data
 }`, data.PluralPascal, data.Pascal, data.PluralPascal, data.PluralPascal, loader)

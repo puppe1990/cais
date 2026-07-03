@@ -120,7 +120,7 @@ func TestAdmin%sHandler_Show(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := NewAdmin%sHandler(setupTestRenderer(t), s, cais.Config{})
+	h := NewAdmin%sHandler(setupTestRenderer(t), s, testSite(), cais.Config{})
 	rr := httptest.NewRecorder()
 	h.Show(rr, testutil.NewRequest(http.MethodGet, "/admin/%s/1", testutil.PathValue("id", "1")), id)
 	if rr.Code != http.StatusOK {
@@ -133,7 +133,7 @@ func TestAdmin%sHandler_Show(t *testing.T) {
 
 func TestAdmin%sHandler_Index(t *testing.T) {
 	s := setupTestStore(t)
-	h := NewAdmin%sHandler(setupTestRenderer(t), s, cais.Config{})
+	h := NewAdmin%sHandler(setupTestRenderer(t), s, testSite(), cais.Config{})
 	rr := httptest.NewRecorder()
 	h.Index(rr, httptest.NewRequest(http.MethodGet, "/admin/%s", nil))
 	if rr.Code != http.StatusOK {
@@ -146,7 +146,7 @@ func TestAdmin%sHandler_Index(t *testing.T) {
 
 func TestAdmin%sHandler_Create(t *testing.T) {
 	s := setupTestStore(t)
-	h := NewAdmin%sHandler(setupTestRenderer(t), s, cais.Config{})
+	h := NewAdmin%sHandler(setupTestRenderer(t), s, testSite(), cais.Config{})
 	req := httptest.NewRequest(http.MethodPost, "/admin/%s", strings.NewReader(%q))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr := httptest.NewRecorder()
@@ -162,7 +162,7 @@ func TestAdmin%sHandler_Delete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := NewAdmin%sHandler(setupTestRenderer(t), s, cais.Config{})
+	h := NewAdmin%sHandler(setupTestRenderer(t), s, testSite(), cais.Config{})
 	rr := httptest.NewRecorder()
 	h.Delete(rr, testutil.NewRequest(http.MethodPost, "/admin/%s/1/delete", testutil.PathValue("id", "1")), id)
 	if rr.Code != http.StatusSeeOther {
@@ -237,7 +237,7 @@ import (
 func Test%sHandler_List(t *testing.T) {
 	s := setupTestStore(t)
 %s
-	h := New%sHandler(setupTestRenderer(t), s, cais.Config{})
+	h := New%sHandler(setupTestRenderer(t), s, testSite(), cais.Config{})
 	rr := httptest.NewRecorder()
 	h.List(rr, httptest.NewRequest(http.MethodGet, "/%s", nil))
 	if rr.Code != http.StatusOK {
