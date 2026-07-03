@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/puppe1990/cais/pkg/cais"
-	"github.com/puppe1990/cais/pkg/cais/logentry"
-	"github.com/puppe1990/cais/pkg/cais/logtime"
 )
 
 func Logger(cfg cais.Config) func(http.Handler) http.Handler {
@@ -23,7 +21,7 @@ func LoggerTo(cfg cais.Config, w io.Writer) func(http.Handler) http.Handler {
 	}
 }
 
-// LoggerWithWriter logs requests. Development emits logentry JSON; production keeps Rails-style text.
+// LoggerWithWriter logs requests. JSON when cfg.LogJSON() (default in dev/production); LOG_FORMAT=text for Rails-style.
 func LoggerWithWriter(cfg cais.Config, w io.Writer, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		if skipRequestLog(r.URL.Path) {
@@ -33,43 +31,12 @@ func LoggerWithWriter(cfg cais.Config, w io.Writer, next http.Handler) http.Hand
 
 		start := time.Now()
 		remote := ClientIP(r, cfg)
-		if cfg.Env == "development" {
-			_ = logentry.Write(w, logentry.Entry{
-				Kind:   "request",
-				Phase:  "started",
-				At:     start.UTC(),
-				Method: r.Method,
-				Path:   r.URL.Path,
-				Remote: remote,
-			})
-		} else {
-			_, _ = fmt.Fprintf(w, "Started %s %q for %s at %s\n", r.Method, r.URL.Path, remote, logtime.Format(start))
-		}
+		logRequestStarted(w, cfg, r.Method, r.URL.Path, remote, start)
 
 		rec := &statusRecorder{ResponseWriter: rw, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
 
-		elapsed := time.Since(start)
-		if cfg.Env == "development" {
-			_ = logentry.Write(w, logentry.Entry{
-				Kind:       "request",
-				Phase:      "completed",
-				At:         time.Now().UTC(),
-				Method:     r.Method,
-				Path:       r.URL.Path,
-				Status:     rec.status,
-				Remote:     remote,
-				DurationMS: float64(elapsed.Microseconds()) / 1000,
-			})
-		} else {
-			_, _ = fmt.Fprintf(
-				w,
-				"Completed %s in %s at %s\n",
-				statusLabel(rec.status),
-				formatDuration(elapsed),
-				logtime.Now(),
-			)
-		}
+		logRequestCompleted(w, cfg, r.Method, r.URL.Path, remote, rec.status, time.Since(start))
 	})
 }
 

@@ -152,6 +152,36 @@ func TestConfig_TrustedProxies_emptyByDefault(t *testing.T) {
 	}
 }
 
+func TestConfig_LogJSON_developmentAndProductionDefault(t *testing.T) {
+	for _, env := range []string{"development", "production"} {
+		if !(Config{Env: env}).LogJSON() {
+			t.Errorf("LogJSON() = false for %q, want true", env)
+		}
+	}
+}
+
+func TestConfig_LogJSON_textOverride(t *testing.T) {
+	cfg := Config{Env: "production", LogFormat: "text"}
+	if cfg.LogJSON() {
+		t.Fatal("LogJSON() = true with LOG_FORMAT=text")
+	}
+}
+
+func TestConfig_LogJSON_jsonOverride(t *testing.T) {
+	cfg := Config{Env: "staging", LogFormat: "json"}
+	if !cfg.LogJSON() {
+		t.Fatal("LogJSON() = false with LOG_FORMAT=json")
+	}
+}
+
+func TestConfig_LoadLogFormatFromEnv(t *testing.T) {
+	t.Setenv("LOG_FORMAT", "text")
+	cfg := Load()
+	if cfg.LogFormat != "text" {
+		t.Errorf("LogFormat = %q, want text", cfg.LogFormat)
+	}
+}
+
 func TestConfig_TrustedProxies_loadFromEnv(t *testing.T) {
 	t.Setenv("TRUSTED_PROXIES", "127.0.0.1, 10.0.0.1")
 

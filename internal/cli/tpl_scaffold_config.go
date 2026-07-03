@@ -45,6 +45,7 @@ PORT=:8080
 ENV=development
 APP_URL=http://localhost:8080
 LOCALE=en
+# LOG_FORMAT=json (default in dev/production) or text for Rails-style request logs
 
 # Database
 DB_PATH=./data/app.db

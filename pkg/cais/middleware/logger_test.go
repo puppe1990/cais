@@ -47,6 +47,46 @@ func TestLogger_SkipsStaticAssets(t *testing.T) {
 	}
 }
 
+func TestLogger_JSONInProduction(t *testing.T) {
+	var buf bytes.Buffer
+	handler := LoggerWithWriter(cais.Config{Env: "production"}, &buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
+	req.RemoteAddr = "10.0.0.2:443"
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected 2 JSON lines, got:\n%s", buf.String())
+	}
+	var completed map[string]any
+	if err := json.Unmarshal([]byte(lines[1]), &completed); err != nil {
+		t.Fatal(err)
+	}
+	if completed["status"].(float64) != 200 {
+		t.Errorf("status = %v", completed["status"])
+	}
+}
+
+func TestLogger_TextInProductionWhenConfigured(t *testing.T) {
+	var buf bytes.Buffer
+	handler := LoggerWithWriter(cais.Config{Env: "production", LogFormat: "text"}, &buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/login", nil)
+	req.RemoteAddr = "127.0.0.1:12345"
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	if !strings.Contains(buf.String(), "Started GET") {
+		t.Fatalf("got:\n%s", buf.String())
+	}
+}
+
 func TestLogger_JSONInDevelopment(t *testing.T) {
 	var buf bytes.Buffer
 	handler := LoggerWithWriter(cais.Config{Env: "development"}, &buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

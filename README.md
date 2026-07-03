@@ -97,7 +97,7 @@ make docker   # optimized image
 Rails-style boot banner on startup (environment, database, listen URL). In development:
 
 - **Port auto-pick** — if `:8080` is busy, shifts to the next free port
-- **Request logs** — JSON lines (`kind: request`) in development; Rails-style text in production
+- **Request logs** — JSON lines (`kind: request`) in development and production; `LOG_FORMAT=text` for Rails-style
 - **SQL logs** — JSON lines (`kind: sql`) via `sqllog.ConfigForEnv` (query, args, duration_ms)
 - **`/logs`** — localhost-only log viewer with HTMX auto-refresh (2s)
 
@@ -290,17 +290,18 @@ Built-in handler: `PruneSessions`. On Lightsail, run `cais jobs work` as a secon
 
 ## Environment variables
 
-| Variable          | Default         | Description                                                              |
-| ----------------- | --------------- | ------------------------------------------------------------------------ |
-| `PORT`            | `:8080`         | Server port                                                              |
-| `DB_PATH`         | `./data/app.db` | SQLite file path                                                         |
-| `ENV`             | `development`   | Environment                                                              |
-| `APP_URL`         | _(empty)_       | Public base URL for OG/Twitter tags (required in production)             |
-| `ADMIN_TOKEN`     | _(empty)_       | Bearer token for admin routes (required in production)                   |
-| `LOCALE`          | `en`            | UI locale (`en` or `pt`)                                                 |
-| `TRUSTED_PROXIES` | _(empty)_       | Comma-separated proxy IPs for `X-Forwarded-For` (rate limits, client IP) |
-| `CAIS_REPLACE`    | _(empty)_       | Local path to Cais framework for `go mod replace` during scaffold        |
-| `CAIS_SKIP_TIDY`  | _(empty)_       | Set to `1` to skip `go mod tidy` after scaffold (tests/CI)               |
+| Variable          | Default         | Description                                                               |
+| ----------------- | --------------- | ------------------------------------------------------------------------- |
+| `PORT`            | `:8080`         | Server port                                                               |
+| `DB_PATH`         | `./data/app.db` | SQLite file path                                                          |
+| `ENV`             | `development`   | Environment                                                               |
+| `LOG_FORMAT`      | _(auto)_        | `json` (default in dev/production) or `text` for Rails-style request logs |
+| `APP_URL`         | _(empty)_       | Public base URL for OG/Twitter tags (required in production)              |
+| `ADMIN_TOKEN`     | _(empty)_       | Bearer token for admin routes (required in production)                    |
+| `LOCALE`          | `en`            | UI locale (`en` or `pt`)                                                  |
+| `TRUSTED_PROXIES` | _(empty)_       | Comma-separated proxy IPs for `X-Forwarded-For` (rate limits, client IP)  |
+| `CAIS_REPLACE`    | _(empty)_       | Local path to Cais framework for `go mod replace` during scaffold         |
+| `CAIS_SKIP_TIDY`  | _(empty)_       | Set to `1` to skip `go mod tidy` after scaffold (tests/CI)                |
 
 ## Deploy (Lightsail)
 
