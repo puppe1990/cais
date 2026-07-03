@@ -6,6 +6,17 @@ import (
 	"testing"
 )
 
+func TestMirror_nilDestination(t *testing.T) {
+	buf := NewBuffer(10)
+	w := Mirror(nil, buf)
+	if n, err := w.Write([]byte("x\n")); err != nil || n != 2 {
+		t.Fatalf("Write = (%d, %v)", n, err)
+	}
+	if !strings.Contains(buf.Text(), "x") {
+		t.Fatal("buffer missing write")
+	}
+}
+
 func TestMirror_WritesToBoth(t *testing.T) {
 	buf := NewBuffer(10)
 	var out bytes.Buffer

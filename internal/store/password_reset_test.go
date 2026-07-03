@@ -121,6 +121,18 @@ func TestStore_CreatePasswordResetToken_invalidatesPrevious(t *testing.T) {
 	}
 }
 
+func TestStore_ResetPasswordWithToken_rejectsUnknownToken(t *testing.T) {
+	s := newTestStore(t)
+
+	hash, err := session.HashPassword("new-password-123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ResetPasswordWithToken("not-a-real-token", hash); err == nil {
+		t.Fatal("expected error for unknown token")
+	}
+}
+
 func TestStore_ResetPasswordWithToken_rejectsExpired(t *testing.T) {
 	s, err := NewSQLiteStore(":memory:", "development")
 	if err != nil {

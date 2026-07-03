@@ -231,6 +231,41 @@ func TestSeedAuthData_skipsOutsideDevelopment(t *testing.T) {
 	}
 }
 
+func TestNewSQLiteStore_developmentWrapsSQLLog(t *testing.T) {
+	s, err := NewSQLiteStore(":memory:", "development")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+
+	user, err := s.FindUserByEmail("demo@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user.Email != "demo@example.com" {
+		t.Errorf("email = %q", user.Email)
+	}
+}
+
+func TestSeedAuthData_idempotentInDevelopment(t *testing.T) {
+	s, err := NewSQLiteStore(":memory:", "development")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+
+	if err := seedAuthData(s.DB(), "development"); err != nil {
+		t.Fatal(err)
+	}
+	user, err := s.FindUserByEmail("demo@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user.ID == 0 {
+		t.Fatal("expected seeded user")
+	}
+}
+
 func TestStore_Sessions_usesSQLiteBackend(t *testing.T) {
 	s := newTestStore(t)
 
