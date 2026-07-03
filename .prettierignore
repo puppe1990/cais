@@ -3,6 +3,7 @@ bin/
 tmp/
 data/
 web/templates/
+internal/cli/app_templates/
 web/static/css/styles.css
 web/static/js/htmx.min.js
 web/static/js/idiomorph-ext.min.js

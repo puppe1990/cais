@@ -28,6 +28,17 @@ func TestCLI_Help_IncludesResource(t *testing.T) {
 	}
 }
 
+func TestCLI_Help_IncludesAppGenerator(t *testing.T) {
+	var buf bytes.Buffer
+	c := &CLI{Out: &buf}
+	if err := c.Run([]string{"help"}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "g [--dry-run] app") {
+		t.Error("help missing g app generator")
+	}
+}
+
 func TestCLI_Help_IncludesModuleFlag(t *testing.T) {
 	var buf bytes.Buffer
 	c := &CLI{Out: &buf}
