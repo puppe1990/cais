@@ -43,6 +43,11 @@ var enMessages = map[string]string{
 	"auth.reset_invalid_token":         "This reset link is invalid or has expired.",
 	"auth.password_too_short":          "Password must be at least 8 characters.",
 	"auth.password_mismatch":           "Passwords do not match.",
+	"auth.signup_title":                "Create account",
+	"auth.signup_submit":               "Sign up",
+	"auth.signup_prompt":               "Don't have an account?",
+	"auth.login_prompt":                "Already have an account?",
+	"auth.email_taken":                 "This email is already registered.",
 
 	"contact.title":          "Contact",
 	"contact.heading":        "Get in touch",
@@ -100,6 +105,11 @@ var ptMessages = map[string]string{
 	"auth.reset_invalid_token":         "Este link é inválido ou expirou.",
 	"auth.password_too_short":          "A senha deve ter pelo menos 8 caracteres.",
 	"auth.password_mismatch":           "As senhas não coincidem.",
+	"auth.signup_title":                "Criar conta",
+	"auth.signup_submit":               "Cadastrar",
+	"auth.signup_prompt":               "Não tem conta?",
+	"auth.login_prompt":                "Já tem conta?",
+	"auth.email_taken":                 "Este email já está cadastrado.",
 
 	"contact.title":          "Contato",
 	"contact.heading":        "Fale conosco",
@@ -177,6 +187,9 @@ func TestDefaultCatalog_english(t *testing.T) {
 	c := DefaultCatalog()
 	if got := c.T("auth.welcome"); got != "Welcome!" {
 		t.Errorf("T(auth.welcome) = %q", got)
+	}
+	if got := c.T("auth.signup_prompt"); got != "Don't have an account?" {
+		t.Errorf("T(auth.signup_prompt) = %q", got)
 	}
 }
 

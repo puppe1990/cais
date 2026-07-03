@@ -71,6 +71,32 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 	}
 }
 
+func TestScaffoldNewApp_i18nIncludesSignupKeys(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "i18napp")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "i18napp",
+		ModulePath: "github.com/puppe1990/i18napp",
+	}, false, false); err != nil {
+		t.Fatal(err)
+	}
+	en, err := os.ReadFile(filepath.Join(appDir, "internal/i18n/en.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{
+		`"auth.signup_prompt"`,
+		`"auth.signup_title"`,
+		`"auth.signup_submit"`,
+		`"auth.login_prompt"`,
+		`"auth.email_taken"`,
+	} {
+		if !strings.Contains(string(en), key) {
+			t.Errorf("internal/i18n/en.go missing %s", key)
+		}
+	}
+}
+
 func TestScaffold_InputCSSIncludesHTMXStyles(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "styles")
