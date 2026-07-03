@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Entry is one JSON log line for development tooling (/logs, agents, grep).
+// Entry is one JSON log line for request/SQL observability (/logs, agents, log aggregators).
 // kind discriminates request vs sql — one schema keeps middleware, sqllog, and devlog aligned.
 type Entry struct {
 	Kind       string    `json:"kind"`

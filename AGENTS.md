@@ -223,7 +223,7 @@ DROP TABLE IF EXISTS bookmarks;
 
 In `ENV=development`:
 
-- `middleware.LoggerTo(devlog.MirrorDefault(...))` — JSON request logs in development (`kind: request`)
+- `middleware.LoggerTo(devlog.MirrorDefault(...))` — JSON request logs when `cfg.LogJSON()` (`kind: request`); `LOG_FORMAT=text` opts out
 - `sqllog.ConfigForEnv(env)` — SQL JSON logs in development (`kind: sql`); plain text when `JSON: false`
 - `devlog.Register(r, cfg.Env, buf)` — mounts `/logs` (localhost only, HTMX refresh)
 

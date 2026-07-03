@@ -13,6 +13,7 @@ type Config struct {
 	AppURL         string
 	AdminToken     string
 	Locale         string
+	LogFormat      string
 	TrustedProxies []string
 }
 
@@ -42,6 +43,9 @@ func Load() Config {
 	if v := os.Getenv("LOCALE"); v != "" {
 		cfg.Locale = v
 	}
+	if v := os.Getenv("LOG_FORMAT"); v != "" {
+		cfg.LogFormat = v
+	}
 	if v := os.Getenv("TRUSTED_PROXIES"); v != "" {
 		for _, ip := range strings.Split(v, ",") {
 			if ip = strings.TrimSpace(ip); ip != "" {
@@ -59,6 +63,19 @@ func (c Config) CookieSecure() bool {
 
 func (c Config) SanitizeErrors() bool {
 	return c.Env == "production"
+}
+
+// LogJSON reports whether request/SQL logs should emit structured JSON lines.
+// Default: JSON in development and production; LOG_FORMAT=text opts out; LOG_FORMAT=json forces JSON.
+func (c Config) LogJSON() bool {
+	switch strings.ToLower(strings.TrimSpace(c.LogFormat)) {
+	case "json":
+		return true
+	case "text":
+		return false
+	default:
+		return c.Env == "development" || c.Env == "production"
+	}
 }
 
 // Validate checks required settings for the active environment.
