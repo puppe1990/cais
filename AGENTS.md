@@ -189,15 +189,18 @@ See `TestApp_LoginPost_withCSRF_redirects`, `TestApp_AuthFlow_loginDashboardLogo
 
 ## HTMX UX (app-like feel)
 
-Layout loads `cais.js` after `htmx.min.js` — CSRF header, focus restore, optimistic toggles.
+Layout loads `cais.js` after `htmx.min.js` — CSRF header, focus restore, optimistic toggles, nav tab sync.
 
+- **App shell** — `#cais-main` + `#cais-nav`; `navTab` links use `hx-boost` (swap main only, no full reload)
 - **Small targets** — swap `#form-errors` or `this`, not whole lists
 - **Transitions** — `hx-swap="innerHTML swap:150ms"` on forms; `outerHTML swap:150ms` on toggles
-- **Forms** — `hx-indicator` + `hx-disabled-elt="button[type='submit']"`; hide label with `.htmx-request-hide`
+- **Forms** — `{{ hxForm "/path" "#errors" "#spinner" }}` (`pkg/cais/htmxattrs`); `.htmx-request-hide` on submit label
 - **Bool toggles** — `data-cais-optimistic="toggle"` for instant class flip (see resource generator)
-- **Optional** — `data-cais-view-transition` enables View Transitions API when supported
-- **CSS** — `input.css` includes `.htmx-swapping` / `.htmx-settling` fade utilities
-- **Response headers** — `cais.SetTrigger(w, "event")`, `cais.SetRetarget(w, "#id")` when needed
+- **Count / remove** — `data-cais-optimistic="count"` or `"remove"` for feed-style actions (rollback on error)
+- **View transitions** — `data-cais-view-transition` on forms and boosted nav (when supported)
+- **CSS** — `input.css`: `.htmx-swapping`, `.htmx-settling`, `.cais-skeleton`, `.cais-toast-enter`
+- **Response headers** — `cais.SetToast`, `cais.SetFocus(w, "#field")`, `cais.SetRetarget`, `cais.SetTrigger`
+- **Admin CRUD** — `cais g resource` generates `hxForm` admin forms, inline delete (`hx-swap="delete"`), `RenderPageOrPartial` on 422
 
 ## New table
 
