@@ -79,6 +79,9 @@ func TestApp_HealthCheck(t *testing.T) {
 	if !strings.Contains(rr.Body.String(), `"status":"ok"`) {
 		t.Errorf("body = %q, want status ok", rr.Body.String())
 	}
+	if !strings.Contains(rr.Body.String(), `"lan_urls"`) {
+		t.Errorf("body = %q, want lan_urls", rr.Body.String())
+	}
 }
 
 func TestApp_HealthCheck_degradedWhenDBClosed(t *testing.T) {

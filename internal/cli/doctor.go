@@ -49,6 +49,9 @@ func runDoctor(w io.Writer, dir string, opts doctorOptions) error {
 			checkFlashTemplate(dir),
 			checkGoogleFonts(dir),
 			checkPWACacheVersion(dir),
+			checkChatSSEPattern(dir),
+			checkSSEReconnectJS(dir),
+			checkHealthLANURLs(dir),
 		)
 	}
 
@@ -355,6 +358,74 @@ func checkPWACacheVersion(dir string) doctorCheck {
 		Optional: true,
 		Detail:   "legacy sw.js without CACHE_VERSION",
 		FixHint:  "run cais pwa to refresh assets, then cais pwa --bump before phone testing",
+	}
+}
+
+func checkChatSSEPattern(dir string) doctorCheck {
+	path := filepath.Join(dir, "web/templates/partials/chat_sse.html")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return doctorCheck{Name: "chat SSE pattern", OK: true, Detail: "skipped (no chat_sse.html)"}
+	}
+	content := string(data)
+	missing := []string{}
+	for _, want := range []string{`id="chat-history"`, `id="chat-sse"`, `hx-swap="beforeend"`, `data-cais-sse-persist`} {
+		if !strings.Contains(content, want) {
+			missing = append(missing, want)
+		}
+	}
+	if len(missing) == 0 {
+		return doctorCheck{Name: "chat SSE pattern", OK: true, Detail: "append-only SSE partial present"}
+	}
+	return doctorCheck{
+		Name:     "chat SSE pattern",
+		Optional: true,
+		Detail:   "chat_sse.html missing: " + strings.Join(missing, ", "),
+		FixHint:  "run cais pwa or copy chat_sse.html from Cais scaffold",
+	}
+}
+
+func checkSSEReconnectJS(dir string) doctorCheck {
+	path := filepath.Join(dir, "web/static/js/cais.js")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return doctorCheck{Name: "SSE reconnect", OK: true, Detail: "skipped (no cais.js)"}
+	}
+	content := string(data)
+	if strings.Contains(content, "reconnectChatSSE") && strings.Contains(content, "htmx:sseClose") {
+		return doctorCheck{Name: "SSE reconnect", OK: true, Detail: "cais.js reconnects SSE after hx-boost"}
+	}
+	return doctorCheck{
+		Name:     "SSE reconnect",
+		Optional: true,
+		Detail:   "cais.js missing hx-boost SSE reconnect helpers",
+		FixHint:  "run cais pwa to refresh cais.js from framework",
+	}
+}
+
+func checkHealthLANURLs(dir string) doctorCheck {
+	path := filepath.Join(dir, "internal/app/app.go")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return doctorCheck{Name: "health lan_urls", OK: true, Detail: "skipped (no app.go)"}
+	}
+	content := string(data)
+	if strings.Contains(content, "http://http://") {
+		return doctorCheck{
+			Name:     "health lan_urls",
+			Optional: true,
+			Detail:   "malformed double http:// in health handler",
+			FixHint:  "use netutil.HealthPayload(status, cfg.Port) — never concatenate APP_URL + port manually",
+		}
+	}
+	if strings.Contains(content, "netutil.HealthPayload") {
+		return doctorCheck{Name: "health lan_urls", OK: true, Detail: "uses netutil.HealthPayload"}
+	}
+	return doctorCheck{
+		Name:     "health lan_urls",
+		Optional: true,
+		Detail:   "health handler does not expose lan_urls via netutil",
+		FixHint:  "use netutil.HealthPayload in healthHandler for phone testing",
 	}
 }
 

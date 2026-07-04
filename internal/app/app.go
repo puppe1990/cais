@@ -14,6 +14,7 @@ import (
 	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/middleware"
+	"github.com/puppe1990/cais/pkg/cais/netutil"
 )
 
 type Deps struct {
@@ -61,7 +62,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 
 	registerRoutes(r, deps, cfg, site)
 	devlog.Register(r, cfg.Env, buf)
-	r.Get("/health", healthHandler(deps.Store))
+	r.Get("/health", healthHandler(deps.Store, cfg))
 
 	return &App{
 		config: cfg,
@@ -78,7 +79,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	}, nil
 }
 
-func healthHandler(s store.Store) http.HandlerFunc {
+func healthHandler(s store.Store, cfg cais.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := "ok"
 		code := http.StatusOK
@@ -88,7 +89,7 @@ func healthHandler(s store.Store) http.HandlerFunc {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)
-		_ = json.NewEncoder(w).Encode(map[string]string{"status": status})
+		_ = json.NewEncoder(w).Encode(netutil.HealthPayload(status, cfg.Port))
 	}
 }
 

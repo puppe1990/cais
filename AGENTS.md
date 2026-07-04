@@ -106,9 +106,12 @@ Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap so layouts render corre
 ## Mobile PWA
 
 - `boot.Print` shows **LAN** URLs for phone testing on Wi‑Fi
+- `GET /health` returns `lan_urls` via `netutil.HealthPayload` — use this array, never concatenate `APP_URL` + port manually
 - `cais pwa --bump` increments `CACHE_VERSION` in `sw.js` after template/HTML changes
-- `cais doctor --mobile` checks flash markup, Google Fonts CSP, and SW cache version
+- `cais doctor --mobile` checks flash markup, Google Fonts CSP, SW cache, chat SSE partial, SSE reconnect in `cais.js`, and health `lan_urls`
 - Scaffold `input.css` uses system fonts (no `fonts.googleapis.com` — blocked by default CSP)
+
+**Mobile SSE checklist:** `cais doctor --mobile` → `cais pwa --bump` → open boot **LAN** URL on phone → stay on chat page while agent responds (avoid hx-boost away mid-stream)
 
 ## Security headers
 
