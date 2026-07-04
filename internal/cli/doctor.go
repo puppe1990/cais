@@ -19,7 +19,11 @@ type doctorCheck struct {
 	FixHint  string
 }
 
-func runDoctor(w io.Writer, dir string) error {
+type doctorOptions struct {
+	Mobile bool
+}
+
+func runDoctor(w io.Writer, dir string, opts doctorOptions) error {
 	checks := []doctorCheck{
 		checkGoMod(dir),
 		checkCaisDep(dir),
@@ -39,6 +43,13 @@ func runDoctor(w io.Writer, dir string) error {
 	}
 	if c := checkSeedsInfo(dir); c != nil {
 		checks = append(checks, *c)
+	}
+	if opts.Mobile {
+		checks = append(checks,
+			checkFlashTemplate(dir),
+			checkGoogleFonts(dir),
+			checkPWACacheVersion(dir),
+		)
 	}
 
 	var failed int
@@ -120,7 +131,10 @@ func checkHTMX(dir string) doctorCheck {
 	return doctorCheck{Name: "htmx.min.js", OK: true}
 }
 
-var writeTimeoutRe = regexp.MustCompile(`WriteTimeout:\s*(\d+)\s*\*\s*time\.Second`)
+var (
+	writeTimeoutRe     = regexp.MustCompile(`WriteTimeout:\s*(\d+)\s*\*\s*time\.Second`)
+	cacheVersionDoctor = regexp.MustCompile(`const CACHE_VERSION = \d+;`)
+)
 
 func checkSSEWriteTimeout(dir string) doctorCheck {
 	ssePath := filepath.Join(dir, "web/static/js/sse-ext.min.js")
@@ -286,6 +300,61 @@ func checkSMTP(dir string) doctorCheck {
 		Optional: true,
 		Detail:   "password reset emails log to stdout without SMTP_HOST/SMTP_FROM",
 		FixHint:  "set SMTP_HOST and SMTP_FROM in .env for outbound mail",
+	}
+}
+
+func checkFlashTemplate(dir string) doctorCheck {
+	path := filepath.Join(dir, "web/templates/layouts/base.html")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return doctorCheck{Name: "flash template", OK: true, Detail: "skipped (no base.html)"}
+	}
+	content := string(data)
+	if strings.Contains(content, "flashMessage") || strings.Contains(content, ".Flash.Message") {
+		return doctorCheck{Name: "flash template", OK: true, Detail: "uses flashMessage or .Flash.Message"}
+	}
+	if strings.Contains(content, "{{ .Flash }}") || strings.Contains(content, "{{.Flash}}") {
+		return doctorCheck{
+			Name:     "flash template",
+			Optional: true,
+			Detail:   "renders struct as {notice text} — use {{ flashMessage .Flash }}",
+			FixHint:  "replace {{ .Flash }} with {{ flashMessage .Flash }} in layouts/base.html",
+		}
+	}
+	return doctorCheck{Name: "flash template", OK: true, Detail: "no flash markup detected"}
+}
+
+func checkGoogleFonts(dir string) doctorCheck {
+	path := filepath.Join(dir, "input.css")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return doctorCheck{Name: "CSP fonts", OK: true, Detail: "skipped (no input.css)"}
+	}
+	if strings.Contains(string(data), "fonts.googleapis.com") {
+		return doctorCheck{
+			Name:     "CSP fonts",
+			Optional: true,
+			Detail:   "Google Fonts @import blocked by default CSP (style-src 'self')",
+			FixHint:  "remove fonts.googleapis.com from input.css; use system font stack in tailwind.config.js",
+		}
+	}
+	return doctorCheck{Name: "CSP fonts", OK: true, Detail: "no external font imports"}
+}
+
+func checkPWACacheVersion(dir string) doctorCheck {
+	path := filepath.Join(dir, "web/static/js/sw.js")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return doctorCheck{Name: "PWA cache version", OK: true, Detail: "skipped (no sw.js)"}
+	}
+	if cacheVersionDoctor.Match(data) {
+		return doctorCheck{Name: "PWA cache version", OK: true, Detail: "CACHE_VERSION present — run cais pwa --bump after template changes"}
+	}
+	return doctorCheck{
+		Name:     "PWA cache version",
+		Optional: true,
+		Detail:   "legacy sw.js without CACHE_VERSION",
+		FixHint:  "run cais pwa to refresh assets, then cais pwa --bump before phone testing",
 	}
 }
 

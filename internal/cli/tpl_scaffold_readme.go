@@ -52,7 +52,12 @@ const tplREADME = "# {{.AppName}}\n\n" +
 	"| PORT      | :8080           | Server port      |\n" +
 	"| DB_PATH   | ./data/app.db   | SQLite file path |\n" +
 	"| ENV       | development     | Environment      |\n\n" +
-	"Health check: GET /health → {\"status\":\"ok\"}\n"
+	"Health check: GET /health → {\"status\":\"ok\"}\n\n" +
+	"## Testing on phone (LAN)\n\n" +
+	"1. Run `cais dev` and note the **LAN** URL printed at boot (e.g. `http://192.168.1.10:8080`).\n" +
+	"2. Open that URL in mobile Safari/Chrome on the same Wi‑Fi.\n" +
+	"3. After template or SSE changes, run `cais pwa --bump` and reinstall the PWA (or clear site data) so the service worker cache refreshes.\n" +
+	"4. Run `cais doctor --mobile` to catch flash markup, font CSP, and SW cache issues.\n"
 
 const tplREADMEBlank = "# {{.AppName}}\n\n" +
 	"Full-stack Go app built with [Cais](https://github.com/puppe1990/cais): server-side HTML, HTMX, Tailwind, and SQLite.\n\n" +

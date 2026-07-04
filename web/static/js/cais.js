@@ -224,8 +224,7 @@
   document.body.addEventListener("click", function (evt) {
     var btn = evt.target.closest("[data-cais-password-toggle]");
     if (!btn) return;
-    evt.preventDefault();
-    var wrap = btn.closest(".cais-password-wrap") || btn.closest(".relative");
+    var wrap = btn.closest(".relative");
     if (!wrap) return;
     var input = wrap.querySelector("input");
     if (!input) return;

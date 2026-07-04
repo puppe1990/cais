@@ -94,6 +94,29 @@ func TestResolvePort_StrictFailsWhenBusy(t *testing.T) {
 	}
 }
 
+func TestPortBusy_trueWhenListening(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ln.Close() }()
+	if !PortBusy(ln.Addr().String()) {
+		t.Fatal("PortBusy should be true for bound address")
+	}
+}
+
+func TestPortBusy_falseWhenFree(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := ln.Addr().String()
+	_ = ln.Close()
+	if PortBusy(addr) {
+		t.Fatal("PortBusy should be false after listener closed")
+	}
+}
+
 func TestResolvePort_UnchangedWhenFree(t *testing.T) {
 	resolved, shifted, err := ResolvePort(":0", "development")
 	if err != nil {

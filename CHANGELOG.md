@@ -9,12 +9,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 ### Added
 
 - `pkg/cais/stream` — `Flush` and `RelaySSE` for HTMX SSE through middleware-wrapped `ResponseWriter`s
+- `{{ flashMessage .Flash }}` template helper in `pkg/cais/forms`
+- `cais pwa [--bump]` — refresh PWA assets; `--bump` increments `CACHE_VERSION` in `sw.js`
+- `cais doctor --mobile` — flash template, Google Fonts CSP, and PWA cache version checks
+- `boot.Print` LAN URL line via `pkg/cais/netutil`
+- `cais.PortBusy` and dev-server warning when the configured port is already in use
 - Scaffold partial `chat_sse.html` — append-only SSE chat pattern (`#chat-history` + `#chat-sse`)
 - `cais doctor` warns when `sse-ext.min.js` is installed but `WriteTimeout > 0`
 
 ### Changed
 
 - Scaffold and reference app default `WriteTimeout: 0` so long-lived SSE connections are not killed at 30s
+- Scaffold uses system font stack (no Google Fonts `@import`) to avoid CSP console errors
+- Scaffold layouts use `{{ flashMessage .Flash }}` instead of struct stringification
 
 ## [0.6.0] - 2026-07-04
 

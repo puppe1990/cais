@@ -45,7 +45,9 @@ func (c *CLI) Run(args []string) error {
 	case "test":
 		return c.cmdTest()
 	case "doctor":
-		return c.cmdDoctor()
+		return c.cmdDoctor(args[1:])
+	case "pwa":
+		return c.cmdPWA(args[1:])
 	case "console", "c":
 		return c.cmdConsole()
 	case "db":
@@ -92,7 +94,8 @@ Usage:
                                Build bin/server (cross-compile for deploy)
   cais server                Run the app (go run ./cmd/server)
   cais test                  Run tests (go test ./...)
-  cais doctor                Check app setup (htmx, air, go.mod)
+  cais doctor [--mobile]     Check app setup (htmx, air, go.mod, PWA/mobile)
+  cais pwa [--bump]          Write or refresh PWA assets; --bump invalidates SW cache
   cais console               Interactive app console (Go REPL + SQL)
   cais db migrate            Run pending SQL migrations
   cais db status             List migration status
@@ -310,12 +313,18 @@ func (c *CLI) cmdServer() error {
 	return runCmd(dir, "go", "run", "./cmd/server")
 }
 
-func (c *CLI) cmdDoctor() error {
+func (c *CLI) cmdDoctor(args []string) error {
 	dir, err := c.appDir()
 	if err != nil {
 		return err
 	}
-	return runDoctor(c.Out, dir)
+	opts := doctorOptions{}
+	for _, arg := range args {
+		if arg == "--mobile" {
+			opts.Mobile = true
+		}
+	}
+	return runDoctor(c.Out, dir, opts)
 }
 
 func (c *CLI) cmdTest() error {

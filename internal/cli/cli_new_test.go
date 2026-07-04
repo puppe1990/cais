@@ -78,6 +78,22 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 	if !strings.Contains(string(appGo), "WriteTimeout:      0,") {
 		t.Error("app.go should disable WriteTimeout for SSE streaming")
 	}
+
+	layout, err := os.ReadFile(filepath.Join(appDir, "web/templates/layouts/base.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(layout), "flashMessage") {
+		t.Error("base.html should use flashMessage helper")
+	}
+
+	css, err := os.ReadFile(filepath.Join(appDir, "input.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(css), "fonts.googleapis.com") {
+		t.Error("input.css should not import Google Fonts (CSP blocked)")
+	}
 }
 
 func TestScaffoldNewApp_i18nIncludesSignupKeys(t *testing.T) {
@@ -120,7 +136,7 @@ func TestScaffold_InputCSSIncludesHTMXStyles(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(css)
-	for _, needle := range []string{".htmx-swapping", ".htmx-settling", ".htmx-indicator", ".no-scrollbar", ".cais-toast-enter", ".cais-skeleton", "Inter", "Space+Grotesk"} {
+	for _, needle := range []string{".htmx-swapping", ".htmx-settling", ".htmx-indicator", ".no-scrollbar", ".cais-toast-enter", ".cais-skeleton"} {
 		if !strings.Contains(body, needle) {
 			t.Errorf("input.css missing %q", needle)
 		}
@@ -129,8 +145,11 @@ func TestScaffold_InputCSSIncludesHTMXStyles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(tailwind), "Space Grotesk") {
-		t.Error("tailwind.config.js missing Space Grotesk display font")
+	if strings.Contains(string(tailwind), "fonts.googleapis.com") {
+		t.Error("tailwind.config.js should not reference Google Fonts")
+	}
+	if !strings.Contains(string(tailwind), "system-ui") {
+		t.Error("tailwind.config.js should use system font stack")
 	}
 }
 

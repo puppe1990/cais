@@ -74,6 +74,16 @@ func parseListenPort(port string) (host string, base int, err error) {
 	return hostPart, base, nil
 }
 
+// PortBusy reports whether something is already listening on addr.
+func PortBusy(addr string) bool {
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return true
+	}
+	_ = ln.Close()
+	return false
+}
+
 func formatListenAddr(host string, port int) string {
 	if host == "" {
 		return fmt.Sprintf(":%d", port)

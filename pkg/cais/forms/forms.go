@@ -9,6 +9,7 @@ import (
 // Funcs returns template helpers for HTML forms.
 func Funcs() template.FuncMap {
 	return template.FuncMap{
+		"flashMessage":       FlashMessage,
 		"csrfField":          CSRFTokenField,
 		"fieldError":         FieldError,
 		"makeField":          MakeField,

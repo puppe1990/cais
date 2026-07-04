@@ -1,4 +1,5 @@
-const CACHE = "cais-static-v1";
+const CACHE_VERSION = 1;
+const CACHE = "cais-static-v" + CACHE_VERSION;
 
 const PRECACHE = [
   "/static/css/styles.css",

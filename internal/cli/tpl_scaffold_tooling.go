@@ -1,8 +1,6 @@
 package cli
 
-const tplInputCSS = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
-
-@tailwind base;
+const tplInputCSS = `@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -119,8 +117,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Inter"', "ui-sans-serif", "system-ui", "sans-serif"],
-        display: ['"Space Grotesk"', "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+        display: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
         mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "monospace"],
       },
       boxShadow: {

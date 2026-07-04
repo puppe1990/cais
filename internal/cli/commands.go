@@ -112,6 +112,8 @@ func (c *CLI) cmdDev() error {
 	}
 	defer func() { _ = watch.Process.Kill() }()
 
+	warnPortInUse(c.Out, dir)
+
 	if air := findAir(); air != "" {
 		boot.PrintDevBanner(c.Out, boot.CaisVersion())
 		return runCmd(dir, air, "-c", ".air.toml")
