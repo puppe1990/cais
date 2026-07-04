@@ -16,6 +16,9 @@ type Product struct {
 	Name     string
 	Category string
 	Barcode  string
+	Brand    string
+	Quantity string
+	ImageURL string
 }
 
 // Client queries Open Food Facts (or a compatible mock in tests).
@@ -54,8 +57,12 @@ func (c *Client) Lookup(ctx context.Context, ean string) (Product, bool, error) 
 	var payload struct {
 		Status  int `json:"status"`
 		Product struct {
-			ProductName string `json:"product_name"`
-			Categories  string `json:"categories"`
+			ProductName   string `json:"product_name"`
+			Categories    string `json:"categories"`
+			Brands        string `json:"brands"`
+			Quantity      string `json:"quantity"`
+			ImageFrontURL string `json:"image_front_url"`
+			ImageURL      string `json:"image_url"`
 		} `json:"product"`
 	}
 	if err := json.Unmarshal(body, &payload); err != nil {
@@ -65,10 +72,18 @@ func (c *Client) Lookup(ctx context.Context, ean string) (Product, bool, error) 
 		return Product{}, false, nil
 	}
 
+	imageURL := strings.TrimSpace(payload.Product.ImageFrontURL)
+	if imageURL == "" {
+		imageURL = strings.TrimSpace(payload.Product.ImageURL)
+	}
+
 	return Product{
 		Name:     payload.Product.ProductName,
 		Category: firstCategory(payload.Product.Categories),
 		Barcode:  ean,
+		Brand:    strings.TrimSpace(payload.Product.Brands),
+		Quantity: strings.TrimSpace(payload.Product.Quantity),
+		ImageURL: imageURL,
 	}, true, nil
 }
 

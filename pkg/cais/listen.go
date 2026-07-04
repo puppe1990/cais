@@ -3,6 +3,7 @@ package cais
 import (
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -25,16 +26,32 @@ func ResolvePort(port, env string) (resolved string, shifted bool, err error) {
 		return "", false, err
 	}
 
-	for i := 0; i < maxPortAttempts; i++ {
+	attempts := maxPortAttempts
+	if portStrictEnabled() {
+		attempts = 1
+	}
+
+	var lastErr error
+	for i := 0; i < attempts; i++ {
 		candidate := formatListenAddr(host, base+i)
 		ln, listenErr := net.Listen("tcp", candidate)
 		if listenErr == nil {
 			_ = ln.Close()
 			return candidate, i > 0, nil
 		}
+		lastErr = listenErr
 	}
 
-	return "", false, fmt.Errorf("no free port near %s after %d attempts", port, maxPortAttempts)
+	if portStrictEnabled() && lastErr != nil {
+		return "", false, fmt.Errorf("port %s in use (%v); stop the other process or run your app stop script", port, lastErr)
+	}
+
+	return "", false, fmt.Errorf("no free port near %s after %d attempts", port, attempts)
+}
+
+func portStrictEnabled() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("PORT_STRICT")))
+	return v == "1" || v == "true" || v == "yes"
 }
 
 func parseListenPort(port string) (host string, base int, err error) {

@@ -65,6 +65,35 @@ func TestResolvePort_KeepsPreferredInProduction(t *testing.T) {
 	}
 }
 
+func TestResolvePort_StrictFailsWhenBusy(t *testing.T) {
+	t.Setenv("PORT_STRICT", "1")
+
+	probe, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, port, err := net.SplitHostPort(probe.Addr().String())
+	_ = probe.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	preferred := ":" + port
+	ln, err := net.Listen("tcp", preferred)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = ln.Close() })
+
+	_, shifted, err := ResolvePort(preferred, "development")
+	if err == nil {
+		t.Fatal("expected error when PORT_STRICT=1 and port busy")
+	}
+	if shifted {
+		t.Fatal("expected shifted=false on strict failure")
+	}
+}
+
 func TestResolvePort_UnchangedWhenFree(t *testing.T) {
 	resolved, shifted, err := ResolvePort(":0", "development")
 	if err != nil {

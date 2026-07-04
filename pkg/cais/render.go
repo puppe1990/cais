@@ -68,13 +68,17 @@ func NewRenderer(fsys fs.FS, catalog *i18n.Catalog) (*Renderer, error) {
 		r.pages[name] = tmpl
 	}
 
+	// Parse all partials together so {{ template "other_partial" }} works in HTMX fragments.
+	var allPartials *template.Template
+	if len(partials) > 0 {
+		allPartials, err = template.New("").Funcs(templateFuncs(catalog)).ParseFS(fsys, partials...)
+		if err != nil {
+			return nil, fmt.Errorf("parse partials: %w", err)
+		}
+	}
 	for _, partialPath := range partials {
 		name := strings.TrimSuffix(filepath.Base(partialPath), ".html")
-		tmpl, err := template.New("").Funcs(templateFuncs(catalog)).ParseFS(fsys, partialPath)
-		if err != nil {
-			return nil, fmt.Errorf("parse partial %s: %w", name, err)
-		}
-		r.partials[name] = tmpl
+		r.partials[name] = allPartials
 	}
 
 	return r, nil

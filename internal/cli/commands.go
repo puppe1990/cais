@@ -127,16 +127,15 @@ func runCmd(dir string, name string, args ...string) error {
 }
 
 func findAir() string {
+	home, err := os.UserHomeDir()
+	if err == nil {
+		candidate := filepath.Join(home, "go", "bin", "air")
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
 	if path, err := exec.LookPath("air"); err == nil {
 		return path
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	candidate := filepath.Join(home, "go", "bin", "air")
-	if _, err := os.Stat(candidate); err == nil {
-		return candidate
 	}
 	return ""
 }

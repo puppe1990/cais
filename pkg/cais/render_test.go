@@ -71,6 +71,21 @@ func TestRender_Partial(t *testing.T) {
 	}
 }
 
+func TestRender_PartialNested(t *testing.T) {
+	r := testRenderer(t)
+
+	var buf strings.Builder
+	err := r.RenderPartial(&buf, "nested_parent", map[string]string{"Name": "Ada"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	body := buf.String()
+	if body != "<div id=\"wrap\"><p>Greetings, Ada</p></div>" {
+		t.Errorf("body = %q, want nested partial render", body)
+	}
+}
+
 func TestRender_EmbedFS(t *testing.T) {
 	tmplFS, err := fs.Sub(testTemplates, "testdata/templates")
 	if err != nil {
