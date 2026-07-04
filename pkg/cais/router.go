@@ -10,6 +10,7 @@ type Middleware func(http.Handler) http.Handler
 type IntHandler func(http.ResponseWriter, *http.Request, int64)
 type StringHandler func(http.ResponseWriter, *http.Request, string)
 type StringParamsHandler func(http.ResponseWriter, *http.Request, string, string)
+type IntStringParamsHandler func(http.ResponseWriter, *http.Request, int64, string)
 
 type Router struct {
 	mux         *http.ServeMux
@@ -106,6 +107,23 @@ func IntParam(name string, fn IntHandler) http.HandlerFunc {
 			return
 		}
 		fn(w, r, id)
+	}
+}
+
+// IntStringParams wraps a handler with an int64 and string path parameter.
+func IntStringParams(intName, stringName string, fn IntStringParamsHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(r.PathValue(intName), 10, 64)
+		if err != nil || id <= 0 {
+			http.NotFound(w, r)
+			return
+		}
+		s := r.PathValue(stringName)
+		if s == "" {
+			http.NotFound(w, r)
+			return
+		}
+		fn(w, r, id, s)
 	}
 }
 

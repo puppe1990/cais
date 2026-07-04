@@ -15,6 +15,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 - `boot.Print` LAN URL line via `pkg/cais/netutil`
 - `cais.PortBusy` and dev-server warning when the configured port is already in use
 - `cais.StringParams` — ergonomic two-param routes without nested `StringParam` callbacks
+- `cais.IntStringParams` — int + string path params in one wrapper
+- `cais link [path] [--unlink]` — go.mod `replace` for local framework development
 - Scaffold partial `chat_sse.html` — append-only SSE chat pattern (`#chat-history` + `#chat-sse`)
 - `cais doctor` warns when `sse-ext.min.js` is installed but `WriteTimeout > 0`
 

@@ -48,6 +48,8 @@ func (c *CLI) Run(args []string) error {
 		return c.cmdDoctor(args[1:])
 	case "pwa":
 		return c.cmdPWA(args[1:])
+	case "link":
+		return c.cmdLink(args[1:])
 	case "console", "c":
 		return c.cmdConsole()
 	case "db":
@@ -96,6 +98,7 @@ Usage:
   cais test                  Run tests (go test ./...)
   cais doctor [--mobile]     Check app setup (htmx, air, go.mod, PWA/mobile)
   cais pwa [--bump]          Write or refresh PWA assets; --bump invalidates SW cache
+  cais link [path] [--unlink]  Add go.mod replace for local Cais dev (default: sibling ../Cais)
   cais console               Interactive app console (Go REPL + SQL)
   cais db migrate            Run pending SQL migrations
   cais db status             List migration status
