@@ -49,6 +49,7 @@ func TestScaffoldTemplates_allRequiredPresent(t *testing.T) {
 		TplPageDashboard      string
 		TplPartialErrors      string
 		TplPartialSuccess     string
+		TplPartialChatSSE     string
 		TplGenericPage        string
 		TplInputCSS           string
 		TplTailwind           string
@@ -118,6 +119,7 @@ func TestScaffoldTemplates_allRequiredPresent(t *testing.T) {
 		TplPageDashboard:      tplPageDashboard,
 		TplPartialErrors:      tplPartialErrors,
 		TplPartialSuccess:     tplPartialSuccess,
+		TplPartialChatSSE:     tplPartialChatSSE,
 		TplGenericPage:        tplGenericPage,
 		TplInputCSS:           tplInputCSS,
 		TplTailwind:           tplTailwind,

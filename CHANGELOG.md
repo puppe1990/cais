@@ -6,6 +6,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ## Unreleased
 
+### Added
+
+- `pkg/cais/stream` — `Flush` and `RelaySSE` for HTMX SSE through middleware-wrapped `ResponseWriter`s
+- Scaffold partial `chat_sse.html` — append-only SSE chat pattern (`#chat-history` + `#chat-sse`)
+- `cais doctor` warns when `sse-ext.min.js` is installed but `WriteTimeout > 0`
+
+### Changed
+
+- Scaffold and reference app default `WriteTimeout: 0` so long-lived SSE connections are not killed at 30s
+
 ## [0.6.0] - 2026-07-04
 
 ### Added

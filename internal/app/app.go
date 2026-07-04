@@ -72,7 +72,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 			Handler:           r,
 			ReadHeaderTimeout: 10 * time.Second,
 			ReadTimeout:       30 * time.Second,
-			WriteTimeout:      30 * time.Second,
+			WriteTimeout:      0, // SSE/long-lived streams; per-handler deadlines via pkg/cais/stream
 			IdleTimeout:       60 * time.Second,
 		},
 	}, nil

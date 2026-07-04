@@ -9,6 +9,55 @@ import (
 	"testing"
 )
 
+func TestDoctor_SSEWriteTimeoutWarnsWhenPositive(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	dir := t.TempDir()
+	if err := scaffoldNewApp(dir, scaffoldData{
+		AppName:    "ok",
+		ModulePath: "github.com/puppe1990/ok",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+
+	appGo := filepath.Join(dir, "internal/app/app.go")
+	body, err := os.ReadFile(appGo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	patched := strings.Replace(string(body), "WriteTimeout:      0,", "WriteTimeout:      30 * time.Second,", 1)
+	if err := os.WriteFile(appGo, []byte(patched), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	if err := runDoctor(&buf, dir); err != nil {
+		t.Fatalf("doctor should pass with warning: %v\n%s", err, buf.String())
+	}
+	out := buf.String()
+	if !strings.Contains(out, "[warn] SSE WriteTimeout") {
+		t.Errorf("expected SSE WriteTimeout warning, got:\n%s", out)
+	}
+	if !strings.Contains(out, "WriteTimeout: 0") {
+		t.Errorf("expected fix hint for WriteTimeout: 0, got:\n%s", out)
+	}
+}
+
+func TestDoctor_SSEWriteTimeoutOKWhenZero(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	dir := t.TempDir()
+	if err := scaffoldNewApp(dir, scaffoldData{
+		AppName:    "ok",
+		ModulePath: "github.com/puppe1990/ok",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+
+	out := runDoctorOutput(t, dir)
+	if strings.Contains(out, "[warn] SSE WriteTimeout") {
+		t.Errorf("unexpected SSE WriteTimeout warning with default scaffold, got:\n%s", out)
+	}
+}
+
 func TestDoctor_AllOK(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	dir := t.TempDir()
