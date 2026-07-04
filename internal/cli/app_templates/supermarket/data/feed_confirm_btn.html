@@ -1,5 +1,0 @@
-{{ define "feed_confirm_btn" }}
-<button type="button" id="confirm-btn-{{ .ID }}" {{ if .Disabled }}disabled{{ else }}{{ hxPost (printf "/feed/%d/confirm" .ID) (printf "#confirm-btn-%d" .ID) }}{{ end }} class="px-3 py-1.5 text-[10px] font-bold bg-white border border-slate-200 rounded-lg hover:bg-emerald-50 hover:border-emerald-200 transition flex items-center gap-1 disabled:opacity-50">
-  Confirmar ({{ .Count }})
-</button>
-{{ end }}

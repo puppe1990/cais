@@ -50,6 +50,38 @@ func TestSecurityHeaders_customPolicy(t *testing.T) {
 	}
 }
 
+func TestSecurityHeaders_mediaSrc(t *testing.T) {
+	cfg := cais.Config{
+		Env:         "development",
+		CSPMediaSrc: "blob:",
+	}
+	h := SecurityHeaders(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	csp := rr.Header().Get("Content-Security-Policy")
+	if !strings.Contains(csp, "media-src 'self' blob:") {
+		t.Errorf("CSP missing media-src blob:, got %q", csp)
+	}
+}
+
+func TestSecurityHeaders_development_allowsCamera(t *testing.T) {
+	cfg := cais.Config{Env: "development", PermissionsPolicy: "camera=(self), microphone=(), geolocation=()", CSPMediaSrc: "blob:"}
+	h := SecurityHeaders(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if got := rr.Header().Get("Permissions-Policy"); !strings.Contains(got, "camera=(self)") {
+		t.Errorf("Permissions-Policy = %q, want camera=(self)", got)
+	}
+	csp := rr.Header().Get("Content-Security-Policy")
+	if !strings.Contains(csp, "media-src 'self' blob:") {
+		t.Errorf("CSP = %q", csp)
+	}
+}
+
 func TestSecurityHeaders_development_noHSTS(t *testing.T) {
 	cfg := cais.Config{Env: "development"}
 	h := SecurityHeaders(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))

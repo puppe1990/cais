@@ -67,9 +67,35 @@ func TestFieldInput_escapesValue(t *testing.T) {
 	}
 }
 
+func TestFieldPassword_rendersToggleButton(t *testing.T) {
+	html := string(FieldPassword(MakeField("password", "Password", "", "password", true, nil)))
+	for _, needle := range []string{
+		`type="password"`,
+		`name="password"`,
+		`data-cais-password-toggle`,
+		`data-cais-password-icon="show"`,
+		`data-cais-password-icon="hide"`,
+		`padding-right:2.5rem`,
+		`data-cais-password-icon="hide"`,
+	} {
+		if !strings.Contains(html, needle) {
+			t.Errorf("FieldPassword missing %q:\n%s", needle, html)
+		}
+	}
+}
+
+func TestFieldPassword_rendersFieldError(t *testing.T) {
+	html := string(FieldPassword(MakeField("password", "Password", "", "password", true, map[string]string{
+		"password": "too short",
+	})))
+	if !strings.Contains(html, "too short") {
+		t.Errorf("expected error text: %s", html)
+	}
+}
+
 func TestFuncs_registersFieldHelpers(t *testing.T) {
 	funcs := Funcs()
-	for _, name := range []string{"makeField", "fieldInput"} {
+	for _, name := range []string{"makeField", "fieldInput", "fieldPassword"} {
 		if _, ok := funcs[name]; !ok {
 			t.Errorf("%s missing from Funcs()", name)
 		}

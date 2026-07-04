@@ -182,17 +182,33 @@ func TestConfig_LoadLogFormatFromEnv(t *testing.T) {
 	}
 }
 
-func TestConfig_SecurityPolicy_defaults(t *testing.T) {
+func TestConfig_SecurityPolicy_developmentDefaults(t *testing.T) {
+	t.Setenv("ENV", "development")
 	t.Setenv("PERMISSIONS_POLICY", "")
 	t.Setenv("CSP_STYLE_SRC", "")
 	t.Setenv("CSP_CONNECT_SRC", "")
+	t.Setenv("CSP_MEDIA_SRC", "")
+
+	cfg := Load()
+	if cfg.PermissionsPolicy != "camera=(self), microphone=(), geolocation=()" {
+		t.Errorf("PermissionsPolicy = %q", cfg.PermissionsPolicy)
+	}
+	if cfg.CSPMediaSrc != "blob:" {
+		t.Errorf("CSPMediaSrc = %q, want blob:", cfg.CSPMediaSrc)
+	}
+}
+
+func TestConfig_SecurityPolicy_productionDefaults(t *testing.T) {
+	t.Setenv("ENV", "production")
+	t.Setenv("PERMISSIONS_POLICY", "")
+	t.Setenv("CSP_MEDIA_SRC", "")
 
 	cfg := Load()
 	if cfg.PermissionsPolicy != "camera=(), microphone=(), geolocation=()" {
 		t.Errorf("PermissionsPolicy = %q", cfg.PermissionsPolicy)
 	}
-	if cfg.CSPStyleSrc != "" {
-		t.Errorf("CSPStyleSrc = %q, want empty", cfg.CSPStyleSrc)
+	if cfg.CSPMediaSrc != "" {
+		t.Errorf("CSPMediaSrc = %q, want empty", cfg.CSPMediaSrc)
 	}
 }
 
@@ -200,6 +216,7 @@ func TestConfig_SecurityPolicy_loadFromEnv(t *testing.T) {
 	t.Setenv("PERMISSIONS_POLICY", "camera=(self), geolocation=(self)")
 	t.Setenv("CSP_STYLE_SRC", "https://fonts.googleapis.com")
 	t.Setenv("CSP_CONNECT_SRC", "https://tile.openstreetmap.org")
+	t.Setenv("CSP_MEDIA_SRC", "blob:")
 
 	cfg := Load()
 	if cfg.PermissionsPolicy != "camera=(self), geolocation=(self)" {
@@ -210,6 +227,9 @@ func TestConfig_SecurityPolicy_loadFromEnv(t *testing.T) {
 	}
 	if cfg.CSPConnectSrc != "https://tile.openstreetmap.org" {
 		t.Errorf("CSPConnectSrc = %q", cfg.CSPConnectSrc)
+	}
+	if cfg.CSPMediaSrc != "blob:" {
+		t.Errorf("CSPMediaSrc = %q, want blob:", cfg.CSPMediaSrc)
 	}
 }
 

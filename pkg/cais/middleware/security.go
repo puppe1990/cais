@@ -28,9 +28,13 @@ func SecurityHeaders(cfg cais.Config) func(http.Handler) http.Handler {
 			if cfg.CSPConnectSrc != "" {
 				connectSrc += " " + cfg.CSPConnectSrc
 			}
+			mediaSrc := "'self'"
+			if cfg.CSPMediaSrc != "" {
+				mediaSrc += " " + cfg.CSPMediaSrc
+			}
 			w.Header().Set("Content-Security-Policy", fmt.Sprintf(
-				"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src %s; img-src 'self' data:; connect-src %s; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
-				styleSrc, connectSrc,
+				"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src %s; img-src 'self' data:; connect-src %s; media-src %s; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+				styleSrc, connectSrc, mediaSrc,
 			))
 			if cfg.Env == "production" {
 				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")

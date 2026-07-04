@@ -5,8 +5,11 @@ const PRECACHE = [
   "/static/js/htmx.min.js",
   "/static/js/idiomorph-ext.min.js",
   "/static/js/cais.js",
+  "/static/js/html5-qrcode.min.js",
+  "/static/js/scan.js",
   "/static/manifest.webmanifest",
-  "/static/icons/icon.png",
+  "/static/icons/icon-192.png",
+  "/static/icons/icon-512.png",
   "/static/offline.html",
 ];
 

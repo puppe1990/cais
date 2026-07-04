@@ -9,13 +9,13 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/puppe1990/cais/pkg/cais/forms"
 	"github.com/puppe1990/cais/pkg/cais/htmxattrs"
 	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/money"
-	"github.com/puppe1990/cais/pkg/cais/ui"
 )
 
 func NewRendererFromDir(dir string, catalog *i18n.Catalog) (*Renderer, error) {
@@ -23,6 +23,7 @@ func NewRendererFromDir(dir string, catalog *i18n.Catalog) (*Renderer, error) {
 }
 
 type Renderer struct {
+	mu       sync.RWMutex
 	pages    map[string]*template.Template
 	partials map[string]*template.Template
 	catalog  *i18n.Catalog
@@ -80,7 +81,9 @@ func NewRenderer(fsys fs.FS, catalog *i18n.Catalog) (*Renderer, error) {
 }
 
 func (r *Renderer) Render(w io.Writer, layout, page string, data any) error {
+	r.mu.RLock()
 	tmpl, ok := r.pages[page]
+	r.mu.RUnlock()
 	if !ok {
 		return fmt.Errorf("page %q not found", page)
 	}
@@ -98,9 +101,6 @@ func templateFuncs(catalog *i18n.Catalog) template.FuncMap {
 	for k, v := range forms.Funcs() {
 		extra[k] = v
 	}
-	for k, v := range ui.Funcs() {
-		extra[k] = v
-	}
 	for k, v := range htmxattrs.Funcs() {
 		extra[k] = v
 	}
@@ -109,7 +109,9 @@ func templateFuncs(catalog *i18n.Catalog) template.FuncMap {
 }
 
 func (r *Renderer) RenderPartial(w io.Writer, partial string, data any) error {
+	r.mu.RLock()
 	tmpl, ok := r.partials[partial]
+	r.mu.RUnlock()
 	if !ok {
 		return fmt.Errorf("partial %q not found", partial)
 	}

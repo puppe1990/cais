@@ -60,7 +60,11 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 	}
 
 	catalog := i18n.NewCatalog(cfg.Locale)
-	renderer, err := cais.NewRenderer(tmplFS, catalog)
+	templatesDir, err := findWebDir("templates")
+	if err != nil {
+		templatesDir = ""
+	}
+	renderer, err := cais.NewRendererForEnv(cfg, tmplFS, templatesDir, catalog)
 	if err != nil {
 		return nil, fmt.Errorf("renderer: %w", err)
 	}

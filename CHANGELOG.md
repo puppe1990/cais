@@ -6,6 +6,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ## Unreleased
 
+## [0.6.0] - 2026-07-04
+
+### Added
+
+- `pkg/cais/barcode` — Open Food Facts lookup client
+- `pkg/cais/money` — `FormatBRL` for cent-based prices
+- `middleware.LoadUserStats` / `UserStatsFrom` — gamification chrome in layouts
+- `meta.Site.LoggedIn` — session flag for layout auth chrome
+- `Config` security knobs: `PERMISSIONS_POLICY`, `CSP_MEDIA_SRC`, `CSP_CONNECT_SRC` (camera + barcode scan in PWA)
+- `Router.StaticForEnv` — `no-store` for static assets in development
+- `NewRendererForEnv` — disk template reload in development
+- Scaffold partials: `icons.html`, `nav_links.html` on `cais new`
+
+### Removed
+
+- `cais g app supermarket` and `internal/cli/app_templates/supermarket/` — app UI belongs in apps, not the framework
+- `pkg/cais/ui` — nav/icon HTML helpers (use app templates instead)
+
 ## [0.5.0] - 2026-07-03
 
 ### Added
@@ -19,7 +37,6 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 - Resource generator HTMX admin CRUD (inline delete, form partials, `RenderPageOrPartial` on 422)
 - HTMX pagination with morph swap for admin and public lists (`--paginate`)
 - `float` / `float?` field type in `cais g resource`
-- `cais g app supermarket` — tabbed demo overlay for existing apps
 - `cais.SetToast`, `SetFocus`, `SetRetarget`, `SetTrigger` response header helpers
 
 #### Security & sessions

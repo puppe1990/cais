@@ -117,6 +117,7 @@
       el.removeAttribute("aria-busy");
     });
     syncNavTabs();
+    dismissExistingToast();
     if (
       savedFocus &&
       typeof savedFocus.focus === "function" &&
@@ -127,7 +128,10 @@
     savedFocus = null;
   });
 
-  document.addEventListener("DOMContentLoaded", syncNavTabs);
+  document.addEventListener("DOMContentLoaded", function () {
+    syncNavTabs();
+    dismissExistingToast();
+  });
 
   function syncNavTabs() {
     var nav = document.getElementById("cais-nav");
@@ -141,6 +145,22 @@
   }
 
   var toastTimer = null;
+  var toastDurationMs = 2000;
+
+  function dismissExistingToast() {
+    var host = document.getElementById("cais-toast-host");
+    if (!host) return;
+    var toast = host.querySelector(".cais-toast-enter");
+    if (!toast || !toast.textContent.trim()) return;
+    if (toastTimer) {
+      clearTimeout(toastTimer);
+      toastTimer = null;
+    }
+    toastTimer = setTimeout(function () {
+      host.innerHTML = "";
+      toastTimer = null;
+    }, toastDurationMs);
+  }
 
   function showToast(message) {
     if (!message) return;
@@ -160,7 +180,7 @@
     toastTimer = setTimeout(function () {
       host.innerHTML = "";
       toastTimer = null;
-    }, 4000);
+    }, toastDurationMs);
   }
 
   function parseToastFromTrigger(trigger) {
@@ -199,5 +219,21 @@
     var xhr = evt.detail.xhr;
     if (!xhr) return;
     applyTriggerActions(xhr.getResponseHeader("HX-Trigger"));
+  });
+
+  document.body.addEventListener("click", function (evt) {
+    var btn = evt.target.closest("[data-cais-password-toggle]");
+    if (!btn) return;
+    var wrap = btn.closest(".relative");
+    if (!wrap) return;
+    var input = wrap.querySelector("input");
+    if (!input) return;
+    var show = input.type === "password";
+    input.type = show ? "text" : "password";
+    btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    var showIcon = btn.querySelector('[data-cais-password-icon="show"]');
+    var hideIcon = btn.querySelector('[data-cais-password-icon="hide"]');
+    if (showIcon) showIcon.classList.toggle("hidden", show);
+    if (hideIcon) hideIcon.classList.toggle("hidden", !show);
   });
 })();

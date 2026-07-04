@@ -24,6 +24,12 @@ const tplInputCSS = `@import url('https://fonts.googleapis.com/css2?family=Inter
 }
 
 @layer components {
+  .cais-nav-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
   .htmx-swapping {
     opacity: 0;
     transition: opacity 150ms ease-out;
@@ -68,12 +74,21 @@ const tplInputCSS = `@import url('https://fonts.googleapis.com/css2?family=Inter
   .htmx-request .cais-skeleton {
     @apply animate-pulse bg-slate-200 rounded-lg;
   }
+
+  .cais-auth-screen {
+    @apply min-h-screen bg-gradient-to-br from-indigo-50 via-white to-violet-100;
+  }
 }
 `
 
 const tplTailwind = `/** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./web/templates/**/*.html"],
+  safelist: [
+    // fieldPassword (rendered from pkg/cais/forms, not scanned from HTML)
+    "pr-10",
+    "inset-y-0",
+  ],
   theme: {
     extend: {
       fontFamily: {

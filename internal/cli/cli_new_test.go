@@ -383,6 +383,32 @@ func TestCLI_New_ModuleRequiresValue(t *testing.T) {
 	}
 }
 
+func TestCLI_NewMainUsesTemplateHotReload(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "hotreload")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "hotreload",
+		ModulePath: "github.com/puppe1990/hotreload",
+	}, false, false); err != nil {
+		t.Fatal(err)
+	}
+	mainGo, err := os.ReadFile(filepath.Join(appDir, "cmd/server/main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(mainGo)
+	if !strings.Contains(body, "NewRendererForEnv") {
+		t.Error("main.go should use NewRendererForEnv for development template hot reload")
+	}
+	air, err := os.ReadFile(filepath.Join(appDir, ".air.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(air), `"html"`) {
+		t.Error(".air.toml should not rebuild on html; templates reload from disk in development")
+	}
+}
+
 func TestCLI_NewIncludesHTMXAndAir(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "full")

@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -18,13 +20,16 @@ func TestLayoutTemplates_containNavMarker(t *testing.T) {
 }
 
 func TestLayoutTemplates_fullHasDefaultNavLinks(t *testing.T) {
-	for _, link := range []string{`makeNavTab "/contact"`, `makeNavTab "/dashboard"`, `makeNavTab "/"`} {
-		if !strings.Contains(tplLayout, link) {
-			t.Errorf("full layout missing %s", link)
+	if !strings.Contains(tplLayout, `template "nav_links"`) {
+		t.Error("full layout should render nav_links partial")
+	}
+	for _, link := range []string{`href="/contact"`, `href="/dashboard"`, `hx-boost`} {
+		if !strings.Contains(tplPartialNavLinks, link) {
+			t.Errorf("nav_links partial missing %s", link)
 		}
 	}
-	if !strings.Contains(tplLayout, "navTab") || !strings.Contains(tplLayout, "cais-toast-host") {
-		t.Error("full layout should use navTab helpers and cais-toast-host")
+	if !strings.Contains(tplLayout, "cais-toast-host") {
+		t.Error("full layout missing cais-toast-host")
 	}
 }
 
@@ -65,9 +70,36 @@ func TestLayoutTemplates_hasBoostShell(t *testing.T) {
 }
 
 func TestLayoutTemplates_navTabsHaveIcons(t *testing.T) {
-	for _, icon := range []string{`"home"`, `"message"`, `"chart"`} {
-		if !strings.Contains(tplLayout, icon) {
-			t.Errorf("full layout nav should include icon %s", icon)
+	for _, icon := range []string{`icon_home_nav`, `icon_message_nav`, `icon_chart_nav`} {
+		if !strings.Contains(tplPartialNavLinks, icon) {
+			t.Errorf("nav partial should include %s", icon)
+		}
+	}
+}
+
+func TestScaffoldPartials_iconsRenderNonEmpty(t *testing.T) {
+	dir := t.TempDir()
+	data := scaffoldData{AppName: "demo", ModulePath: "github.com/acme/demo"}
+	for path, tpl := range map[string]string{
+		"web/templates/partials/icons.html":     tplPartialIcons,
+		"web/templates/partials/nav_links.html": tplPartialNavLinks,
+	} {
+		if err := writeTemplate(filepath.Join(dir, path), tpl, data); err != nil {
+			t.Fatalf("%s: %v", path, err)
+		}
+		body, err := os.ReadFile(filepath.Join(dir, path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(body) == 0 {
+			t.Fatalf("%s rendered empty", path)
+		}
+		want := `define "icon_sparkles_md"`
+		if path == "web/templates/partials/nav_links.html" {
+			want = `define "nav_links"`
+		}
+		if !strings.Contains(string(body), want) {
+			t.Fatalf("%s missing %s", path, want)
 		}
 	}
 }
@@ -78,15 +110,15 @@ func TestLayoutTemplates_contactFormUsesHxFormHelper(t *testing.T) {
 	}
 }
 
-func TestLayoutTemplates_dashboardUsesIconHelper(t *testing.T) {
-	for _, icon := range []string{`icon "users"`, `icon "shield"`} {
+func TestLayoutTemplates_dashboardUsesIconPartials(t *testing.T) {
+	for _, icon := range []string{`icon_users_md`, `icon_shield_md`} {
 		if !strings.Contains(tplPageDashboard, icon) {
-			t.Errorf("dashboard page should use %s helper", icon)
+			t.Errorf("dashboard page should use %s partial", icon)
 		}
 	}
 }
 
-func TestLayoutTemplates_supermarketDesignTokens(t *testing.T) {
+func TestLayoutTemplates_shellDesignTokens(t *testing.T) {
 	for name, tpl := range map[string]string{
 		"full":    tplLayout,
 		"minimal": tplLayoutMinimal,

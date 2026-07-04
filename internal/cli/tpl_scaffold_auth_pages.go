@@ -2,7 +2,7 @@
 package cli
 
 const tplPageLogin = `{{"{{"}} define "title" {{"}}"}}Login{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
-<div class="w-full max-w-md mx-auto p-4 md:p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+<div class="w-full max-w-md mx-auto p-4 md:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-lg">
   <div class="mb-4 pb-4 border-b border-slate-100">
     <h2 class="text-lg font-black tracking-tight text-slate-900 font-display">{{"{{"}} t "auth.login_title" {{"}}"}}</h2>
   </div>
@@ -13,10 +13,7 @@ const tplPageLogin = `{{"{{"}} define "title" {{"}}"}}Login{{"{{"}} end {{"}}"}}
       <label class="block text-sm font-medium text-slate-700 mb-1" for="email">Email</label>
       <input class="w-full border border-slate-300 rounded-lg px-3 py-2" type="email" id="email" name="email" required />
     </div>
-    <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="password">{{"{{"}} t "auth.password_label" {{"}}"}}</label>
-      <input class="w-full border border-slate-300 rounded-lg px-3 py-2" type="password" id="password" name="password" required />
-    </div>
+    {{"{{"}} fieldPassword (makeField "password" (t "auth.password_label") "" "password" true nil) {{"}}"}}
     <button class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 px-4 rounded-lg transition shadow-2xs" type="submit">
       {{"{{"}} t "auth.login_submit" {{"}}"}}
     </button>
@@ -33,7 +30,7 @@ const tplPageLogin = `{{"{{"}} define "title" {{"}}"}}Login{{"{{"}} end {{"}}"}}
 `
 
 const tplPageSignup = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.signup_title" {{"}}"}}{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
-<div class="w-full max-w-md mx-auto p-4 md:p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+<div class="w-full max-w-md mx-auto p-4 md:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-lg">
   <div class="mb-4 pb-4 border-b border-slate-100">
     <h2 class="text-lg font-black tracking-tight text-slate-900 font-display">{{"{{"}} t "auth.signup_title" {{"}}"}}</h2>
   </div>
@@ -44,16 +41,8 @@ const tplPageSignup = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.signup_t
       <input class="w-full border border-slate-300 rounded-lg px-3 py-2" type="email" id="email" name="email" value="{{"{{"}} .Email {{"}}"}}" required />
       {{"{{"}} fieldError .Errors "email" {{"}}"}}
     </div>
-    <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="password">{{"{{"}} t "auth.password_label" {{"}}"}}</label>
-      <input class="w-full border border-slate-300 rounded-lg px-3 py-2" type="password" id="password" name="password" required />
-      {{"{{"}} fieldError .Errors "password" {{"}}"}}
-    </div>
-    <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="password_confirmation">{{"{{"}} t "auth.password_confirmation_label" {{"}}"}}</label>
-      <input class="w-full border border-slate-300 rounded-lg px-3 py-2" type="password" id="password_confirmation" name="password_confirmation" required />
-      {{"{{"}} fieldError .Errors "password_confirmation" {{"}}"}}
-    </div>
+    {{"{{"}} fieldPassword (makeField "password" (t "auth.password_label") "" "password" true .Errors) {{"}}"}}
+    {{"{{"}} fieldPassword (makeField "password_confirmation" (t "auth.password_confirmation_label") "" "password" true .Errors) {{"}}"}}
     <button class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 px-4 rounded-lg transition shadow-2xs" type="submit">
       {{"{{"}} t "auth.signup_submit" {{"}}"}}
     </button>
@@ -66,7 +55,7 @@ const tplPageSignup = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.signup_t
 {{"{{"}} end {{"}}"}}`
 
 const tplPageForgotPassword = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.forgot_password_title" {{"}}"}}{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
-<div class="w-full max-w-md mx-auto p-4 md:p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+<div class="w-full max-w-md mx-auto p-4 md:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-lg">
   <div class="mb-4 pb-4 border-b border-slate-100">
     <h2 class="text-lg font-black tracking-tight text-slate-900 font-display">{{"{{"}} t "auth.forgot_password_title" {{"}}"}}</h2>
     <p class="text-[11px] text-slate-500 font-medium mt-1">{{"{{"}} t "auth.forgot_password_help" {{"}}"}}</p>
@@ -89,7 +78,7 @@ const tplPageForgotPassword = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.
 {{"{{"}} end {{"}}"}}`
 
 const tplPageResetPassword = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.reset_password_title" {{"}}"}}{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
-<div class="w-full max-w-md mx-auto p-4 md:p-5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+<div class="w-full max-w-md mx-auto p-4 md:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-lg">
   <div class="mb-4 pb-4 border-b border-slate-100">
     <h2 class="text-lg font-black tracking-tight text-slate-900 font-display">{{"{{"}} t "auth.reset_password_title" {{"}}"}}</h2>
   </div>
@@ -98,16 +87,8 @@ const tplPageResetPassword = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} t "auth.r
   <form method="post" action="/reset-password" class="space-y-4">
     <input type="hidden" name="csrf_token" value="{{"{{"}} .CSRFToken {{"}}"}}" />
     <input type="hidden" name="token" value="{{"{{"}} .Token {{"}}"}}" />
-    <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="password">{{"{{"}} t "auth.password_label" {{"}}"}}</label>
-      <input class="w-full border border-slate-300 rounded-lg px-3 py-2" type="password" id="password" name="password" required />
-      {{"{{"}} fieldError .Errors "password" {{"}}"}}
-    </div>
-    <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="password_confirmation">{{"{{"}} t "auth.password_confirmation_label" {{"}}"}}</label>
-      <input class="w-full border border-slate-300 rounded-lg px-3 py-2" type="password" id="password_confirmation" name="password_confirmation" required />
-      {{"{{"}} fieldError .Errors "password_confirmation" {{"}}"}}
-    </div>
+    {{"{{"}} fieldPassword (makeField "password" (t "auth.password_label") "" "password" true .Errors) {{"}}"}}
+    {{"{{"}} fieldPassword (makeField "password_confirmation" (t "auth.password_confirmation_label") "" "password" true .Errors) {{"}}"}}
     <button class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 px-4 rounded-lg transition shadow-2xs" type="submit">
       {{"{{"}} t "auth.reset_password_submit" {{"}}"}}
     </button>

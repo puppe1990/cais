@@ -16,9 +16,10 @@ const DefaultImagePath = "/static/og.png"
 type Site struct {
 	AppName    string
 	AppURL     string
+	Env        string // layout: dev vs production (service worker, etc.)
 	CSRFToken  string
 	Flash      *flash.Message
-	ActiveNav  string // optional tab key for layout navTab helpers (e.g. "home", "contact")
+	ActiveNav  string // optional tab key for layout nav highlighting (e.g. "home", "scan")
 	UserLevel  int    // optional gamification chrome (0 = layout may show defaults)
 	UserPoints int
 	UserRank   int

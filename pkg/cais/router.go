@@ -60,8 +60,24 @@ func (r *Router) Handle(pattern string, handler http.Handler) {
 }
 
 func (r *Router) Static(prefix, dir string) {
+	r.StaticForEnv(prefix, dir, Config{})
+}
+
+// StaticForEnv serves files from disk. In development, sets no-store so JS/CSS edits apply without rebuild.
+func (r *Router) StaticForEnv(prefix, dir string, cfg Config) {
 	fs := http.FileServer(http.Dir(dir))
-	r.mux.Handle("GET "+prefix+"/", http.StripPrefix(prefix, fs))
+	handler := http.StripPrefix(prefix, fs)
+	if cfg.Env == "development" {
+		handler = noCacheStatic(handler)
+	}
+	r.mux.Handle("GET "+prefix+"/", handler)
+}
+
+func noCacheStatic(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (r *Router) register(method, pattern string, handler http.HandlerFunc) {

@@ -52,11 +52,26 @@
     <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
       {{ t "layout.footer" }}
     </footer>
+    {{ if eq .Env "development" }}
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          regs.forEach(function (r) { r.unregister(); });
+        });
+        if ("caches" in window) {
+          caches.keys().then(function (keys) {
+            keys.forEach(function (k) { caches.delete(k); });
+          });
+        }
+      }
+    </script>
+    {{ else }}
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/static/js/sw.js");
       }
     </script>
+    {{ end }}
   </body>
 </html>
 {{ end }}

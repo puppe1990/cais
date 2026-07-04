@@ -46,6 +46,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	if site.AppName == "" {
 		site = meta.SiteFrom("{{.AppName}}", cfg.AppURL)
 	}
+	site.Env = cfg.Env
 	deps.Site = site
 
 	r := cais.NewRouter()
@@ -60,7 +61,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	}
 	r.Use(middleware.Recover)
 	r.Use(middleware.SecurityHeaders(cfg))
-	r.Static("/static", deps.StaticDir)
+	r.StaticForEnv("/static", deps.StaticDir, cfg)
 
 	registerRoutes(r, deps, cfg)
 	devlog.Register(r, cfg.Env, buf)
@@ -175,6 +176,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	if site.AppName == "" {
 		site = meta.SiteFrom("{{.AppName}}", cfg.AppURL)
 	}
+	site.Env = cfg.Env
 	deps.Site = site
 
 	r := cais.NewRouter()
@@ -189,7 +191,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	}
 	r.Use(middleware.Recover)
 	r.Use(middleware.SecurityHeaders(cfg))
-	r.Static("/static", deps.StaticDir)
+	r.StaticForEnv("/static", deps.StaticDir, cfg)
 
 	registerRoutes(r, deps, cfg)
 	devlog.Register(r, cfg.Env, buf)

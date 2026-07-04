@@ -87,6 +87,17 @@ func TestScaffoldNewApp_includesAuth(t *testing.T) {
 	if !strings.Contains(authBody, "SignUpPost") {
 		t.Error("auth.go missing signup handlers")
 	}
+
+	for _, page := range []string{"login.html", "signup.html", "reset_password.html"} {
+		body, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages", page))
+		if err != nil {
+			t.Fatalf("read %s: %v", page, err)
+		}
+		s := string(body)
+		if !strings.Contains(s, "fieldPassword") {
+			t.Errorf("%s missing fieldPassword helper", page)
+		}
+	}
 }
 
 func TestScaffoldAuth_patchesBlankAppStore(t *testing.T) {

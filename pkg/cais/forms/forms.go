@@ -13,6 +13,7 @@ func Funcs() template.FuncMap {
 		"fieldError":         FieldError,
 		"makeField":          MakeField,
 		"fieldInput":         FieldInput,
+		"fieldPassword":      FieldPassword,
 		"makeSelectField":    MakeSelectField,
 		"makeSelectFieldPtr": MakeSelectFieldPtr,
 		"fieldSelect":        FieldSelect,

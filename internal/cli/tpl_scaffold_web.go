@@ -63,9 +63,7 @@ const tplLayoutBaseOpen = `{{"{{"}} define "base" {{"}}"}}
             `
 
 const tplLayoutNavFull = `<!-- cais:nav -->
-            {{"{{"}} navTab (makeNavTab "/" "Home" "home" (eq .ActiveNav "home")) {{"}}"}}
-            {{"{{"}} navTab (makeNavTab "/contact" "Contact" "message" (eq .ActiveNav "contact")) {{"}}"}}
-            {{"{{"}} navTab (makeNavTab "/dashboard" "Dashboard" "chart" (eq .ActiveNav "dashboard")) {{"}}"}}`
+            {{"{{"}} template "nav_links" . {{"}}"}}`
 
 const tplLayoutNavEmpty = `<!-- cais:nav -->`
 
@@ -76,7 +74,7 @@ const tplLayoutBaseClose = `
       <div id="cais-toast-host" aria-live="polite">
         {{"{{"}} if .Flash {{"}}"}}
         <div class="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2 border border-slate-700/50" role="status">
-          {{"{{"}} icon "sparkles" "w-5 h-5 text-amber-400 flex-shrink-0" {{"}}"}}
+          {{"{{"}} template "icon_sparkles_md" . {{"}}"}}
           <span class="text-xs font-bold">{{"{{"}} .Flash {{"}}"}}</span>
         </div>
         {{"{{"}} end {{"}}"}}
@@ -89,11 +87,26 @@ const tplLayoutBaseClose = `
         <p class="mt-1">HTMX + Go + SQLite — server-rendered, app-like UX.</p>
       </div>
     </footer>
+    {{"{{"}} if eq .Env "development" {{"}}"}}
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          regs.forEach(function (r) { r.unregister(); });
+        });
+        if ("caches" in window) {
+          caches.keys().then(function (keys) {
+            keys.forEach(function (k) { caches.delete(k); });
+          });
+        }
+      }
+    </script>
+    {{"{{"}} else {{"}}"}}
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/static/js/sw.js");
       }
     </script>
+    {{"{{"}} end {{"}}"}}
   </body>
 </html>
 {{"{{"}} end {{"}}"}}`
@@ -140,11 +153,26 @@ const tplLayoutWelcome = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} if .AppName {
   </head>
   <body hx-ext="morph" class="min-h-screen bg-gradient-to-b from-[#FAF3E8] via-[#EDCFA8] to-[#C9895E] text-stone-800 antialiased">
     <main>{{"{{"}} template "content" . {{"}}"}}</main>
+    {{"{{"}} if eq .Env "development" {{"}}"}}
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          regs.forEach(function (r) { r.unregister(); });
+        });
+        if ("caches" in window) {
+          caches.keys().then(function (keys) {
+            keys.forEach(function (k) { caches.delete(k); });
+          });
+        }
+      }
+    </script>
+    {{"{{"}} else {{"}}"}}
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/static/js/sw.js");
       }
     </script>
+    {{"{{"}} end {{"}}"}}
   </body>
 </html>
 {{"{{"}} end {{"}}"}}
@@ -248,7 +276,7 @@ const tplPageDashboard = `{{"{{"}} define "title" {{"}}"}}Dashboard{{"{{"}} end 
       <div class="flex items-center justify-between">
         <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Contacts</p>
         <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-100 text-indigo-600">
-          {{"{{"}} icon "users" "w-5 h-5" {{"}}"}}
+          {{"{{"}} template "icon_users_md" . {{"}}"}}
         </span>
       </div>
       <p class="mt-3 text-3xl font-black text-indigo-600 font-mono">{{"{{"}} .TotalContacts {{"}}"}}</p>
@@ -258,7 +286,7 @@ const tplPageDashboard = `{{"{{"}} define "title" {{"}}"}}Dashboard{{"{{"}} end 
       <div class="flex items-center justify-between">
         <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Environment</p>
         <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-100 text-emerald-600">
-          {{"{{"}} icon "shield" "w-5 h-5" {{"}}"}}
+          {{"{{"}} template "icon_shield_md" . {{"}}"}}
         </span>
       </div>
       <p class="mt-3 text-3xl font-black text-emerald-600 capitalize font-mono">{{"{{"}} .Env {{"}}"}}</p>

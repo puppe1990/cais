@@ -31,8 +31,14 @@ func TestWriteStatic(t *testing.T) {
 	if !strings.Contains(string(manifest), "My App") {
 		t.Errorf("manifest missing app name: %s", manifest)
 	}
-	if !strings.Contains(string(manifest), `"display": "fullscreen"`) {
-		t.Errorf("manifest should use fullscreen display, got: %s", manifest)
+	if !strings.Contains(string(manifest), `"display": "standalone"`) {
+		t.Errorf("manifest should use standalone display, got: %s", manifest)
+	}
+	if !strings.Contains(string(manifest), "icon-192.png") {
+		t.Errorf("manifest missing 192 icon: %s", manifest)
+	}
+	if !strings.Contains(string(manifest), "icon-512.png") {
+		t.Errorf("manifest missing 512 icon: %s", manifest)
 	}
 
 	for _, path := range []string{
@@ -48,6 +54,23 @@ func TestWriteStatic(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(dir, path)); err != nil {
 			t.Errorf("missing %s: %v", path, err)
 		}
+	}
+}
+
+func TestRegisterScriptForEnv_developmentClearsSW(t *testing.T) {
+	script := RegisterScriptForEnv("development")
+	if !strings.Contains(script, "unregister") {
+		t.Errorf("dev script should unregister SW: %s", script)
+	}
+	if strings.Contains(script, ".register(") {
+		t.Errorf("dev script should not register SW: %s", script)
+	}
+}
+
+func TestRegisterScriptForEnv_productionRegistersSW(t *testing.T) {
+	script := RegisterScriptForEnv("production")
+	if !strings.Contains(script, "register(") {
+		t.Errorf("prod script should register SW: %s", script)
 	}
 }
 

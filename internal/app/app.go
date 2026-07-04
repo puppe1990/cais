@@ -43,6 +43,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	if site.AppName == "" {
 		site = meta.SiteFrom("Cais", cfg.AppURL)
 	}
+	site.Env = cfg.Env
 
 	r := cais.NewRouter()
 	r.Use(middleware.CSRF(cfg))
@@ -56,7 +57,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	}
 	r.Use(middleware.Recover)
 	r.Use(middleware.SecurityHeaders(cfg))
-	r.Static("/static", deps.StaticDir)
+	r.StaticForEnv("/static", deps.StaticDir, cfg)
 
 	registerRoutes(r, deps, cfg, site)
 	devlog.Register(r, cfg.Env, buf)

@@ -18,6 +18,7 @@ type Config struct {
 	PermissionsPolicy string
 	CSPStyleSrc       string
 	CSPConnectSrc     string
+	CSPMediaSrc       string
 }
 
 func Load() Config {
@@ -58,6 +59,9 @@ func Load() Config {
 	}
 	if v := os.Getenv("PERMISSIONS_POLICY"); v != "" {
 		cfg.PermissionsPolicy = v
+	} else if cfg.Env == "development" {
+		// Barcode scan in dev needs camera=(self); camera=() blocks the prompt entirely.
+		cfg.PermissionsPolicy = "camera=(self), microphone=(), geolocation=()"
 	} else {
 		cfg.PermissionsPolicy = "camera=(), microphone=(), geolocation=()"
 	}
@@ -66,6 +70,11 @@ func Load() Config {
 	}
 	if v := os.Getenv("CSP_CONNECT_SRC"); v != "" {
 		cfg.CSPConnectSrc = v
+	}
+	if v := os.Getenv("CSP_MEDIA_SRC"); v != "" {
+		cfg.CSPMediaSrc = v
+	} else if cfg.Env == "development" {
+		cfg.CSPMediaSrc = "blob:"
 	}
 
 	return cfg

@@ -3,6 +3,7 @@ package pwa
 import (
 	"bytes"
 	"embed"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -53,6 +54,25 @@ func HeadHTML() string {
 
 // RegisterScript returns inline JS to register the service worker.
 func RegisterScript() string {
+	return RegisterScriptForEnv("production")
+}
+
+// RegisterScriptForEnv skips the service worker in development so static assets are not cached during hot reload.
+func RegisterScriptForEnv(env string) string {
+	if env == "development" {
+		return `<script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          regs.forEach(function (r) { r.unregister(); });
+        });
+        if ("caches" in window) {
+          caches.keys().then(function (keys) {
+            keys.forEach(function (k) { caches.delete(k); });
+          });
+        }
+      }
+    </script>`
+	}
 	return `<script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/static/js/sw.js");
@@ -102,6 +122,9 @@ func WriteStatic(appDir string, cfg Config) error {
 	if err := writeOGImage(filepath.Join(staticDir, "og.png")); err != nil {
 		return err
 	}
+	if err := writeAppIcons(filepath.Join(staticDir, "icons")); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -117,14 +140,20 @@ func writeManifest(path string, cfg Config) error {
   "short_name": {{printf "%q" .ShortName}},
   "description": {{printf "%q" .Description}},
   "start_url": {{printf "%q" .StartURL}},
-  "display": "fullscreen",
+  "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": {{printf "%q" .ThemeColor}},
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/static/icons/icon.png",
-      "sizes": "500x500",
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
@@ -180,6 +209,38 @@ func encodePNG(path string, img image.Image) error {
 	}
 	defer func() { _ = f.Close() }()
 	return png.Encode(f, img)
+}
+
+func writeAppIcons(dir string) error {
+	data, err := assets.ReadFile("assets/icon.png")
+	if err != nil {
+		return err
+	}
+	src, err := png.Decode(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	for _, size := range []int{192, 512} {
+		dst := resizeNearest(src, size, size)
+		if err := encodePNG(filepath.Join(dir, fmt.Sprintf("icon-%d.png", size)), dst); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func resizeNearest(src image.Image, w, h int) *image.RGBA {
+	bounds := src.Bounds()
+	dst := image.NewRGBA(image.Rect(0, 0, w, h))
+	sw, sh := bounds.Dx(), bounds.Dy()
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			sx := bounds.Min.X + x*sw/w
+			sy := bounds.Min.Y + y*sh/h
+			dst.Set(x, y, src.At(sx, sy))
+		}
+	}
+	return dst
 }
 
 // FS returns embedded PWA assets (for tests).

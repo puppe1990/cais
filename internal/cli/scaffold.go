@@ -55,6 +55,8 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		"web/templates/layouts/base.html":             tplLayout,
 		"web/templates/layouts/welcome.html":          tplLayoutWelcome,
 		"web/templates/partials/cais_logo.html":       tplCaisLogo,
+		"web/templates/partials/icons.html":           tplPartialIcons,
+		"web/templates/partials/nav_links.html":       tplPartialNavLinks,
 		"web/templates/pages/home.html":               tplPageHome,
 		"web/templates/pages/contact.html":            tplPageContact,
 		"web/templates/pages/dashboard.html":          tplPageDashboard,

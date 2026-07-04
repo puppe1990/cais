@@ -13,7 +13,7 @@ func PrintDevBanner(w io.Writer, version string) {
 		version = "dev"
 	}
 	_, _ = fmt.Fprint(w, devBannerArt)
-	_, _ = fmt.Fprintf(w, "Cais v%s · %s · hot reload\n\n", version, runtime.Version())
+	_, _ = fmt.Fprintf(w, "Cais v%s · %s · hot reload: Go (air) + HTML (~400ms) + static (disk) + Tailwind\n\n", version, runtime.Version())
 }
 
 const devSeedWarning = "=> Demo user may exist: demo@example.com / password (development only)"
