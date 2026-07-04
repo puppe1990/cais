@@ -23,6 +23,7 @@ func runDoctor(w io.Writer, dir string) error {
 		checkGoMod(dir),
 		checkCaisDep(dir),
 		checkHTMX(dir),
+		checkSSEExt(dir),
 		checkAir(),
 		checkCSS(dir),
 		checkDeployLayout(dir),
@@ -115,6 +116,18 @@ func checkHTMX(dir string) doctorCheck {
 		}
 	}
 	return doctorCheck{Name: "htmx.min.js", OK: true}
+}
+
+func checkSSEExt(dir string) doctorCheck {
+	path := filepath.Join(dir, "web/static/js/sse-ext.min.js")
+	if _, err := os.Stat(path); err != nil {
+		return doctorCheck{
+			Name:    "sse-ext.min.js",
+			Detail:  "missing",
+			FixHint: "re-run cais new, cais pwa, or copy from Cais web/static/js/sse-ext.min.js",
+		}
+	}
+	return doctorCheck{Name: "sse-ext.min.js", OK: true}
 }
 
 func checkAir() doctorCheck {

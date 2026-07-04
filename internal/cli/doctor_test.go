@@ -26,6 +26,9 @@ func TestDoctor_AllOK(t *testing.T) {
 	if !strings.Contains(buf.String(), "htmx.min.js") {
 		t.Error("missing htmx check")
 	}
+	if !strings.Contains(buf.String(), "sse-ext.min.js") {
+		t.Error("missing sse extension check")
+	}
 }
 
 func TestDoctor_AirOptionalWhenMissing(t *testing.T) {

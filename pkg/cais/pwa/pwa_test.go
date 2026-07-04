@@ -48,6 +48,7 @@ func TestWriteStatic(t *testing.T) {
 		"web/static/js/sw.js",
 		"web/static/js/htmx.min.js",
 		"web/static/js/idiomorph-ext.min.js",
+		"web/static/js/sse-ext.min.js",
 		"web/static/js/cais.js",
 		"web/static/offline.html",
 		"web/static/icons/icon.png",

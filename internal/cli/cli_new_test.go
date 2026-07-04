@@ -420,6 +420,7 @@ func TestCLI_NewIncludesHTMXAndAir(t *testing.T) {
 	}
 	for _, path := range []string{
 		"web/static/js/htmx.min.js",
+		"web/static/js/sse-ext.min.js",
 		".air.toml",
 	} {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {

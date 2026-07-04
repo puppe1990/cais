@@ -3,9 +3,9 @@ repos:
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
-        exclude: ^web/static/
+        exclude: ^(web/static/|pkg/cais/pwa/assets/)
       - id: end-of-file-fixer
-        exclude: ^web/static/
+        exclude: ^(web/static/|pkg/cais/pwa/assets/)
       - id: check-yaml
       - id: check-added-large-files
 
@@ -13,7 +13,7 @@ repos:
     rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
-        exclude: ^web/static/
+        exclude: ^(web/static/|pkg/cais/pwa/assets/)
 
   - repo: local
     hooks:

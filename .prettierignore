@@ -7,7 +7,9 @@ internal/cli/app_templates/
 web/static/css/styles.css
 web/static/js/htmx.min.js
 web/static/js/idiomorph-ext.min.js
+web/static/js/sse-ext.min.js
 pkg/cais/pwa/assets/htmx.min.js
 pkg/cais/pwa/assets/idiomorph-ext.min.js
+pkg/cais/pwa/assets/sse-ext.min.js
 package-lock.json
 go.sum

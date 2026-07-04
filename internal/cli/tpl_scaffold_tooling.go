@@ -358,6 +358,7 @@ web/templates/
 web/static/css/styles.css
 web/static/js/htmx.min.js
 web/static/js/idiomorph-ext.min.js
+web/static/js/sse-ext.min.js
 package-lock.json
 go.sum
 `

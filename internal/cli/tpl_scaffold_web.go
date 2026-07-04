@@ -35,9 +35,10 @@ const tplLayoutBaseOpen = `{{"{{"}} define "base" {{"}}"}}
     <link rel="icon" href="/static/icons/icon.png" type="image/png" />
     <script src="/static/js/htmx.min.js" defer></script>
     <script src="/static/js/idiomorph-ext.min.js" defer></script>
+    <script src="/static/js/sse-ext.min.js" defer></script>
     <script src="/static/js/cais.js" defer></script>
   </head>
-  <body hx-ext="morph" class="min-h-screen bg-slate-50 font-sans antialiased text-slate-900 flex flex-col justify-between">
+  <body hx-ext="morph,sse" class="min-h-screen bg-slate-50 font-sans antialiased text-slate-900 flex flex-col justify-between">
     <div>
       <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -149,9 +150,10 @@ const tplLayoutWelcome = `{{"{{"}} define "title" {{"}}"}}{{"{{"}} if .AppName {
     <link rel="icon" href="/static/icons/icon.png" type="image/png" />
     <script src="/static/js/htmx.min.js" defer></script>
     <script src="/static/js/idiomorph-ext.min.js" defer></script>
+    <script src="/static/js/sse-ext.min.js" defer></script>
     <script src="/static/js/cais.js" defer></script>
   </head>
-  <body hx-ext="morph" class="min-h-screen bg-gradient-to-b from-[#FAF3E8] via-[#EDCFA8] to-[#C9895E] text-stone-800 antialiased">
+  <body hx-ext="morph,sse" class="min-h-screen bg-gradient-to-b from-[#FAF3E8] via-[#EDCFA8] to-[#C9895E] text-stone-800 antialiased">
     <main>{{"{{"}} template "content" . {{"}}"}}</main>
     {{"{{"}} if eq .Env "development" {{"}}"}}
     <script>

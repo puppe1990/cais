@@ -30,10 +30,11 @@
     <link rel="icon" href="/static/icons/icon.png" type="image/png" />
     <script src="/static/js/htmx.min.js" defer></script>
     <script src="/static/js/idiomorph-ext.min.js" defer></script>
+    <script src="/static/js/sse-ext.min.js" defer></script>
     <script src="/static/js/cais.js" defer></script>
   </head>
   <body
-    hx-ext="morph"
+    hx-ext="morph,sse"
     class="min-h-screen bg-gradient-to-b from-[#FAF3E8] via-[#EDCFA8] to-[#C9895E] text-stone-800 antialiased"
   >
     <main>{{ template "content" . }}</main>

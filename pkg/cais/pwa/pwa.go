@@ -112,6 +112,7 @@ func WriteStatic(appDir string, cfg Config) error {
 		{"assets/sw.js", "js/sw.js"},
 		{"assets/htmx.min.js", "js/htmx.min.js"},
 		{"assets/idiomorph-ext.min.js", "js/idiomorph-ext.min.js"},
+		{"assets/sse-ext.min.js", "js/sse-ext.min.js"},
 		{"assets/cais.js", "js/cais.js"},
 		{"assets/offline.html", "offline.html"},
 		{"assets/icon.png", "icons/icon.png"},

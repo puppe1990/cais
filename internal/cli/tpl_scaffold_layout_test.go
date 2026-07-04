@@ -48,8 +48,11 @@ func TestLayoutTemplates_useSharedHead(t *testing.T) {
 		if !strings.Contains(tpl, "htmx.min.js") || !strings.Contains(tpl, `define "base"`) {
 			t.Errorf("%s layout missing shared head/shell fragments", name)
 		}
-		if !strings.Contains(tpl, "idiomorph-ext.min.js") || !strings.Contains(tpl, `hx-ext="morph"`) {
-			t.Errorf("%s layout missing idiomorph morph extension", name)
+		if !strings.Contains(tpl, "idiomorph-ext.min.js") || !strings.Contains(tpl, `hx-ext="morph,sse"`) {
+			t.Errorf("%s layout missing htmx morph + sse extensions", name)
+		}
+		if !strings.Contains(tpl, "sse-ext.min.js") {
+			t.Errorf("%s layout missing sse-ext.min.js script", name)
 		}
 	}
 }

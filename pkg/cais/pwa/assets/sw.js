@@ -4,6 +4,7 @@ const PRECACHE = [
   "/static/css/styles.css",
   "/static/js/htmx.min.js",
   "/static/js/idiomorph-ext.min.js",
+  "/static/js/sse-ext.min.js",
   "/static/js/cais.js",
   "/static/js/html5-qrcode.min.js",
   "/static/js/scan.js",
