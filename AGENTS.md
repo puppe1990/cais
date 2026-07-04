@@ -43,6 +43,7 @@ Before writing production code:
 ```go
 r.Get("/blog/{slug}", cais.StringParam("slug", blog.Show))
 r.Post("/chat/{id}/permissions/{permID}/approve", cais.StringParams("id", "permID", chat.ApprovePermission))
+r.Get("/items/{id}/{slug}", cais.IntStringParams("id", "slug", items.Show))
 r.Group(middleware.Protect, func(g *cais.Router) {
   g.Post("/admin/items/{id}", cais.IntParam("id", admin.Update))
 })
@@ -321,6 +322,7 @@ cais test     # go test ./...
 cais doctor   # verify htmx, air, go.mod
 cais console  # Rails-style REPL (store, cfg, db + sql)
 cais routes   # list HTTP routes from internal/app/routes.go
+cais link [../Cais] [--unlink]  # go.mod replace for local framework dev
 cais db migrate        # run pending migrations
 cais db status         # list applied/pending migrations
 cais db rollback       # roll back last migration (runs -- down SQL when present)

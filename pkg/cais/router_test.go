@@ -94,6 +94,41 @@ func TestStringParams_missingParam_Returns404(t *testing.T) {
 	}
 }
 
+func TestIntStringParams_extractsIDAndSlug(t *testing.T) {
+	var gotID int64
+	var gotSlug string
+	h := IntStringParams("id", "slug", func(w http.ResponseWriter, r *http.Request, id int64, slug string) {
+		gotID, gotSlug = id, slug
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/items/7/edit", nil)
+	req.SetPathValue("id", "7")
+	req.SetPathValue("slug", "edit")
+	rr := httptest.NewRecorder()
+	h(rr, req)
+
+	if gotID != 7 || gotSlug != "edit" {
+		t.Errorf("params = (%d, %q), want (7, edit)", gotID, gotSlug)
+	}
+}
+
+func TestIntStringParams_invalidID_Returns404(t *testing.T) {
+	h := IntStringParams("id", "slug", func(w http.ResponseWriter, r *http.Request, id int64, slug string) {
+		t.Error("handler should not be called")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/items/x/edit", nil)
+	req.SetPathValue("id", "x")
+	req.SetPathValue("slug", "edit")
+	rr := httptest.NewRecorder()
+	h(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", rr.Code)
+	}
+}
+
 func TestRouter_DeleteRoute(t *testing.T) {
 	r := NewRouter()
 	called := false
