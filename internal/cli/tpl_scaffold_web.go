@@ -76,7 +76,7 @@ const tplLayoutBaseClose = `
         {{"{{"}} if .Flash {{"}}"}}
         <div class="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2 border border-slate-700/50" role="status">
           {{"{{"}} template "icon_sparkles_md" . {{"}}"}}
-          <span class="text-xs font-bold">{{"{{"}} .Flash {{"}}"}}</span>
+          <span class="text-xs font-bold">{{"{{"}} flashMessage .Flash {{"}}"}}</span>
         </div>
         {{"{{"}} end {{"}}"}}
       </div>

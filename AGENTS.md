@@ -98,7 +98,15 @@ Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap so layouts render corre
 
 - `middleware.Flash` on the router (after `LoadSession`)
 - Set on redirect: `flash.Set(w, "notice", "Saved!", cfg.CookieSecure())` — read in templates via `meta.ForRequest(site, r)` → `.Flash`
+- Layouts: `{{ flashMessage .Flash }}` (`pkg/cais/forms`) — never `{{ .Flash }}` (stringifies the struct)
 - One-shot: consumed on the next request
+
+## Mobile PWA
+
+- `boot.Print` shows **LAN** URLs for phone testing on Wi‑Fi
+- `cais pwa --bump` increments `CACHE_VERSION` in `sw.js` after template/HTML changes
+- `cais doctor --mobile` checks flash markup, Google Fonts CSP, and SW cache version
+- Scaffold `input.css` uses system fonts (no `fonts.googleapis.com` — blocked by default CSP)
 
 ## Security headers
 

@@ -30,7 +30,7 @@ func TestDoctor_SSEWriteTimeoutWarnsWhenPositive(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := runDoctor(&buf, dir); err != nil {
+	if err := runDoctor(&buf, dir, doctorOptions{}); err != nil {
 		t.Fatalf("doctor should pass with warning: %v\n%s", err, buf.String())
 	}
 	out := buf.String()
@@ -69,7 +69,7 @@ func TestDoctor_AllOK(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := runDoctor(&buf, dir); err != nil {
+	if err := runDoctor(&buf, dir, doctorOptions{}); err != nil {
 		t.Fatalf("doctor failed: %v\n%s", err, buf.String())
 	}
 	if !strings.Contains(buf.String(), "htmx.min.js") {
@@ -94,7 +94,7 @@ func TestDoctor_AirOptionalWhenMissing(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := runDoctor(&buf, dir); err != nil {
+	if err := runDoctor(&buf, dir, doctorOptions{}); err != nil {
 		t.Fatalf("doctor should pass without air: %v\n%s", err, buf.String())
 	}
 	if !strings.Contains(buf.String(), "[warn] air") {
@@ -116,7 +116,7 @@ func TestDoctor_QualityToolingWarnsWhenMissing(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := runDoctor(&buf, dir); err != nil {
+	if err := runDoctor(&buf, dir, doctorOptions{}); err != nil {
 		t.Fatalf("doctor should pass with optional warning: %v\n%s", err, buf.String())
 	}
 	out := buf.String()
@@ -220,7 +220,7 @@ func TestDoctor_DeployLayout(t *testing.T) {
 		t.Fatal(err)
 	}
 	var buf bytes.Buffer
-	if err := runDoctor(&buf, dir); err == nil {
+	if err := runDoctor(&buf, dir, doctorOptions{}); err == nil {
 		t.Fatalf("expected doctor failure without manifest, got:\n%s", buf.String())
 	}
 	if !strings.Contains(buf.String(), "[FAIL] deploy layout") {
@@ -264,7 +264,7 @@ func scaffoldDoctorApp(t *testing.T) string {
 func runDoctorOutput(t *testing.T, dir string) string {
 	t.Helper()
 	var buf bytes.Buffer
-	if err := runDoctor(&buf, dir); err != nil {
+	if err := runDoctor(&buf, dir, doctorOptions{}); err != nil {
 		t.Fatalf("doctor failed: %v\n%s", err, buf.String())
 	}
 	return buf.String()
