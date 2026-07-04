@@ -217,7 +217,7 @@ func (c *CLI) cmdGenerate(args []string) error {
 	setScaffoldOut(c.Out)
 
 	if len(args) < 1 {
-		return fmt.Errorf("usage: cais g [--dry-run] <handler|page|migration|resource|model|job|console|auth|ci> [name]")
+		return fmt.Errorf("usage: cais g [--dry-run] <handler|page|migration|resource|model|stream|job|console|auth|ci> [name]")
 	}
 
 	kind := args[0]
@@ -251,6 +251,11 @@ func (c *CLI) cmdGenerate(args []string) error {
 		}
 		opts.dryRun = dryRun
 		genErr = scaffoldJob(cwd, args[1], opts)
+	case "stream":
+		if len(args) < 2 || args[1] != "chat" {
+			return fmt.Errorf("usage: cais g stream chat")
+		}
+		genErr = scaffoldStreamChat(cwd, streamOpts{dryRun: dryRun})
 	case "handler", "page", "migration", "resource", "model":
 		if len(args) < 2 {
 			return fmt.Errorf("usage: cais g %s <name>", kind)
@@ -279,7 +284,7 @@ func (c *CLI) cmdGenerate(args []string) error {
 			genErr = scaffoldModel(cwd, name, opts)
 		}
 	default:
-		return fmt.Errorf("unknown generator %q (use handler, page, migration, resource, model, auth, ci, app, or console)", kind)
+		return fmt.Errorf("unknown generator %q (use handler, page, migration, resource, model, stream, auth, ci, app, or console)", kind)
 	}
 	if genErr != nil {
 		return genErr
@@ -293,7 +298,7 @@ func (c *CLI) cmdGenerate(args []string) error {
 func printGenerateNextSteps(w io.Writer, kind string) {
 	_, _ = fmt.Fprintln(w)
 	switch kind {
-	case "resource", "model", "migration", "auth":
+	case "resource", "model", "migration", "auth", "stream":
 		_, _ = fmt.Fprintln(w, "=> Next: cais db migrate && cais test")
 	case "app":
 		_, _ = fmt.Fprintln(w, "=> Next: cais css && cais dev")

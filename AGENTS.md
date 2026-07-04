@@ -288,6 +288,7 @@ cais new myapp              # includes GitHub Actions CI, pre-commit, golangci-l
 cais new myapp --minimal
 cais new myapp --blank
 cais new myapp --module github.com/acme/myapp
+cais g [--dry-run] stream chat              # SSE chat: conversations, messages, stream relay scaffold
 cais g [--dry-run] resource bookmark --fields title:string,url:url,notes:text? --public --paginate --force
 cais destroy [--dry-run] resource bookmark   # undo generator output
 cais destroy [--dry-run] model bookmark      # remove model + migration + store methods
