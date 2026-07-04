@@ -14,6 +14,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 - `cais doctor --mobile` — flash template, Google Fonts CSP, and PWA cache version checks
 - `boot.Print` LAN URL line via `pkg/cais/netutil`
 - `cais.PortBusy` and dev-server warning when the configured port is already in use
+- `cais.StringParams` — ergonomic two-param routes without nested `StringParam` callbacks
 - Scaffold partial `chat_sse.html` — append-only SSE chat pattern (`#chat-history` + `#chat-sse`)
 - `cais doctor` warns when `sse-ext.min.js` is installed but `WriteTimeout > 0`
 
