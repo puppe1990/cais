@@ -34,6 +34,16 @@ func TestSetToast(t *testing.T) {
 	}
 }
 
+func TestSetToast_escapesNonASCIIForHTTPHeader(t *testing.T) {
+	rr := httptest.NewRecorder()
+	SetToast(rr, "+2 pts — obrigado por confirmar!")
+	got := rr.Header().Get("HX-Trigger")
+	want := `{"caisToast":"+2 pts \u2014 obrigado por confirmar!"}`
+	if got != want {
+		t.Errorf("HX-Trigger = %q, want %q", got, want)
+	}
+}
+
 func TestSetFocus(t *testing.T) {
 	rr := httptest.NewRecorder()
 	SetFocus(rr, "#email")
