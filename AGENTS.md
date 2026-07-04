@@ -121,6 +121,31 @@ r.Post("/contact", contactLimit.Middleware(http.HandlerFunc(contact.Post)).Serve
 
 Rate limiters use `middleware.ClientIP(r, cfg)` — set `TRUSTED_PROXIES` when behind a reverse proxy.
 
+## SSE / streaming
+
+Cais ships `sse-ext.min.js` (HTMX SSE extension). Long-lived streams need server and handler setup:
+
+| Setting        | Normal handlers | SSE routes                                             |
+| -------------- | --------------- | ------------------------------------------------------ |
+| `WriteTimeout` | `30s` ok        | **`0`** (disabled) — scaffold default                  |
+| Flush          | N/A             | `stream.Flush(w)` — never assert `http.Flusher` on `w` |
+
+```go
+import "github.com/puppe1990/cais/pkg/cais/stream"
+
+func streamHandler(w http.ResponseWriter, r *http.Request) {
+    stream.RelaySSE(w)
+    for ev := range events {
+        fmt.Fprintf(w, "event: message\ndata: %s\n\n", ev)
+        _ = stream.Flush(w)
+    }
+}
+```
+
+**Chat template pattern** — `web/templates/partials/chat_sse.html`: `#chat-history` holds messages; `#chat-sse` child uses `sse-swap="message"` + `hx-swap="beforeend"` + `hx-target="#chat-history"` so SSE appends bubbles instead of replacing history.
+
+`cais doctor` warns when `sse-ext.min.js` is present and `WriteTimeout > 0` in `internal/app/app.go`.
+
 ## HTMX interactions
 
 - Partial in `web/templates/partials/` — each file has `{{ define "name" }}` matching the filename

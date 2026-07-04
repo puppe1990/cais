@@ -64,10 +64,19 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 		"web/static/img/go-on-cais.jpg",
 		"web/static/og.png",
 		"web/static/icons/icon.png",
+		"web/templates/partials/chat_sse.html",
 	} {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
 			t.Errorf("missing %s: %v", path, err)
 		}
+	}
+
+	appGo, err := os.ReadFile(filepath.Join(appDir, "internal/app/app.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(appGo), "WriteTimeout:      0,") {
+		t.Error("app.go should disable WriteTimeout for SSE streaming")
 	}
 }
 

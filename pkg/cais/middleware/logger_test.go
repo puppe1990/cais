@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/stream"
 )
 
 func TestLogger_RailsStyleRequestLog(t *testing.T) {
@@ -126,11 +127,10 @@ func TestLogger_PreservesFlusherForSSE(t *testing.T) {
 	var buf bytes.Buffer
 	spy := &flushSpy{}
 	handler := LoggerWithWriter(cais.Config{}, &buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		flusher, ok := w.(http.Flusher)
-		if !ok {
-			t.Fatal("ResponseWriter lost http.Flusher — SSE streams will 502 behind proxies")
+		// Apps should use stream.Flush — not http.Flusher assertions on w.
+		if err := stream.Flush(w); err != nil {
+			t.Fatalf("stream.Flush: %v", err)
 		}
-		flusher.Flush()
 		w.WriteHeader(http.StatusOK)
 	}))
 

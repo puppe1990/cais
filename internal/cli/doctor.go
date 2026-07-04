@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -24,6 +25,7 @@ func runDoctor(w io.Writer, dir string) error {
 		checkCaisDep(dir),
 		checkHTMX(dir),
 		checkSSEExt(dir),
+		checkSSEWriteTimeout(dir),
 		checkAir(),
 		checkCSS(dir),
 		checkDeployLayout(dir),
@@ -116,6 +118,33 @@ func checkHTMX(dir string) doctorCheck {
 		}
 	}
 	return doctorCheck{Name: "htmx.min.js", OK: true}
+}
+
+var writeTimeoutRe = regexp.MustCompile(`WriteTimeout:\s*(\d+)\s*\*\s*time\.Second`)
+
+func checkSSEWriteTimeout(dir string) doctorCheck {
+	ssePath := filepath.Join(dir, "web/static/js/sse-ext.min.js")
+	if _, err := os.Stat(ssePath); err != nil {
+		return doctorCheck{Name: "SSE WriteTimeout", OK: true, Detail: "skipped (no sse-ext.min.js)"}
+	}
+	appPath := filepath.Join(dir, "internal/app/app.go")
+	data, err := os.ReadFile(appPath)
+	if err != nil {
+		return doctorCheck{Name: "SSE WriteTimeout", OK: true, Detail: "skipped (no internal/app/app.go)"}
+	}
+	m := writeTimeoutRe.FindStringSubmatch(string(data))
+	if m == nil {
+		return doctorCheck{Name: "SSE WriteTimeout", OK: true, Detail: "skipped (WriteTimeout not detected)"}
+	}
+	if m[1] == "0" {
+		return doctorCheck{Name: "SSE WriteTimeout", OK: true, Detail: "disabled for streaming"}
+	}
+	return doctorCheck{
+		Name:     "SSE WriteTimeout",
+		Optional: true,
+		Detail:   fmt.Sprintf("WriteTimeout: %s*time.Second kills long-lived SSE connections", m[1]),
+		FixHint:  "set WriteTimeout: 0 in internal/app/app.go (see pkg/cais/stream)",
+	}
 }
 
 func checkSSEExt(dir string) doctorCheck {
