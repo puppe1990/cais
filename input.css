@@ -3,6 +3,37 @@
 @tailwind utilities;
 
 @layer components {
+  .cais-password-wrap {
+    @apply relative;
+  }
+
+  .cais-password-wrap input {
+    padding-right: 2.5rem;
+  }
+
+  .cais-password-toggle {
+    @apply absolute right-0 top-0 flex h-full items-center px-3 text-slate-400 hover:text-slate-600;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .cais-password-toggle svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .relative > [data-cais-password-toggle] {
+    @apply absolute right-0 top-0 flex h-full items-center px-3 text-slate-400 hover:text-slate-600;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .relative > input[type="password"] {
+    padding-right: 2.5rem;
+  }
+
   .htmx-swapping {
     opacity: 0;
     transition: opacity 150ms ease-out;

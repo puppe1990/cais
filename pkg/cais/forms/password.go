@@ -17,7 +17,7 @@ func FieldPassword(f FieldData) template.HTML {
 	b.WriteString(template.HTMLEscapeString(f.Name))
 	b.WriteString(`">`)
 	b.WriteString(template.HTMLEscapeString(f.Label))
-	b.WriteString(`</label><div class="relative"><input class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" style="padding-right:2.5rem" type="password" id="`)
+	b.WriteString(`</label><div class="cais-password-wrap"><input class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" type="password" id="`)
 	b.WriteString(template.HTMLEscapeString(f.Name))
 	b.WriteString(`" name="`)
 	b.WriteString(template.HTMLEscapeString(f.Name))
@@ -25,7 +25,7 @@ func FieldPassword(f FieldData) template.HTML {
 	if f.Required {
 		b.WriteString(` required`)
 	}
-	b.WriteString(` /><button type="button" class="absolute right-0 top-0 flex h-full items-center px-3 text-slate-400 hover:text-slate-600" data-cais-password-toggle aria-label="Show password"><span data-cais-password-icon="show">`)
+	b.WriteString(` /><button type="button" class="cais-password-toggle" data-cais-password-toggle aria-label="Show password"><span data-cais-password-icon="show">`)
 	b.WriteString(passwordEyeShow)
 	b.WriteString(`</span><span data-cais-password-icon="hide" class="hidden">`)
 	b.WriteString(passwordEyeHide)

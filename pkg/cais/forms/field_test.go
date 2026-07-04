@@ -72,10 +72,10 @@ func TestFieldPassword_rendersToggleButton(t *testing.T) {
 	for _, needle := range []string{
 		`type="password"`,
 		`name="password"`,
+		`cais-password-wrap`,
+		`cais-password-toggle`,
 		`data-cais-password-toggle`,
 		`data-cais-password-icon="show"`,
-		`data-cais-password-icon="hide"`,
-		`padding-right:2.5rem`,
 		`data-cais-password-icon="hide"`,
 	} {
 		if !strings.Contains(html, needle) {

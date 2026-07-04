@@ -78,17 +78,44 @@ const tplInputCSS = `@import url('https://fonts.googleapis.com/css2?family=Inter
   .cais-auth-screen {
     @apply min-h-screen bg-gradient-to-br from-indigo-50 via-white to-violet-100;
   }
+
+  .cais-password-wrap {
+    @apply relative;
+  }
+
+  .cais-password-wrap input {
+    padding-right: 2.5rem;
+  }
+
+  .cais-password-toggle {
+    @apply absolute right-0 top-0 flex h-full items-center px-3 text-slate-400 hover:text-slate-600;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .cais-password-toggle svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .relative > [data-cais-password-toggle] {
+    @apply absolute right-0 top-0 flex h-full items-center px-3 text-slate-400 hover:text-slate-600;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .relative > input[type="password"] {
+    padding-right: 2.5rem;
+  }
 }
 `
 
 const tplTailwind = `/** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./web/templates/**/*.html"],
-  safelist: [
-    // fieldPassword (rendered from pkg/cais/forms, not scanned from HTML)
-    "pr-10",
-    "inset-y-0",
-  ],
+  safelist: ["cais-password-wrap", "cais-password-toggle"],
   theme: {
     extend: {
       fontFamily: {
