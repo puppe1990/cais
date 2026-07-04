@@ -14,6 +14,8 @@ type Config struct {
 	AdminToken        string
 	Locale            string
 	LogFormat         string
+	StaticDir         string
+	TemplatesDir      string
 	TrustedProxies    []string
 	PermissionsPolicy string
 	CSPStyleSrc       string
@@ -50,6 +52,12 @@ func Load() Config {
 	}
 	if v := os.Getenv("LOG_FORMAT"); v != "" {
 		cfg.LogFormat = v
+	}
+	if v := os.Getenv("STATIC_DIR"); v != "" {
+		cfg.StaticDir = v
+	}
+	if v := os.Getenv("TEMPLATES_DIR"); v != "" {
+		cfg.TemplatesDir = v
 	}
 	if v := os.Getenv("TRUSTED_PROXIES"); v != "" {
 		for _, ip := range strings.Split(v, ",") {

@@ -50,6 +50,10 @@ LOCALE=en
 # Database
 DB_PATH=./data/app.db
 
+# Deploy (optional; override when systemd WorkingDirectory is not app root)
+# STATIC_DIR=/opt/myapp/current/web/static
+# TEMPLATES_DIR=/opt/myapp/current/web/templates
+
 # Security (required when ENV=production)
 ADMIN_TOKEN=
 

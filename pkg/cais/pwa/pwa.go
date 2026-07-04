@@ -23,7 +23,9 @@ type Config struct {
 	ShortName   string
 	Description string
 	StartURL    string
+	Display     string
 	ThemeColor  string
+	IconPath    string
 }
 
 func DefaultConfig(name string) Config {
@@ -36,6 +38,7 @@ func DefaultConfig(name string) Config {
 		ShortName:   short,
 		Description: name + " — powered by Cais",
 		StartURL:    "/",
+		Display:     "fullscreen",
 		ThemeColor:  ThemeColor,
 	}
 }
@@ -122,7 +125,7 @@ func WriteStatic(appDir string, cfg Config) error {
 	if err := writeOGImage(filepath.Join(staticDir, "og.png")); err != nil {
 		return err
 	}
-	if err := writeAppIcons(filepath.Join(staticDir, "icons")); err != nil {
+	if err := writeAppIcons(filepath.Join(staticDir, "icons"), cfg.IconPath); err != nil {
 		return err
 	}
 
@@ -135,12 +138,20 @@ func InstallTo(appDir, name string) error {
 }
 
 func writeManifest(path string, cfg Config) error {
+	display := cfg.Display
+	if display == "" {
+		display = "fullscreen"
+	}
+	type manifestData struct {
+		Config
+		Display string
+	}
 	const tpl = `{
   "name": {{printf "%q" .Name}},
   "short_name": {{printf "%q" .ShortName}},
   "description": {{printf "%q" .Description}},
   "start_url": {{printf "%q" .StartURL}},
-  "display": "standalone",
+  "display": {{printf "%q" .Display}},
   "background_color": "#f8fafc",
   "theme_color": {{printf "%q" .ThemeColor}},
   "orientation": "portrait-primary",
@@ -165,7 +176,7 @@ func writeManifest(path string, cfg Config) error {
 		return err
 	}
 	var buf bytes.Buffer
-	if err := t.Execute(&buf, cfg); err != nil {
+	if err := t.Execute(&buf, manifestData{Config: cfg, Display: display}); err != nil {
 		return err
 	}
 	return os.WriteFile(path, buf.Bytes(), 0o644)
@@ -211,9 +222,18 @@ func encodePNG(path string, img image.Image) error {
 	return png.Encode(f, img)
 }
 
-func writeAppIcons(dir string) error {
-	data, err := assets.ReadFile("assets/icon.png")
+func writeAppIcons(dir string, iconPath string) error {
+	var data []byte
+	var err error
+	if iconPath != "" {
+		data, err = os.ReadFile(iconPath)
+	} else {
+		data, err = assets.ReadFile("assets/icon.png")
+	}
 	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(dir, "icon.png"), data, 0o644); err != nil {
 		return err
 	}
 	src, err := png.Decode(bytes.NewReader(data))

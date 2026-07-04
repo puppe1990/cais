@@ -25,6 +25,7 @@ func runDoctor(w io.Writer, dir string) error {
 		checkHTMX(dir),
 		checkAir(),
 		checkCSS(dir),
+		checkDeployLayout(dir),
 		checkQualityTooling(dir),
 	}
 	if isProduction(dir) {
@@ -133,6 +134,26 @@ func checkAir() doctorCheck {
 	}
 }
 
+func checkDeployLayout(dir string) doctorCheck {
+	static := filepath.Join(dir, "web", "static")
+	manifest := filepath.Join(static, "manifest.webmanifest")
+	if _, err := os.Stat(static); err != nil {
+		return doctorCheck{
+			Name:    "deploy layout",
+			Detail:  "missing web/static",
+			FixHint: "run cais css && make pwa; deploy needs web/static beside the binary",
+		}
+	}
+	if _, err := os.Stat(manifest); err != nil {
+		return doctorCheck{
+			Name:    "deploy layout",
+			Detail:  "missing manifest.webmanifest",
+			FixHint: "run make pwa from the Cais framework or cais new",
+		}
+	}
+	return doctorCheck{Name: "deploy layout", OK: true, Detail: "web/static ready for systemd deploy"}
+}
+
 func checkQualityTooling(dir string) doctorCheck {
 	path := filepath.Join(dir, ".github/workflows/ci.yml")
 	if _, err := os.Stat(path); err != nil {
@@ -235,6 +256,6 @@ func checkSeedsInfo(dir string) *doctorCheck {
 		Name:   "db seeds",
 		OK:     true,
 		Info:   true,
-		Detail: "run cais db seed to populate demo data",
+		Detail: "run cais db seed for catalog data (idempotent; safe in production)",
 	}
 }

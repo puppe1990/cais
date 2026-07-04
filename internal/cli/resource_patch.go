@@ -302,7 +302,7 @@ func patchMainForSeed(dir string, data scaffoldData, dryRun bool) error {
 	if strings.Contains(content, "SeedDemo"+data.PluralPascal) {
 		return patchLayoutNav(dir, data, dryRun)
 	}
-	marker := "\n\tstaticDir, err := findWebDir(\"static\")"
+	marker := "\n\tstaticDir, err := cais.ResolveWebDir(\"static\", cfg.StaticDir)"
 	seed := fmt.Sprintf(`
 	if err := s.SeedDemo%s(); err != nil {
 		_ = s.Close()

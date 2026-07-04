@@ -28,6 +28,20 @@ func TestConfig_LoadFromEnv(t *testing.T) {
 	}
 }
 
+func TestConfig_StaticAndTemplatesDir(t *testing.T) {
+	t.Setenv("STATIC_DIR", "/opt/app/web/static")
+	t.Setenv("TEMPLATES_DIR", "/opt/app/web/templates")
+
+	cfg := Load()
+
+	if cfg.StaticDir != "/opt/app/web/static" {
+		t.Errorf("StaticDir = %q", cfg.StaticDir)
+	}
+	if cfg.TemplatesDir != "/opt/app/web/templates" {
+		t.Errorf("TemplatesDir = %q", cfg.TemplatesDir)
+	}
+}
+
 func TestConfig_DBPath(t *testing.T) {
 	t.Setenv("PORT", "")
 	t.Setenv("DB_PATH", "/tmp/test.db")

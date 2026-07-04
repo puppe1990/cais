@@ -5,7 +5,6 @@ import (
 	"io/fs"
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/puppe1990/cais/internal/app"
 	"github.com/puppe1990/cais/internal/store"
@@ -60,7 +59,7 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 	}
 
 	catalog := i18n.NewCatalog(cfg.Locale)
-	templatesDir, err := findWebDir("templates")
+	templatesDir, err := cais.ResolveWebDir("templates", cfg.TemplatesDir)
 	if err != nil {
 		templatesDir = ""
 	}
@@ -74,7 +73,7 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 		return nil, fmt.Errorf("store: %w", err)
 	}
 
-	staticDir, err := findWebDir("static")
+	staticDir, err := cais.ResolveWebDir("static", cfg.StaticDir)
 	if err != nil {
 		_ = s.Close()
 		return nil, err
@@ -87,22 +86,4 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 		Site:      meta.SiteFrom("Cais", cfg.AppURL),
 		Catalog:   catalog,
 	})
-}
-
-func findWebDir(subpath string) (string, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	for {
-		candidate := filepath.Join(wd, "web", subpath)
-		if _, err := os.Stat(candidate); err == nil {
-			return candidate, nil
-		}
-		parent := filepath.Dir(wd)
-		if parent == wd {
-			return "", fmt.Errorf("web/%s not found", subpath)
-		}
-		wd = parent
-	}
 }

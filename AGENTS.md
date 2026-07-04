@@ -291,7 +291,7 @@ cais db migrate        # run pending migrations
 cais db status         # list applied/pending migrations
 cais db rollback       # roll back last migration (runs -- down SQL when present)
 cais db prune-sessions # delete expired login sessions from SQLite
-cais db seed           # run internal/db/seeds.go (idempotent)
+cais db seed           # run internal/db/seeds.go (idempotent; safe in production for catalog data)
 cais db seed --list    # list seed helpers referenced in seeds.go
 cais jobs work [--queues default,mail] [--concurrency 2]
 cais jobs status
@@ -378,9 +378,24 @@ make format   # prettier --write
 make ci       # test + lint + format-check
 make dev      # hot reload + tailwind watch
 make build    # bin/cais
-make pwa      # regenerate PWA assets (manifest, icons, og.png)
+make pwa      # regenerate PWA assets (manifest fullscreen, icons, og.png)
 make docker   # ~15-20MB image
 ```
+
+## Production deploy (Lightsail / systemd)
+
+Cross-compile and ship static assets beside the binary:
+
+```bash
+cais build --os linux --arch amd64 -o bin/server-linux
+tar czf release.tar.gz bin/server-linux web/static
+```
+
+- Guide: `docs/deploy/lightsail-systemd.md`
+- Template: `deploy/systemd/cais-app.service.example`
+- `cais doctor` checks `web/static` + `manifest.webmanifest`
+- Set `STATIC_DIR` / `TEMPLATES_DIR` when `WorkingDirectory` is not the app root
+- Dev-only seeds (demo user) do not run when `ENV=production`; use `cais db seed` for catalog data
 
 Pre-commit (tests, lint, prettier): `make pre-commit-install` once, then hooks run on every commit.
 

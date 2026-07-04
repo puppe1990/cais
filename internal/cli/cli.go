@@ -39,7 +39,7 @@ func (c *CLI) Run(args []string) error {
 	case "dev":
 		return c.cmdDev()
 	case "build", "b":
-		return c.cmdBuild()
+		return c.cmdBuild(args[1:])
 	case "server", "s":
 		return c.cmdServer()
 	case "test":
@@ -88,7 +88,8 @@ Usage:
   cais install               npm install + go mod tidy
   cais css                   Build Tailwind CSS
   cais dev                   Hot reload (air + tailwind watch)
-  cais build                 Build bin/server
+  cais build [--os linux] [--arch amd64] [-o path]
+                               Build bin/server (cross-compile for deploy)
   cais server                Run the app (go run ./cmd/server)
   cais test                  Run tests (go test ./...)
   cais doctor                Check app setup (htmx, air, go.mod)

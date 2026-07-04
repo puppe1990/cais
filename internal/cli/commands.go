@@ -64,16 +64,33 @@ func (c *CLI) cmdCSS() error {
 	return runTailwindBuild(dir, false)
 }
 
-func (c *CLI) cmdBuild() error {
+func (c *CLI) cmdBuild(args []string) error {
 	dir, err := c.appDir()
 	if err != nil {
 		return err
 	}
+	opts := parseBuildFlags(args)
 	if err := runTailwindBuild(dir, false); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintln(c.Out, "→ go build")
-	return runCmd(dir, "go", "build", "-ldflags=-s -w", "-o", serverBin, "./cmd/server")
+	return runGoBuild(dir, opts)
+}
+
+func runGoBuild(dir string, opts buildOptions) error {
+	args := []string{"build", "-ldflags=-s -w", "-o", opts.Output, "./cmd/server"}
+	cmd := exec.Command("go", args...)
+	cmd.Dir = dir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
+	if opts.GOOS != "" {
+		cmd.Env = append(cmd.Env, "GOOS="+opts.GOOS)
+	}
+	if opts.GOARCH != "" {
+		cmd.Env = append(cmd.Env, "GOARCH="+opts.GOARCH)
+	}
+	return cmd.Run()
 }
 
 func (c *CLI) cmdDev() error {

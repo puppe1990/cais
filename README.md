@@ -54,7 +54,7 @@ export PATH="$HOME/go/bin:$PATH"
 | `cais install`                                                                                                                     | `npm install` + `go mod tidy`                              |
 | `cais css`                                                                                                                         | Build Tailwind CSS                                         |
 | `cais dev`                                                                                                                         | Hot reload (`air` + tailwind watch)                        |
-| `cais build`                                                                                                                       | Build `bin/server`                                         |
+| `cais build [--os linux] [--arch amd64] [-o path]`                                                                                 | Build `bin/server` (cross-compile for deploy)              |
 | `cais server`                                                                                                                      | Run `go run ./cmd/server`                                  |
 | `cais test`                                                                                                                        | Run `go test ./...`                                        |
 | `cais console`                                                                                                                     | Interactive REPL (store, cfg, db + SQL)                    |

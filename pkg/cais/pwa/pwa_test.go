@@ -16,6 +16,9 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.ThemeColor != ThemeColor {
 		t.Errorf("ThemeColor = %q", cfg.ThemeColor)
 	}
+	if cfg.Display != "fullscreen" {
+		t.Errorf("Display = %q, want fullscreen", cfg.Display)
+	}
 }
 
 func TestWriteStatic(t *testing.T) {
@@ -31,8 +34,8 @@ func TestWriteStatic(t *testing.T) {
 	if !strings.Contains(string(manifest), "My App") {
 		t.Errorf("manifest missing app name: %s", manifest)
 	}
-	if !strings.Contains(string(manifest), `"display": "standalone"`) {
-		t.Errorf("manifest should use standalone display, got: %s", manifest)
+	if !strings.Contains(string(manifest), `"display": "fullscreen"`) {
+		t.Errorf("manifest should use fullscreen display, got: %s", manifest)
 	}
 	if !strings.Contains(string(manifest), "icon-192.png") {
 		t.Errorf("manifest missing 192 icon: %s", manifest)
@@ -81,6 +84,56 @@ func TestHeadHTML(t *testing.T) {
 	}
 	if !strings.Contains(html, `apple-mobile-web-app-status-bar-style" content="black-translucent"`) {
 		t.Error("HeadHTML should use black-translucent status bar for fullscreen PWA")
+	}
+}
+
+func TestWriteStatic_customDisplay(t *testing.T) {
+	dir := t.TempDir()
+	cfg := DefaultConfig("App")
+	cfg.Display = "standalone"
+	if err := WriteStatic(dir, cfg); err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := os.ReadFile(filepath.Join(dir, "web/static/manifest.webmanifest"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(manifest), `"display": "standalone"`) {
+		t.Errorf("manifest should respect Display, got: %s", manifest)
+	}
+}
+
+func TestWriteStatic_customIcon(t *testing.T) {
+	dir := t.TempDir()
+	srcDir := filepath.Join(dir, "brand")
+	if err := os.MkdirAll(srcDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Copy embedded default to a distinct source file.
+	fsys, err := FS()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := fs.ReadFile(fsys, "icon.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	iconPath := filepath.Join(srcDir, "logo.png")
+	if err := os.WriteFile(iconPath, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := DefaultConfig("Branded")
+	cfg.IconPath = iconPath
+	if err := WriteStatic(dir, cfg); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(dir, "web/static/icons/icon-192.png"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) == 0 {
+		t.Fatal("expected generated icon")
 	}
 }
 

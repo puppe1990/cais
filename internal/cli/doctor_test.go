@@ -154,6 +154,28 @@ func TestDoctor_ProductionOKWhenConfigured(t *testing.T) {
 	}
 }
 
+func TestDoctor_DeployLayout(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	dir := scaffoldDoctorApp(t)
+
+	out := runDoctorOutput(t, dir)
+	if !strings.Contains(out, "[ok] deploy layout") {
+		t.Errorf("expected deploy layout ok, got:\n%s", out)
+	}
+
+	manifest := filepath.Join(dir, "web/static/manifest.webmanifest")
+	if err := os.Remove(manifest); err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if err := runDoctor(&buf, dir); err == nil {
+		t.Fatalf("expected doctor failure without manifest, got:\n%s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "[FAIL] deploy layout") {
+		t.Errorf("expected deploy layout failure, got:\n%s", buf.String())
+	}
+}
+
 func TestDoctor_SeedsInfoWhenPresent(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	dir := scaffoldDoctorApp(t)
