@@ -113,6 +113,35 @@ func TestLogger_JSONInDevelopment(t *testing.T) {
 	}
 }
 
+type flushSpy struct {
+	httptest.ResponseRecorder
+	n int
+}
+
+func (f *flushSpy) Flush() {
+	f.n++
+}
+
+func TestLogger_PreservesFlusherForSSE(t *testing.T) {
+	var buf bytes.Buffer
+	spy := &flushSpy{}
+	handler := LoggerWithWriter(cais.Config{}, &buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			t.Fatal("ResponseWriter lost http.Flusher — SSE streams will 502 behind proxies")
+		}
+		flusher.Flush()
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/chat/stream", nil)
+	handler.ServeHTTP(spy, req)
+
+	if spy.n != 1 {
+		t.Errorf("Flush() calls = %d, want 1", spy.n)
+	}
+}
+
 func TestLogger_SlowRequestMarksDuration(t *testing.T) {
 	var buf bytes.Buffer
 	handler := LoggerWithWriter(cais.Config{}, &buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
