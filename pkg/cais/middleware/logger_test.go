@@ -142,6 +142,28 @@ func TestLogger_PreservesFlusherForSSE(t *testing.T) {
 	}
 }
 
+func TestLogger_SkipsCompletedLogForSSEStreamPath(t *testing.T) {
+	var buf bytes.Buffer
+	handler := LoggerWithWriter(cais.Config{}, &buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		stream.RelaySSE(w)
+		_, _ = w.Write([]byte("event: message\ndata: ok\n\n"))
+		_ = stream.Flush(w)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/chat/abc/stream", nil)
+	req.RemoteAddr = "127.0.0.1:12345"
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	out := buf.String()
+	if !strings.Contains(out, "Started GET") {
+		t.Errorf("expected Started log, got:\n%s", out)
+	}
+	if strings.Contains(out, "Completed") {
+		t.Errorf("SSE stream path should not log Completed (misleading duration), got:\n%s", out)
+	}
+}
+
 func TestLogger_SlowRequestMarksDuration(t *testing.T) {
 	var buf bytes.Buffer
 	handler := LoggerWithWriter(cais.Config{}, &buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

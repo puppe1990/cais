@@ -8,7 +8,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ### Added
 
-- `pkg/cais/stream` — `Flush` and `RelaySSE` for HTMX SSE through middleware-wrapped `ResponseWriter`s
+- `pkg/cais/stream` — `Flush`, `RelaySSE`, and `RelayAndCopy` for HTMX SSE through middleware-wrapped `ResponseWriter`s
+- Logger skips misleading `Completed` log line for `/stream` and `/event` paths
 - `{{ flashMessage .Flash }}` template helper in `pkg/cais/forms`
 - `cais pwa [--bump]` — refresh PWA assets; `--bump` increments `CACHE_VERSION` in `sw.js`
 - `cais doctor --mobile` — flash template, Google Fonts CSP, and PWA cache version checks

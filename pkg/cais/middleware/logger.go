@@ -36,12 +36,19 @@ func LoggerWithWriter(cfg cais.Config, w io.Writer, next http.Handler) http.Hand
 		rec := &statusRecorder{ResponseWriter: rw, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
 
-		logRequestCompleted(w, cfg, r.Method, r.URL.Path, remote, rec.status, time.Since(start))
+		// Long-lived SSE paths log Started only — Completed duration is misleading.
+		if !skipCompletedLog(r.URL.Path) {
+			logRequestCompleted(w, cfg, r.Method, r.URL.Path, remote, rec.status, time.Since(start))
+		}
 	})
 }
 
 func skipRequestLog(path string) bool {
 	return path == "/health" || path == "/logs" || strings.HasPrefix(path, "/static/")
+}
+
+func skipCompletedLog(path string) bool {
+	return strings.HasSuffix(path, "/stream") || path == "/event" || strings.HasSuffix(path, "/event")
 }
 
 func statusLabel(code int) string {
