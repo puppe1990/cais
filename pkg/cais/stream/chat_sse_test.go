@@ -23,8 +23,9 @@ func TestChatSSEPartial_appendPattern(t *testing.T) {
 	}
 
 	data := struct {
-		StreamURL string
-		Messages  []chatMessage
+		StreamURL   string
+		MessagesURL string
+		Messages    []chatMessage
 	}{
 		StreamURL: "/chat/1/stream",
 		Messages: []chatMessage{
@@ -55,5 +56,11 @@ func TestChatSSEPartial_appendPattern(t *testing.T) {
 	}
 	if strings.Contains(body, `sse-swap="innerHTML"`) {
 		t.Error("innerHTML sse-swap would wipe chat history")
+	}
+	if !strings.Contains(body, `id="chat-thinking"`) {
+		t.Error("missing chat-thinking indicator")
+	}
+	if !strings.Contains(body, `data-cais-sse-persist="true"`) {
+		t.Error("missing data-cais-sse-persist for hx-boost reconnect")
 	}
 }

@@ -10,12 +10,24 @@ const tplPartialChatSSE = `{{"{{"}}- define "chat_sse" -{{"}}"}}
   {{"{{"}}- end {{"}}"}}
 </div>
 <div
+  id="chat-thinking"
+  class="hidden rounded-xl px-4 py-2 max-w-[85%] bg-slate-100 border border-slate-200 self-start text-sm text-slate-500"
+  role="status"
+  aria-live="polite"
+>
+  Agente pensando…
+</div>
+<div
   id="chat-sse"
   hx-ext="sse"
   sse-connect="{{"{{"}} .StreamURL {{"}}"}}"
   sse-swap="message"
   hx-swap="beforeend"
   hx-target="#chat-history"
+  data-cais-sse-persist="true"
+  {{"{{"}}- if .MessagesURL {{"}}"}}
+  data-cais-poll-url="{{"{{"}} .MessagesURL {{"}}"}}"
+  {{"{{"}}- end {{"}}"}}
   class="hidden"
   aria-hidden="true"
 ></div>

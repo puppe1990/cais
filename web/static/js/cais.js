@@ -86,8 +86,25 @@
     }
   });
 
+  document.body.addEventListener("htmx:sseBeforeMessage", function () {
+    hideChatThinking();
+    clearChatFallbackTimers();
+  });
+
+  document.body.addEventListener("htmx:sseClose", function (evt) {
+    var el = evt.detail && evt.detail.elt;
+    if (!el || !shouldPersistSSE(el)) return;
+    if (evt.detail.type === "nodeReplaced") {
+      scheduleSSEReconnect();
+    }
+  });
+
   document.body.addEventListener("htmx:beforeRequest", function (evt) {
     savedFocus = document.activeElement;
+    var form = evt.detail.elt.closest && evt.detail.elt.closest("form[data-cais-chat-form]");
+    if (form) {
+      scheduleChatFallback();
+    }
     var target = optimisticTarget(evt.detail.elt);
     if (!target) return;
     var mode = target.getAttribute("data-cais-optimistic");
@@ -111,6 +128,68 @@
     }
   });
 
+  var sseReconnectTimer = null;
+  var chatFallbackTimers = [];
+
+  function chatSSEEl() {
+    return document.getElementById("chat-sse");
+  }
+
+  function shouldPersistSSE(el) {
+    return el && el.getAttribute("data-cais-sse-persist") === "true";
+  }
+
+  function hasActiveSSE(el) {
+    if (!el || typeof htmx === "undefined" || !htmx.getInternalData) return false;
+    var data = htmx.getInternalData(el);
+    return data && data.sseEventSource && data.sseEventSource.readyState !== EventSource.CLOSED;
+  }
+
+  function reconnectChatSSE() {
+    var el = chatSSEEl();
+    if (!el || !shouldPersistSSE(el) || hasActiveSSE(el)) return;
+    if (typeof htmx !== "undefined" && htmx.process) {
+      htmx.process(el);
+    }
+  }
+
+  function scheduleSSEReconnect() {
+    if (sseReconnectTimer) clearTimeout(sseReconnectTimer);
+    sseReconnectTimer = setTimeout(function () {
+      sseReconnectTimer = null;
+      reconnectChatSSE();
+    }, 100);
+  }
+
+  function hideChatThinking() {
+    var thinking = document.getElementById("chat-thinking");
+    if (thinking) thinking.classList.add("hidden");
+  }
+
+  function clearChatFallbackTimers() {
+    chatFallbackTimers.forEach(function (id) {
+      clearTimeout(id);
+    });
+    chatFallbackTimers = [];
+  }
+
+  function scheduleChatFallback() {
+    clearChatFallbackTimers();
+    var el = chatSSEEl();
+    if (!el) return;
+    var pollURL = el.getAttribute("data-cais-poll-url");
+    if (!pollURL || typeof htmx === "undefined") return;
+    [4000, 8000, 15000].forEach(function (ms) {
+      var id = setTimeout(function () {
+        var thinking = document.getElementById("chat-thinking");
+        if (!thinking || thinking.classList.contains("hidden")) return;
+        htmx.ajax("GET", pollURL, { target: "#chat-history", swap: "innerHTML" });
+        hideChatThinking();
+      }, ms);
+      chatFallbackTimers.push(id);
+    });
+  }
+
   document.body.addEventListener("htmx:afterSettle", function () {
     optimisticState = null;
     document.querySelectorAll("[data-cais-optimistic][aria-busy]").forEach(function (el) {
@@ -118,6 +197,7 @@
     });
     syncNavTabs();
     dismissExistingToast();
+    reconnectChatSSE();
     if (
       savedFocus &&
       typeof savedFocus.focus === "function" &&

@@ -158,7 +158,9 @@ func relayHandler(w http.ResponseWriter, upstream *http.Response) {
 }
 ```
 
-**Chat template pattern** — `web/templates/partials/chat_sse.html`: `#chat-history` holds messages; `#chat-sse` child uses `sse-swap="message"` + `hx-swap="beforeend"` + `hx-target="#chat-history"` so SSE appends bubbles instead of replacing history.
+**Chat template pattern** — `web/templates/partials/chat_sse.html`: `#chat-history` holds messages; `#chat-sse` child uses `sse-swap="message"` + `hx-swap="beforeend"` + `hx-target="#chat-history"` so SSE appends bubbles instead of replacing history. Set `data-cais-sse-persist="true"` so `cais.js` reconnects SSE after `hx-boost` navigation.
+
+**Chat form** — `{{ hxChatForm "/chat/{id}/messages" "#chat-thinking" }}` on the `<form>`: Enter sends, Shift+Enter newline. Optional `data-cais-poll-url` on `#chat-sse` enables 4s/8s/15s history refresh fallback when SSE fails.
 
 `cais doctor` warns when `sse-ext.min.js` is present and `WriteTimeout > 0` in `internal/app/app.go`.
 

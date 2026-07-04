@@ -9,6 +9,7 @@ import (
 func Funcs() template.FuncMap {
 	return template.FuncMap{
 		"hxForm":        HxForm,
+		"hxChatForm":    HxChatForm,
 		"hxDelete":      HxDelete,
 		"hxBoostLink":   HxBoostLink,
 		"hxPaginate":    HxPaginate,
@@ -31,6 +32,23 @@ func HxForm(postURL, target, indicator string) template.HTMLAttr {
 		b.WriteString(template.HTMLEscapeString(indicator))
 		b.WriteString(`"`)
 	}
+	return template.HTMLAttr(b.String())
+}
+
+// HxChatForm returns attributes for a chat message form: Enter sends, Shift+Enter newline.
+func HxChatForm(postURL, thinkingID string) template.HTMLAttr {
+	var b strings.Builder
+	b.WriteString(`data-cais-chat-form="true" hx-post="`)
+	b.WriteString(template.HTMLEscapeString(postURL))
+	b.WriteString(`" hx-target="#chat-history" hx-swap="beforeend" hx-disabled-elt="button[type='submit']"`)
+	b.WriteString(` hx-on::after-request="this.reset()"`)
+	if thinkingID != "" {
+		id := strings.TrimPrefix(thinkingID, "#")
+		b.WriteString(` hx-on::before-request="document.getElementById('`)
+		b.WriteString(template.HTMLEscapeString(id))
+		b.WriteString(`')?.classList.remove('hidden')"`)
+	}
+	b.WriteString(` hx-on:keydown="if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); this.requestSubmit(); }"`)
 	return template.HTMLAttr(b.String())
 }
 

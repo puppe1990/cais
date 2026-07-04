@@ -99,9 +99,28 @@ func TestHxPostConfirm(t *testing.T) {
 	}
 }
 
+func TestHxChatForm(t *testing.T) {
+	got := string(HxChatForm("/chat/1/messages", "#chat-thinking"))
+	for _, want := range []string{
+		`hx-post="/chat/1/messages"`,
+		`hx-target="#chat-history"`,
+		`hx-swap="beforeend"`,
+		`hx-on:keydown`,
+		`Enter`,
+		`shiftKey`,
+		`requestSubmit`,
+		`chat-thinking`,
+		`data-cais-chat-form`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("HxChatForm missing %q, got %q", want, got)
+		}
+	}
+}
+
 func TestFuncs_registersHelpers(t *testing.T) {
 	fns := Funcs()
-	for _, name := range []string{"hxForm", "hxDelete", "hxBoostLink", "hxPaginate", "hxMorphOuter", "hxPost", "hxPostConfirm"} {
+	for _, name := range []string{"hxForm", "hxChatForm", "hxDelete", "hxBoostLink", "hxPaginate", "hxMorphOuter", "hxPost", "hxPostConfirm"} {
 		if fns[name] == nil {
 			t.Errorf("Funcs() missing %q", name)
 		}
