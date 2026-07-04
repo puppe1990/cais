@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"io"
 	"net/http"
 	"time"
 )
@@ -21,4 +22,28 @@ func RelaySSE(w http.ResponseWriter) *http.ResponseController {
 	rc := http.NewResponseController(w)
 	_ = rc.SetWriteDeadline(time.Time{}) // zero time clears deadline
 	return rc
+}
+
+// RelayAndCopy streams bytes from src to w, flushing after each read so SSE clients
+// receive events promptly through middleware-wrapped ResponseWriters.
+func RelayAndCopy(w http.ResponseWriter, src io.Reader) (int64, error) {
+	buf := make([]byte, 4096)
+	var total int64
+	for {
+		n, readErr := src.Read(buf)
+		if n > 0 {
+			written, writeErr := w.Write(buf[:n])
+			total += int64(written)
+			if writeErr != nil {
+				return total, writeErr
+			}
+			_ = Flush(w)
+		}
+		if readErr != nil {
+			if readErr == io.EOF {
+				return total, nil
+			}
+			return total, readErr
+		}
+	}
 }

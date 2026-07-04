@@ -147,8 +147,14 @@ func streamHandler(w http.ResponseWriter, r *http.Request) {
     stream.RelaySSE(w)
     for ev := range events {
         fmt.Fprintf(w, "event: message\ndata: %s\n\n", ev)
-        _ = stream.Flush(w)
+        _ = stream.Flush(w) // never w.(http.Flusher) — middleware may hide Flusher
     }
+}
+
+// Proxy upstream SSE (e.g. OpenCode /event) to the browser:
+func relayHandler(w http.ResponseWriter, upstream *http.Response) {
+    stream.RelaySSE(w)
+    _, _ = stream.RelayAndCopy(w, upstream.Body)
 }
 ```
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/puppe1990/cais/pkg/cais"
@@ -73,5 +74,36 @@ func TestRelaySSE_setsHeaders(t *testing.T) {
 	}
 	if rr.Code != http.StatusOK {
 		t.Errorf("status = %d, want 200", rr.Code)
+	}
+}
+
+func TestRelayAndCopy_forwardsEvents(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("event: message\ndata: hello\n\n"))
+		_ = Flush(w)
+		_, _ = w.Write([]byte("event: message\ndata: world\n\n"))
+		_ = Flush(w)
+	}))
+	t.Cleanup(upstream.Close)
+
+	resp, err := http.Get(upstream.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = resp.Body.Close() })
+
+	rr := httptest.NewRecorder()
+	RelaySSE(rr)
+	n, err := RelayAndCopy(rr, resp.Body)
+	if err != nil {
+		t.Fatalf("RelayAndCopy: %v", err)
+	}
+	if n == 0 {
+		t.Fatal("expected bytes copied")
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "data: hello") || !strings.Contains(body, "data: world") {
+		t.Errorf("body = %q, want both SSE events", body)
 	}
 }
