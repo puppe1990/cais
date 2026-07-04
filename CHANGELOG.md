@@ -14,6 +14,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 - `hxChatForm` template helper — Enter-to-send chat forms with thinking indicator
 - `chat_sse.html` partial — `#chat-thinking` indicator and optional `data-cais-poll-url` fallback
 - `cais g stream chat` — conversations + messages migration, SSE handler, HTMX chat UI
+- `netutil.HealthPayload` — `/health` exposes `lan_urls` for mobile testing
+- `cais doctor --mobile` — chat SSE pattern, SSE reconnect JS, health `lan_urls` checks
 - `{{ flashMessage .Flash }}` template helper in `pkg/cais/forms`
 - `cais pwa [--bump]` — refresh PWA assets; `--bump` increments `CACHE_VERSION` in `sw.js`
 - `cais doctor --mobile` — flash template, Google Fonts CSP, and PWA cache version checks

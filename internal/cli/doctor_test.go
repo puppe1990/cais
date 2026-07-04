@@ -58,6 +58,33 @@ func TestDoctor_SSEWriteTimeoutOKWhenZero(t *testing.T) {
 	}
 }
 
+func TestDoctor_MobileChecks_chatSSEAndReconnect(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	dir := t.TempDir()
+	if err := scaffoldNewApp(dir, scaffoldData{
+		AppName:    "mobile",
+		ModulePath: "github.com/puppe1990/mobile",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+
+	out := runDoctorOutputMobile(t, dir)
+	for _, want := range []string{"[ok] chat SSE pattern", "[ok] SSE reconnect", "[ok] health lan_urls"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("expected %q in doctor --mobile output, got:\n%s", want, out)
+		}
+	}
+}
+
+func runDoctorOutputMobile(t *testing.T, dir string) string {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := runDoctor(&buf, dir, doctorOptions{Mobile: true}); err != nil {
+		t.Fatalf("doctor --mobile failed: %v\n%s", err, buf.String())
+	}
+	return buf.String()
+}
+
 func TestDoctor_AllOK(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	dir := t.TempDir()
