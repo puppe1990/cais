@@ -9,6 +9,7 @@ type Middleware func(http.Handler) http.Handler
 
 type IntHandler func(http.ResponseWriter, *http.Request, int64)
 type StringHandler func(http.ResponseWriter, *http.Request, string)
+type StringParamsHandler func(http.ResponseWriter, *http.Request, string, string)
 
 type Router struct {
 	mux         *http.ServeMux
@@ -105,6 +106,19 @@ func IntParam(name string, fn IntHandler) http.HandlerFunc {
 			return
 		}
 		fn(w, r, id)
+	}
+}
+
+// StringParams wraps a handler with two string path parameters (avoids nested StringParam callbacks).
+func StringParams(nameA, nameB string, fn StringParamsHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		a := r.PathValue(nameA)
+		b := r.PathValue(nameB)
+		if a == "" || b == "" {
+			http.NotFound(w, r)
+			return
+		}
+		fn(w, r, a, b)
 	}
 }
 

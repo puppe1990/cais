@@ -58,6 +58,42 @@ func TestStringParam_ExtractsSlug(t *testing.T) {
 	}
 }
 
+func TestStringParams_extractsTwoParams(t *testing.T) {
+	var gotA, gotB string
+	h := StringParams("id", "permID", func(w http.ResponseWriter, r *http.Request, id, permID string) {
+		gotA, gotB = id, permID
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/chat/abc/permissions/xyz/approve", nil)
+	req.SetPathValue("id", "abc")
+	req.SetPathValue("permID", "xyz")
+	rr := httptest.NewRecorder()
+	h(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d", rr.Code)
+	}
+	if gotA != "abc" || gotB != "xyz" {
+		t.Errorf("params = (%q, %q), want (abc, xyz)", gotA, gotB)
+	}
+}
+
+func TestStringParams_missingParam_Returns404(t *testing.T) {
+	h := StringParams("id", "permID", func(w http.ResponseWriter, r *http.Request, id, permID string) {
+		t.Error("handler should not be called")
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/chat/abc/permissions//approve", nil)
+	req.SetPathValue("id", "abc")
+	rr := httptest.NewRecorder()
+	h(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", rr.Code)
+	}
+}
+
 func TestRouter_DeleteRoute(t *testing.T) {
 	r := NewRouter()
 	called := false

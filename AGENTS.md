@@ -42,6 +42,7 @@ Before writing production code:
 
 ```go
 r.Get("/blog/{slug}", cais.StringParam("slug", blog.Show))
+r.Post("/chat/{id}/permissions/{permID}/approve", cais.StringParams("id", "permID", chat.ApprovePermission))
 r.Group(middleware.Protect, func(g *cais.Router) {
   g.Post("/admin/items/{id}", cais.IntParam("id", admin.Update))
 })
