@@ -19,6 +19,7 @@ type Config struct {
 	CSPStyleSrc       string
 	CSPConnectSrc     string
 	CSPMediaSrc       string
+	CSPImgSrc         string
 }
 
 func Load() Config {
@@ -75,6 +76,11 @@ func Load() Config {
 		cfg.CSPMediaSrc = v
 	} else if cfg.Env == "development" {
 		cfg.CSPMediaSrc = "blob:"
+	}
+	if v := os.Getenv("CSP_IMG_SRC"); v != "" {
+		cfg.CSPImgSrc = v
+	} else if cfg.Env == "development" {
+		cfg.CSPImgSrc = "https://images.openfoodfacts.org"
 	}
 
 	return cfg

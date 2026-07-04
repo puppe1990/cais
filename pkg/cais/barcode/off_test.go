@@ -43,6 +43,41 @@ func TestClient_LookupProduct_found(t *testing.T) {
 	}
 }
 
+func TestClient_LookupProduct_extractsExtendedFields(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"status": 1,
+			"product": {
+				"product_name": "Leite Integral 1L",
+				"categories": "Laticínios, Leites",
+				"brands": "Tirol",
+				"quantity": "1 L",
+				"image_front_url": "https://images.openfoodfacts.org/front.jpg"
+			}
+		}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	c := &Client{BaseURL: srv.URL, HTTP: srv.Client()}
+	prod, ok, err := c.Lookup(context.Background(), "7896256801011")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("expected product")
+	}
+	if prod.Brand != "Tirol" {
+		t.Errorf("Brand = %q, want Tirol", prod.Brand)
+	}
+	if prod.Quantity != "1 L" {
+		t.Errorf("Quantity = %q, want 1 L", prod.Quantity)
+	}
+	if prod.ImageURL != "https://images.openfoodfacts.org/front.jpg" {
+		t.Errorf("ImageURL = %q", prod.ImageURL)
+	}
+}
+
 func TestClient_LookupProduct_notFound(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
