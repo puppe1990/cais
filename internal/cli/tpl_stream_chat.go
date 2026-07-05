@@ -28,14 +28,15 @@ type Message struct {
 const tplChatHandler = `package handlers
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"{{.ModulePath}}/internal/models"
 	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/chat"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
 	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
@@ -68,9 +69,30 @@ type chatPageData struct {
 	MessagesURL  string
 }
 
-type messagePartialData struct {
-	Role    string
-	Content string
+func messageRole(role string) chat.Role {
+	if role == "user" {
+		return chat.RoleUser
+	}
+	return chat.RoleAssistant
+}
+
+func streamAssistantPreview(w http.ResponseWriter, text string) {
+	if text == "" {
+		return
+	}
+	step := len(text) / 6
+	if step < 1 {
+		step = 1
+	}
+	for end := step; end < len(text)+step; end += step {
+		if end > len(text) {
+			end = len(text)
+		}
+		_ = chat.WriteStream(w, chat.LiveBubble(text[:end]))
+		if end == len(text) {
+			break
+		}
+	}
 }
 
 func (h *ChatHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -129,12 +151,10 @@ func (h *ChatHandler) Stream(w http.ResponseWriter, r *http.Request, id int64) {
 				continue
 			}
 			for _, m := range msgs {
-				var buf bytes.Buffer
-				if err := h.renderer.RenderPartial(&buf, "message", messagePartialData{Role: m.Role, Content: m.Content}); err != nil {
-					continue
+				if m.Role == "assistant" {
+					streamAssistantPreview(w, m.Content)
 				}
-				fmt.Fprintf(w, "event: message\ndata: %s\n\n", buf.String())
-				_ = stream.Flush(w)
+				_ = chat.WriteMessage(w, chat.MessageBubble(messageRole(m.Role), m.Content, m.CreatedAt))
 				lastID = m.ID
 			}
 		}
@@ -165,13 +185,8 @@ func (h *ChatHandler) PostMessage(w http.ResponseWriter, r *http.Request, id int
 		http.Error(w, "could not save reply", http.StatusInternalServerError)
 		return
 	}
-	var buf bytes.Buffer
-	if err := h.renderer.RenderPartial(&buf, "message", messagePartialData{Role: "user", Content: content}); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(buf.Bytes())
+	_, _ = w.Write([]byte(chat.MessageBubble(chat.RoleUser, content, time.Now().UTC())))
 }
 
 func (h *ChatHandler) ListMessages(w http.ResponseWriter, r *http.Request, id int64) {
@@ -180,17 +195,11 @@ func (h *ChatHandler) ListMessages(w http.ResponseWriter, r *http.Request, id in
 		http.Error(w, "could not load messages", http.StatusInternalServerError)
 		return
 	}
-	type row struct {
-		Role    string
-		Content string
+	var buf strings.Builder
+	for _, m := range msgs {
+		buf.WriteString(chat.MessageBubble(messageRole(m.Role), m.Content, m.CreatedAt))
 	}
-	rows := make([]row, len(msgs))
-	for i, m := range msgs {
-		rows[i] = row{Role: m.Role, Content: m.Content}
-	}
-	if err := h.renderer.RenderPartial(w, "chat_history", struct{ Messages []row }{Messages: rows}); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	_, _ = w.Write([]byte(buf.String()))
 }
 `
 

@@ -8,6 +8,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ### Added
 
+- `cais g stream chat` demo uses `pkg/cais/chat` — `event: stream` typing preview + timestamped `event: message`
 - Scaffold `input.css` — generic chat styles (`.cais-chat-scroll-down`, `.cais-msg-time`, `.cais-thinking-dots`)
 - `cais.js` agent chat module — `finalizeChatStream`, device-local timestamps, stick-to-bottom scroll, poll guard (opt-in `data-cais-chat`)
 - `chat_sse_agent.html` partial — multi-slot agent chat (`#chat-history` + `#chat-stream` + `#chat-live`, `data-cais-chat`)

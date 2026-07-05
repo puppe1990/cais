@@ -97,7 +97,9 @@
   }
 
   function chatTextarea(form) {
-    return form ? form.querySelector("#chat-text, textarea[name='text'], textarea[name='content']") : null;
+    return form
+      ? form.querySelector("#chat-text, textarea[name='text'], textarea[name='content']")
+      : null;
   }
 
   function chatHistoryEl() {
@@ -186,7 +188,11 @@
 
   function assistantBubbleFromNode(node) {
     if (!node) return null;
-    if (node.classList && node.classList.contains("cais-chat-bubble") && node.classList.contains("assistant")) {
+    if (
+      node.classList &&
+      node.classList.contains("cais-chat-bubble") &&
+      node.classList.contains("assistant")
+    ) {
       return node;
     }
     return node.querySelector ? node.querySelector(".cais-chat-bubble.assistant") : null;
@@ -371,7 +377,10 @@
       caisChatScrollBottomSoon();
       return;
     }
-    if (data.indexOf("cais-chat-bubble assistant") !== -1 || data.indexOf("cais-msg-assistant") !== -1) {
+    if (
+      data.indexOf("cais-chat-bubble assistant") !== -1 ||
+      data.indexOf("cais-msg-assistant") !== -1
+    ) {
       clearChatLive();
       hideChatThinking();
       clearChatFallbackTimers();
