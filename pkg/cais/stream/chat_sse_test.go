@@ -113,4 +113,10 @@ func TestChatSSEAgentPartial_multiSlotPattern(t *testing.T) {
 			t.Errorf("missing %q in agent partial", want)
 		}
 	}
+
+	// Base render must still produce the contract slots.
+	// The partial now supports extension via:
+	//   {{ block "chat_extra_stream_slots" . }} ... {{ end }}
+	// Consumers define the block to add more sse-swap listeners (e.g. detail, user)
+	// without copying the entire chat_sse_agent.html.
 }
