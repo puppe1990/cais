@@ -111,6 +111,7 @@ func TestHxChatForm(t *testing.T) {
 		`requestSubmit`,
 		`chat-thinking`,
 		`data-cais-chat-form`,
+		`caisFinalizeChatStream`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("HxChatForm missing %q, got %q", want, got)

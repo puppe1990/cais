@@ -41,13 +41,14 @@ func HxChatForm(postURL, thinkingID string) template.HTMLAttr {
 	b.WriteString(`data-cais-chat-form="true" hx-post="`)
 	b.WriteString(template.HTMLEscapeString(postURL))
 	b.WriteString(`" hx-target="#chat-history" hx-swap="beforeend" hx-disabled-elt="button[type='submit']"`)
-	b.WriteString(` hx-on::after-request="this.reset()"`)
+	b.WriteString(` hx-on::after-request="this.reset()" hx-on::before-request="window.caisFinalizeChatStream?.()`)
 	if thinkingID != "" {
 		id := strings.TrimPrefix(thinkingID, "#")
-		b.WriteString(` hx-on::before-request="document.getElementById('`)
+		b.WriteString(`;document.getElementById('`)
 		b.WriteString(template.HTMLEscapeString(id))
-		b.WriteString(`')?.classList.remove('hidden')"`)
+		b.WriteString(`')?.classList.remove('hidden')`)
 	}
+	b.WriteString(`"`)
 	b.WriteString(` hx-on:keydown="if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); this.requestSubmit(); }"`)
 	return template.HTMLAttr(b.String())
 }
