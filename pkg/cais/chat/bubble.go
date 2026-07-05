@@ -47,6 +47,35 @@ func IsLiveHTML(fragment string) bool {
 	return strings.Contains(fragment, `data-cais-live="true"`)
 }
 
+// UnsafeLiveHTML returns a live-update fragment containing pre-rendered HTML (e.g. progressive Markdown from Goldmark).
+// The caller MUST sanitize/escape untrusted content. No HTML escaping is performed here.
+// This enables first-class rich streaming UIs without forcing the app to duplicate the live bubble wrapper.
+func UnsafeLiveHTML(htmlContent string) string {
+	return fmt.Sprintf(
+		`<div data-cais-live="true" class="%s">%s</div>`,
+		assistantBubbleClass, htmlContent,
+	)
+}
+
+// UnsafeMessageHTML is the finalized version of UnsafeLiveHTML for pre-rendered assistant (or user) content.
+// Allows apps to do their own rich rendering (markdown, media refs, diffs) for both live preview and final bubbles.
+func UnsafeMessageHTML(role Role, htmlContent string, at time.Time) string {
+	if at.IsZero() {
+		at = time.Now().UTC()
+	}
+	dt := html.EscapeString(at.UTC().Format(time.RFC3339))
+	cls := assistantBubbleClass
+	align := "flex flex-col items-start gap-0.5"
+	if role == RoleUser {
+		cls = userBubbleClass
+		align = "flex flex-col items-end gap-0.5 ml-auto"
+	}
+	return fmt.Sprintf(
+		`<div class="cais-msg cais-msg-%s max-w-[85%%] %s"><time datetime="%s" class="cais-msg-time"></time><div class="%s">%s</div></div>`,
+		role, align, dt, cls, htmlContent,
+	)
+}
+
 // MessageBubble is a persisted row with a UTC datetime for client-side local formatting.
 func MessageBubble(role Role, text string, at time.Time) string {
 	if at.IsZero() {

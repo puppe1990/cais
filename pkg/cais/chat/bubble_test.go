@@ -123,3 +123,23 @@ func TestDetailBubble_emptyReturnsEmpty(t *testing.T) {
 		t.Error("empty detail should return empty string")
 	}
 }
+
+func TestUnsafeLiveHTML_doesNotEscape(t *testing.T) {
+	got := UnsafeLiveHTML(`<strong>bold</strong> <em>from markdown</em>`)
+	if !strings.Contains(got, `data-cais-live="true"`) {
+		t.Error("must keep live marker")
+	}
+	if !strings.Contains(got, "<strong>bold</strong>") {
+		t.Error("must preserve raw HTML for live preview")
+	}
+	if strings.Contains(got, "&lt;strong") {
+		t.Error("must not escape")
+	}
+}
+
+func TestUnsafeMessageHTML_preservesRendered(t *testing.T) {
+	got := UnsafeMessageHTML(RoleAssistant, `<h3>Title</h3><p>para</p>`, timeFromTest())
+	if !strings.Contains(got, `<h3>Title</h3>`) {
+		t.Error("raw HTML not preserved")
+	}
+}

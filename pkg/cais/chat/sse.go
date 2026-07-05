@@ -3,6 +3,7 @@ package chat
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/puppe1990/cais/pkg/cais/stream"
 )
@@ -32,4 +33,14 @@ func WriteThinking(w http.ResponseWriter, html string) error {
 		return err
 	}
 	return stream.Flush(w)
+}
+
+// WriteUnsafeLive writes a pre-rendered HTML fragment to the live slot (see chat.UnsafeLiveHTML).
+func WriteUnsafeLive(w http.ResponseWriter, htmlContent string) error {
+	return WriteStream(w, UnsafeLiveHTML(htmlContent))
+}
+
+// WriteUnsafeMessage writes a pre-rendered final message (see chat.UnsafeMessageHTML).
+func WriteUnsafeMessage(w http.ResponseWriter, role Role, htmlContent string, at time.Time) error {
+	return WriteMessage(w, UnsafeMessageHTML(role, htmlContent, at))
 }
