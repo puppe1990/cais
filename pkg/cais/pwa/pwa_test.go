@@ -22,20 +22,20 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestCaisJS_hasSSEReconnect(t *testing.T) {
-	data, err := assets.ReadFile("assets/cais.js")
+	data, err := assets.ReadFile("assets/cais-core.js")
 	if err != nil {
 		t.Fatal(err)
 	}
 	content := string(data)
 	for _, want := range []string{"htmx:sseClose", "data-cais-sse-persist", "reconnectChatSSE"} {
 		if !strings.Contains(content, want) {
-			t.Errorf("cais.js missing %q", want)
+			t.Errorf("cais-core.js missing %q", want)
 		}
 	}
 }
 
 func TestCaisJS_hasSelectSearch(t *testing.T) {
-	data, err := assets.ReadFile("assets/cais.js")
+	data, err := assets.ReadFile("assets/cais-core.js")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,13 +46,13 @@ func TestCaisJS_hasSelectSearch(t *testing.T) {
 		"cais-select-search",
 	} {
 		if !strings.Contains(content, want) {
-			t.Errorf("cais.js missing select search helper %q", want)
+			t.Errorf("cais-core.js missing select search helper %q", want)
 		}
 	}
 }
 
 func TestCaisJS_hasChatAgentModule(t *testing.T) {
-	data, err := assets.ReadFile("assets/cais.js")
+	data, err := assets.ReadFile("assets/cais-chat.js")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestCaisJS_hasChatAgentModule(t *testing.T) {
 		"caisRemoveOptimisticUserBubble",
 	} {
 		if !strings.Contains(content, want) {
-			t.Errorf("cais.js missing chat agent helper %q", want)
+			t.Errorf("cais-chat.js missing chat agent helper %q", want)
 		}
 	}
 }
@@ -107,7 +107,8 @@ func TestWriteStatic(t *testing.T) {
 		"web/static/js/htmx.min.js",
 		"web/static/js/idiomorph-ext.min.js",
 		"web/static/js/sse-ext.min.js",
-		"web/static/js/cais.js",
+		"web/static/js/cais-core.js",
+		"web/static/js/cais-chat.js",
 		"web/static/offline.html",
 		"web/static/icons/icon.png",
 		"web/static/img/go-on-cais.jpg",
