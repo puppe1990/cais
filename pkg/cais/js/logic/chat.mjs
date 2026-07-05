@@ -5,7 +5,7 @@
  */
 
 export function shouldApplyChatPoll(pollURL, chatEnabled) {
-  if (!pollURL || typeof pollURL !== 'string' || pollURL.trim() === '') {
+  if (!pollURL || typeof pollURL !== "string" || pollURL.trim() === "") {
     return false;
   }
   if (!chatEnabled) {
@@ -18,7 +18,7 @@ export function shouldApplyChatPoll(pollURL, chatEnabled) {
  * Simple helper used by fallback scheduling.
  */
 export function isWithinFallbackWindow(ms) {
-  if (typeof ms !== 'number' || ms <= 0) return false;
+  if (typeof ms !== "number" || ms <= 0) return false;
   // Arbitrary reasonable upper bound for a fallback delay in tests.
   return ms < 30000;
 }
