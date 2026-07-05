@@ -8,6 +8,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ### Added
 
+- `cais.js` agent chat module — `finalizeChatStream`, device-local timestamps, stick-to-bottom scroll, poll guard (opt-in `data-cais-chat`)
 - `chat_sse_agent.html` partial — multi-slot agent chat (`#chat-history` + `#chat-stream` + `#chat-live`, `data-cais-chat`)
 - `pkg/cais/chat` — generic SSE chat HTML helpers (`LiveBubble`, `MessageBubble`, `ThinkingHTML`, `WriteStream`, `WriteMessage`)
 - `pkg/cais/stream` — `Flush`, `RelaySSE`, and `RelayAndCopy` for HTMX SSE through middleware-wrapped `ResponseWriter`s
