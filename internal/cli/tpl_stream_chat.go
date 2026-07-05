@@ -127,9 +127,11 @@ func (h *ChatHandler) Show(w http.ResponseWriter, r *http.Request, id int64) {
 		http.Error(w, "could not load messages", http.StatusInternalServerError)
 		return
 	}
-	// Use TrimForDisplay + SafeMessageBubble (or Truncate) for large/polluted histories.
-	// See pkg/cais/chat for MaxMessageChars, Truncate, SafeMessageBubble, TrimForDisplay.
-	msgs = chat.TrimForDisplay(msgs, 80) // window; add "load older" + pagination for >N histories
+	// Robust history handling for polluted / large agent sessions:
+	// TrimForDisplay + SafeMessageBubble + SelectWindowWithLastUser (pins the last user question).
+	// See pkg/cais/chat.
+	msgs = chat.TrimForDisplay(msgs, 80)
+	// Example with pinned: msgs = chat.SelectWindowWithLastUser(msgs, 80, func(m models.Message) bool { return m.Role == "user" })
 	httpx.RenderOrError(w, h.renderer, "base", "chat", chatPageData{
 		Site:         meta.ForRequest(h.site, r),
 		Conversation: conv,

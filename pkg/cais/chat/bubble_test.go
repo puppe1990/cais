@@ -186,3 +186,45 @@ func TestTrimForDisplay_smallerThanLimitReturnsAll(t *testing.T) {
 		t.Errorf("unexpected trim: %v", got)
 	}
 }
+
+type testMsg struct {
+	Role string
+	Body string
+}
+
+func isUser(m testMsg) bool { return m.Role == "user" }
+
+func TestSelectWindowWithLastUser_includesPinnedEvenIfOld(t *testing.T) {
+	history := []testMsg{
+		{Role: "user", Body: "q1"},
+		{Role: "assistant", Body: strings.Repeat("x", 1000)},
+		{Role: "user", Body: "q2"},
+		{Role: "assistant", Body: "a2"},
+		{Role: "user", Body: "last question here"},
+		{Role: "assistant", Body: "a3"},
+		{Role: "assistant", Body: "a4"},
+	}
+	// window of 3 would normally drop the last user question if it was earlier
+	got := SelectWindowWithLastUser(history, 3, isUser)
+	// should contain the last user question + 2 recent
+	if len(got) != 3 {
+		t.Fatalf("len=%d, want 3: %v", len(got), got)
+	}
+	foundUser := false
+	for _, m := range got {
+		if m.Body == "last question here" {
+			foundUser = true
+		}
+	}
+	if !foundUser {
+		t.Error("last user question was not pinned into the window")
+	}
+}
+
+func TestSelectWindowWithLastUser_noUserJustTrims(t *testing.T) {
+	history := []testMsg{{Role: "assistant", Body: "1"}, {Role: "assistant", Body: "2"}, {Role: "assistant", Body: "3"}}
+	got := SelectWindowWithLastUser(history, 2, isUser)
+	if len(got) != 2 || got[0].Body != "2" {
+		t.Errorf("got %v", got)
+	}
+}

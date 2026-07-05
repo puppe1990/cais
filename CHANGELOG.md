@@ -9,7 +9,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 ### Added
 
 - `pkg/cais/chat`: `Truncate`, `SafeMessageBubble`, `TrimForDisplay`, `MaxMessageChars` — server-side safety and perf for large/polluted agent histories (addresses loading 1-2s, 500s on huge turns)
-- `cais g stream chat` scaffold now demonstrates TrimForDisplay + SafeMessageBubble in Show/ListMessages/Stream
+- `pkg/cais/chat`: `SelectWindowWithLastUser` — trims history window while pinning the most recent user message (removes need for tail+pinned hacks)
+- `cais g stream chat` scaffold now demonstrates TrimForDisplay + SafeMessageBubble + SelectWindowWithLastUser in Show/ListMessages/Stream
 
 ### Added
 
