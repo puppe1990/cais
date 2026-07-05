@@ -51,6 +51,8 @@ func runDoctor(w io.Writer, dir string, opts doctorOptions) error {
 			checkPWACacheVersion(dir),
 			checkChatSSEPattern(dir),
 			checkSSEReconnectJS(dir),
+			checkChatAgentJS(dir),
+			checkChatScrollContainer(dir),
 			checkHealthLANURLs(dir),
 		)
 	}
@@ -401,6 +403,85 @@ func checkSSEReconnectJS(dir string) doctorCheck {
 		Detail:   "cais.js missing hx-boost SSE reconnect helpers",
 		FixHint:  "run cais pwa to refresh cais.js from framework",
 	}
+}
+
+func chatUsesAgentSlots(dir string) bool {
+	partials := filepath.Join(dir, "web/templates/partials")
+	entries, err := os.ReadDir(partials)
+	if err != nil {
+		return false
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".html") {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(partials, e.Name()))
+		if err != nil {
+			continue
+		}
+		content := string(data)
+		if strings.Contains(content, `id="chat-stream"`) ||
+			strings.Contains(content, `id="chat-live"`) ||
+			strings.Contains(content, `data-cais-chat="true"`) {
+			return true
+		}
+	}
+	return false
+}
+
+func checkChatAgentJS(dir string) doctorCheck {
+	if !chatUsesAgentSlots(dir) {
+		return doctorCheck{Name: "chat agent JS", OK: true, Detail: "skipped (no agent chat partial)"}
+	}
+	path := filepath.Join(dir, "web/static/js/cais.js")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return doctorCheck{Name: "chat agent JS", OK: true, Detail: "skipped (no cais.js)"}
+	}
+	content := string(data)
+	if strings.Contains(content, "finalizeChatStream") && strings.Contains(content, "data-cais-chat") {
+		return doctorCheck{Name: "chat agent JS", OK: true, Detail: "cais.js finalizes multi-slot SSE chat"}
+	}
+	return doctorCheck{
+		Name:     "chat agent JS",
+		Optional: true,
+		Detail:   "agent chat partial present but cais.js missing finalizeChatStream",
+		FixHint:  "run cais pwa to refresh cais.js from framework",
+	}
+}
+
+func checkChatScrollContainer(dir string) doctorCheck {
+	if !chatUsesAgentSlots(dir) {
+		return doctorCheck{Name: "chat scroll container", OK: true, Detail: "skipped (no agent chat partial)"}
+	}
+	partials := filepath.Join(dir, "web/templates/partials")
+	entries, err := os.ReadDir(partials)
+	if err != nil {
+		return doctorCheck{Name: "chat scroll container", OK: true, Detail: "skipped (no partials)"}
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".html") {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(partials, e.Name()))
+		if err != nil {
+			continue
+		}
+		content := string(data)
+		if !strings.Contains(content, `data-cais-chat="true"`) {
+			continue
+		}
+		if strings.Contains(content, `id="chat-messages"`) {
+			return doctorCheck{Name: "chat scroll container", OK: true, Detail: "#chat-messages scroll container present"}
+		}
+		return doctorCheck{
+			Name:     "chat scroll container",
+			Optional: true,
+			Detail:   "data-cais-chat without #chat-messages scroll container",
+			FixHint:  "wrap chat slots in #chat-messages with overflow-y-auto (see chat_sse_agent.html)",
+		}
+	}
+	return doctorCheck{Name: "chat scroll container", OK: true, Detail: "skipped (no data-cais-chat)"}
 }
 
 func checkHealthLANURLs(dir string) doctorCheck {
