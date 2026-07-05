@@ -108,9 +108,9 @@ func TestKey(t *testing.T) {
 
 func TestHash_stableAndShort(t *testing.T) {
 	type listVer struct {
-		Count    int
-		LastMod  string
-		Page     int
+		Count   int
+		LastMod string
+		Page    int
 	}
 
 	v1 := listVer{Count: 80, LastMod: "2026-07-05T10:00", Page: 1}
