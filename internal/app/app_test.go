@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -670,4 +671,48 @@ func setupTestAppDev(t *testing.T) *App {
 		t.Fatal(err)
 	}
 	return a
+}
+
+// TestApp_HomeRoute_Inertia asserts the real production home route entry point
+// returns Inertia protocol responses (root HTML shell or JSON for X-Inertia).
+// Written first per TDD; will fail until gonertia wired in home path.
+func TestApp_HomeRoute_Inertia(t *testing.T) {
+	a := setupTestApp(t)
+
+	// Ordinary request: must yield Inertia root HTML shell
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+	a.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+	body := rr.Body.String()
+	hasInertiaMarker := strings.Contains(body, `id="app"`) ||
+		strings.Contains(body, "data-page") ||
+		strings.Contains(body, "{{ .inertia }}") ||
+		strings.Contains(body, "inertia")
+	if !hasInertiaMarker {
+		t.Errorf("expected Inertia root shell markers (id=app or data-page or .inertia), got body: %s", body)
+	}
+
+	// X-Inertia request: must yield protocol JSON with component + props
+	req2 := httptest.NewRequest(http.MethodGet, "/", nil)
+	req2.Header.Set("X-Inertia", "true")
+	rr2 := httptest.NewRecorder()
+	a.Handler().ServeHTTP(rr2, req2)
+
+	if rr2.Code != http.StatusOK {
+		t.Fatalf("X-Inertia status = %d, want 200", rr2.Code)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(rr2.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("X-Inertia body not JSON: %v, body=%s", err, rr2.Body.String())
+	}
+	if _, ok := payload["component"]; !ok {
+		t.Errorf("X-Inertia JSON missing 'component' key, got: %v", payload)
+	}
+	if _, ok := payload["props"]; !ok {
+		t.Errorf("X-Inertia JSON missing 'props' key, got: %v", payload)
+	}
 }
