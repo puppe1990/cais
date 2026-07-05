@@ -34,6 +34,28 @@ func TestCaisJS_hasSSEReconnect(t *testing.T) {
 	}
 }
 
+func TestCaisJS_hasChatAgentModule(t *testing.T) {
+	data, err := assets.ReadFile("assets/cais.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	for _, want := range []string{
+		"data-cais-chat",
+		"finalizeChatStream",
+		"formatMessageTimes",
+		"cais-msg-time",
+		"data-cais-live",
+		"chatStickToBottom",
+		"chat-scroll-down",
+		"window.caisFinalizeChatStream",
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("cais.js missing chat agent helper %q", want)
+		}
+	}
+}
+
 func TestWriteStatic(t *testing.T) {
 	dir := t.TempDir()
 	if err := WriteStatic(dir, DefaultConfig("My App")); err != nil {
