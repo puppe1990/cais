@@ -103,6 +103,12 @@ func (c *CLI) cmdDev() error {
 		return err
 	}
 
+	if bumped, v, err := maybeBumpDevCache(dir); err != nil {
+		return fmt.Errorf("sw cache bump: %w", err)
+	} else if bumped {
+		_, _ = fmt.Fprintf(c.Out, "=> PWA cache bumped to v%d (cais dev)\n", v)
+	}
+
 	watch := exec.Command("npx", "tailwindcss", "-i", cssInput, "-o", cssOutput, "--watch")
 	watch.Dir = dir
 	watch.Stdout = os.Stdout

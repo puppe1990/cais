@@ -8,6 +8,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ### Added
 
+- `testutil.AssertHTMLContains` / `testutil.AssertChatMarkers` — chat handler HTML assertions
+- `cais dev` auto-bumps PWA `CACHE_VERSION` when `sw.js` is present
+- `cais doctor --mobile` — chat enter-submit JS (`bindChatEnterSubmit`) and chat form CSS checks
+- `cais g stream chat` handler tests — Show 404, PostMessage user bubble, `AssertChatMarkers`
+
+### Added
+
 - `cais.js` `bindChatEnterSubmit` — delegated Enter-to-send on `form[data-cais-chat-form]` (Shift+Enter newline)
 - `cais.js` `dedupOptimisticUserBubble` — drops optimistic user bubble when server partial already includes it
 - Chat form submit CSS — `inline-flex` button + scoped `htmx-indicator` / `htmx-request-hide` swap

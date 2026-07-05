@@ -13,30 +13,30 @@ Before writing production code:
 
 ## Structure
 
-| Directory              | Responsibility                                                          |
-| ---------------------- | ----------------------------------------------------------------------- |
-| `pkg/cais/`            | Framework: config, router, render, htmx, middleware                     |
-| `pkg/cais/httpx/`      | Render and redirect helpers for handlers                                |
-| `pkg/cais/meta/`       | Open Graph / Twitter preview (`Site`, `PreviewHTML`)                    |
-| `pkg/cais/session/`    | Cookie sessions (`SignIn`, `SignOut`, `Store`)                          |
-| `pkg/cais/boot/`       | Rails-style startup banner                                              |
-| `pkg/cais/devlog/`     | Development log buffer + `/logs` viewer                                 |
-| `pkg/cais/sqllog/`     | SQL query logging wrapper (`Wrap`, `EnabledForEnv`)                     |
-| `pkg/cais/console/`    | Interactive REPL (yaegi + SQL)                                          |
-| `pkg/cais/csrf/`       | CSRF tokens (double-submit cookie)                                      |
-| `pkg/cais/validate/`   | Form field validation helpers                                           |
-| `pkg/cais/forms/`      | Template helpers (`csrfField`, `fieldError`, `makeField`, `fieldInput`) |
-| `pkg/cais/i18n/`       | Locale catalogs (`LOCALE` env, `t` template func)                       |
-| `pkg/cais/testutil/`   | Test helpers (`NewRenderer`, `NewRequest`, path values)                 |
-| `pkg/cais/pwa/`        | Default PWA assets generator (manifest, icons, og.png)                  |
-| `pkg/cais/cache/`      | In-memory TTL cache (stdlib)                                            |
-| `pkg/cais/pagination/` | Offset/limit helpers for list pages                                     |
-| `internal/app/`        | Bootstrap: route and dependency wiring                                  |
-| `internal/handlers/`   | HTTP handlers                                                           |
-| `internal/store/`      | SQLite persistence                                                      |
-| `web/templates/`       | HTML templates (layouts, pages, partials)                               |
-| `web/static/`          | Tailwind CSS, HTMX, PWA (manifest, sw.js, icons)                        |
-| `cmd/server/`          | Entry point                                                             |
+| Directory              | Responsibility                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| `pkg/cais/`            | Framework: config, router, render, htmx, middleware                                   |
+| `pkg/cais/httpx/`      | Render and redirect helpers for handlers                                              |
+| `pkg/cais/meta/`       | Open Graph / Twitter preview (`Site`, `PreviewHTML`)                                  |
+| `pkg/cais/session/`    | Cookie sessions (`SignIn`, `SignOut`, `Store`)                                        |
+| `pkg/cais/boot/`       | Rails-style startup banner                                                            |
+| `pkg/cais/devlog/`     | Development log buffer + `/logs` viewer                                               |
+| `pkg/cais/sqllog/`     | SQL query logging wrapper (`Wrap`, `EnabledForEnv`)                                   |
+| `pkg/cais/console/`    | Interactive REPL (yaegi + SQL)                                                        |
+| `pkg/cais/csrf/`       | CSRF tokens (double-submit cookie)                                                    |
+| `pkg/cais/validate/`   | Form field validation helpers                                                         |
+| `pkg/cais/forms/`      | Template helpers (`csrfField`, `fieldError`, `makeField`, `fieldInput`)               |
+| `pkg/cais/i18n/`       | Locale catalogs (`LOCALE` env, `t` template func)                                     |
+| `pkg/cais/testutil/`   | Test helpers (`NewRenderer`, `NewRequest`, `AssertHTMLContains`, `AssertChatMarkers`) |
+| `pkg/cais/pwa/`        | Default PWA assets generator (manifest, icons, og.png)                                |
+| `pkg/cais/cache/`      | In-memory TTL cache (stdlib)                                                          |
+| `pkg/cais/pagination/` | Offset/limit helpers for list pages                                                   |
+| `internal/app/`        | Bootstrap: route and dependency wiring                                                |
+| `internal/handlers/`   | HTTP handlers                                                                         |
+| `internal/store/`      | SQLite persistence                                                                    |
+| `web/templates/`       | HTML templates (layouts, pages, partials)                                             |
+| `web/static/`          | Tailwind CSS, HTMX, PWA (manifest, sw.js, icons)                                      |
+| `cmd/server/`          | Entry point                                                                           |
 
 ## Router path params and groups
 
@@ -108,7 +108,8 @@ Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap so layouts render corre
 - `boot.Print` shows **LAN** URLs for phone testing on Wi‑Fi
 - `GET /health` returns `lan_urls` via `netutil.HealthPayload` — use this array, never concatenate `APP_URL` + port manually
 - `cais pwa --bump` increments `CACHE_VERSION` in `sw.js` after template/HTML changes
-- `cais doctor --mobile` checks flash markup, Google Fonts CSP, SW cache, chat SSE partial, SSE reconnect, chat agent JS (`finalizeChatStream`), `#chat-messages` scroll container, and health `lan_urls`
+- `cais dev` auto-bumps `CACHE_VERSION` when `sw.js` exists (fresh assets on phone without a manual bump)
+- `cais doctor --mobile` checks flash markup, Google Fonts CSP, SW cache, chat SSE partial, SSE reconnect, chat agent JS (`finalizeChatStream`), chat enter-submit JS (`bindChatEnterSubmit`), chat form CSS (`.cais-chat-shell`), `#chat-messages` scroll container, and health `lan_urls`
 - Scaffold `input.css` uses system fonts (no `fonts.googleapis.com` — blocked by default CSP)
 
 **Mobile SSE checklist:** `cais doctor --mobile` → `cais pwa --bump` → open boot **LAN** URL on phone → stay on chat page while agent responds (avoid hx-boost away mid-stream)
@@ -185,6 +186,16 @@ Agent mode — `chat_sse_agent.html`: opt-in with `data-cais-chat="true"`. SSE e
 **Chat form** — `{{ hxChatForm "/chat/{id}/messages" "#chat-thinking" }}` on the `<form>`: `cais.js` `bindChatEnterSubmit` sends on Enter, Shift+Enter newline. Input clears on submit; use `data-cais-chat-optimistic="true"` only when the POST partial does **not** return a user bubble (otherwise `dedupOptimisticUserBubble` drops the duplicate). Optional `data-cais-poll-url` on `#chat-sse` enables history refresh fallback when SSE fails (poll is skipped while stream slots are active).
 
 `cais doctor` warns when `sse-ext.min.js` is present and `WriteTimeout > 0` in `internal/app/app.go`.
+
+**Chat handler tests** — `cais g stream chat` generates handler tests using `testutil.AssertChatMarkers` (Show) and `testutil.AssertHTMLContains` (PostMessage bubble). Missing records return `http.NotFound` (not 500):
+
+```go
+conv, err := h.store.FindConversationByID(id)
+if err != nil {
+    http.NotFound(w, r)
+    return
+}
+```
 
 ## HTMX interactions
 
@@ -274,6 +285,8 @@ Layout loads `cais.js` after `htmx.min.js` — CSRF header, focus restore, optim
 3. Methods on the `store.Store` interface
 4. Wrap DB with `sqllog.Wrap` in `NewSQLiteStore` for development query logs
 5. Migrations tracked in `schema_migrations` via `pkg/cais/migrate` (idempotent on boot)
+
+**SQLite concurrency (SSE / chat)** — scaffold `NewSQLiteStore` calls `sqlite.Configure`: `journal_mode=WAL`, `busy_timeout=5000`, `foreign_keys=ON`, `MaxOpenConns(1)`. WAL allows concurrent readers while a writer holds the lock briefly; `busy_timeout` retries instead of immediate `SQLITE_BUSY`. SSE handlers poll the DB in a loop — keep writes short and avoid long transactions during streams. For heavy write concurrency, consider a dedicated writer queue.
 
 **Migration down sections** — use `-- up` / `-- down` markers in `.sql` files (generator default for resources):
 

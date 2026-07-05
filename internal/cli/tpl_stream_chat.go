@@ -242,9 +242,38 @@ func TestChatHandler_Show_Returns200(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
 	}
-	if !strings.Contains(rr.Body.String(), "chat-history") {
-		t.Error("body missing chat-history")
+	testutil.AssertChatMarkers(t, rr.Body.String())
+}
+
+func TestChatHandler_Show_NotFound_Returns404(t *testing.T) {
+	h := NewChatHandler(setupTestRenderer(t), setupTestStore(t), testSite(), testCatalog(), cais.Config{})
+
+	req := testutil.NewRequest(http.MethodGet, "/chat/999", testutil.PathValue("id", "999"))
+	rr := httptest.NewRecorder()
+	h.Show(rr, req, 999)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusNotFound)
 	}
+}
+
+func TestChatHandler_PostMessage_ReturnsUserBubble(t *testing.T) {
+	s := setupTestStore(t)
+	id, err := s.InsertConversation("Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := NewChatHandler(setupTestRenderer(t), s, testSite(), testCatalog(), cais.Config{})
+
+	req := httptest.NewRequest(http.MethodPost, "/chat/1/messages", strings.NewReader("content=hello"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	h.PostMessage(rr, req, id)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+	testutil.AssertHTMLContains(t, rr.Body.String(), "hello", "cais-msg-user")
 }
 `
 
