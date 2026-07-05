@@ -26,7 +26,12 @@ func NewHomeHandler(renderer *cais.Renderer, site meta.Site, catalog *i18n.Catal
 }
 
 func (h *HomeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	httpx.RenderOrError(w, h.renderer, "welcome", "home", PageData{
-		Site: meta.ForRequest(h.site, r),
+	httpx.WritePage(w, r, h.renderer, httpx.PageConfig{
+		Layout: "welcome",
+		Page:   "home",
+		Data: PageData{
+			Site: meta.ForRequest(h.site, r),
+			Nome: h.catalog.T("home.greeting"),
+		},
 	}, h.cfg)
 }

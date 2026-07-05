@@ -33,9 +33,13 @@ func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.RenderOrError(w, h.renderer, "base", "dashboard", DashboardData{
-		Site:          meta.ForRequest(h.site, r),
-		TotalContacts: count,
-		Env:           h.cfg.Env,
+	httpx.WritePage(w, r, h.renderer, httpx.PageConfig{
+		Layout: "base",
+		Page:   "dashboard",
+		Data: DashboardData{
+			Site:          meta.ForRequest(h.site, r),
+			TotalContacts: count,
+			Env:           h.cfg.Env,
+		},
 	}, h.cfg)
 }

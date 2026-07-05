@@ -62,6 +62,23 @@ func RenderPageOrPartial(w http.ResponseWriter, r *http.Request, renderer *cais.
 	RenderOrError(w, renderer, opts.Layout, opts.Page, opts.Data, cfg)
 }
 
+// PageConfig is the declarative config for the recommended WritePage helper.
+type PageConfig struct {
+	Layout  string
+	Page    string
+	Partial string
+	Data    any
+	Status  int
+}
+
+// WritePage is the preferred way to render full pages or HTMX partials.
+// It is a thin, opinionated wrapper around RenderPageOrPartial.
+//
+// Use this instead of manual cais.IsHTMX + Render* calls in handlers.
+func WritePage(w http.ResponseWriter, r *http.Request, renderer *cais.Renderer, cfg PageConfig, c cais.Config) {
+	RenderPageOrPartial(w, r, renderer, RenderOptions(cfg), c)
+}
+
 // NotModified returns true and sends 304 Not Modified (with ETag) when the
 // request's If-None-Match matches the given etag. This is useful for list pages
 // and other cacheable responses.
