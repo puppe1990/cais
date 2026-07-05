@@ -63,6 +63,7 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		"web/templates/partials/contact_errors.html":  tplPartialErrors,
 		"web/templates/partials/contact_success.html": tplPartialSuccess,
 		"web/templates/partials/chat_sse.html":        tplPartialChatSSE,
+		"web/templates/partials/chat_sse_agent.html":  tplPartialChatSSEAgent,
 		"web/static/js/.gitkeep":                      "",
 		"web/static/css/styles.css":                   tplEmptyCSS,
 		"input.css":                                   tplInputCSS,

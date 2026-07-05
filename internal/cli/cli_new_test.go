@@ -65,6 +65,7 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 		"web/static/og.png",
 		"web/static/icons/icon.png",
 		"web/templates/partials/chat_sse.html",
+		"web/templates/partials/chat_sse_agent.html",
 	} {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
 			t.Errorf("missing %s: %v", path, err)
