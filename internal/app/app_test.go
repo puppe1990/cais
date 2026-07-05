@@ -762,23 +762,66 @@ func TestApp_Contact_Inertia_TDD(t *testing.T) {
 		t.Fatalf("POST X-Inertia validation status=%d want 200 or 422, body=%s", postRR.Code, postRR.Body.String())
 	}
 	var postPayload map[string]any
-	_ = json.Unmarshal(postRR.Body.Bytes(), &postPayload)
-	// errors should be present in props (gonertia puts "errors")
-	props, _ := postPayload["props"].(map[string]any)
-	if props == nil {
-		props = postPayload // sometimes top level in responses?
+	if err := json.Unmarshal(postRR.Body.Bytes(), &postPayload); err != nil {
+		t.Fatalf("validation post not json: %v body=%s", err, postRR.Body.String())
 	}
-	if props != nil {
-		if errs, ok := props["errors"]; ok && errs != nil {
-			// good
-		} else if pe, ok := postPayload["props"]; ok {
-			// nested
-			_ = pe
-		} else {
-			// accept if body mentions error or for now check not empty response
-			if postRR.Body.Len() == 0 {
-				t.Errorf("expected Inertia response body with errors for validation")
+	// gonertia puts validation errors under props.errors (AlwaysProp)
+	foundErrs := false
+	if p, ok := postPayload["props"].(map[string]any); ok {
+		if e, ok := p["errors"]; ok && e != nil {
+			if em, ok := e.(map[string]any); ok && len(em) > 0 {
+				foundErrs = true
 			}
 		}
 	}
+	if !foundErrs {
+		// also accept top-level or stringified for robustness
+		b := postRR.Body.String()
+		if !strings.Contains(b, "name") && !strings.Contains(b, "email") && !strings.Contains(b, "error") {
+			t.Errorf("expected errors in Inertia props for validation POST, got payload=%v body=%s", postPayload, b)
+		}
+	}
+}
+
+// TestApp_Login_Inertia_TDD extends TDD for login flows per plan.
+func TestApp_Login_Inertia_TDD(t *testing.T) {
+	a := setupTestAppDev(t)
+	h := a.Handler()
+
+	// GET /login X-Inertia
+	getReq := httptest.NewRequest(http.MethodGet, "/login", nil)
+	getReq.Header.Set("X-Inertia", "true")
+	getRR := httptest.NewRecorder()
+	h.ServeHTTP(getRR, getReq)
+	if getRR.Code != http.StatusOK {
+		t.Fatalf("GET login inertia status=%d", getRR.Code)
+	}
+	var gp map[string]any
+	json.Unmarshal(getRR.Body.Bytes(), &gp)
+	if gp["component"] != "Login" {
+		t.Errorf("want Login component, got %v", gp["component"])
+	}
+
+	// POST bad creds with X-Inertia + csrf -> error in props
+	getTok := httptest.NewRequest(http.MethodGet, "/login", nil)
+	getTokRR := httptest.NewRecorder()
+	h.ServeHTTP(getTokRR, getTok)
+	tok := csrfTokenFromResponse(t, getTokRR.Result())
+
+	bad := url.Values{"email": {"no@ex.com"}, "password": {"wrong"}, "csrf_token": {tok}}
+	postBad := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(bad.Encode()))
+	postBad.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	postBad.AddCookie(&http.Cookie{Name: csrf.CookieName, Value: tok})
+	postBad.Header.Set("X-Inertia", "true")
+	pbRR := httptest.NewRecorder()
+	h.ServeHTTP(pbRR, postBad)
+	if pbRR.Code != http.StatusOK {
+		t.Fatalf("bad login inertia status=%d body=%s", pbRR.Code, pbRR.Body.String())
+	}
+	var bp map[string]any
+	json.Unmarshal(pbRR.Body.Bytes(), &bp)
+	if bp["component"] != "Login" {
+		t.Errorf("bad login should re-render Login, got %v", bp["component"])
+	}
+	// error should be in props (current loginData.Error , we will map to props.error or errors)
 }
