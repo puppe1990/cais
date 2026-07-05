@@ -127,6 +127,9 @@ func (h *ChatHandler) Show(w http.ResponseWriter, r *http.Request, id int64) {
 		http.Error(w, "could not load messages", http.StatusInternalServerError)
 		return
 	}
+	// Use TrimForDisplay + SafeMessageBubble (or Truncate) for large/polluted histories.
+	// See pkg/cais/chat for MaxMessageChars, Truncate, SafeMessageBubble, TrimForDisplay.
+	msgs = chat.TrimForDisplay(msgs, 80) // window; add "load older" + pagination for >N histories
 	httpx.RenderOrError(w, h.renderer, "base", "chat", chatPageData{
 		Site:         meta.ForRequest(h.site, r),
 		Conversation: conv,
@@ -154,7 +157,11 @@ func (h *ChatHandler) Stream(w http.ResponseWriter, r *http.Request, id int64) {
 				if m.Role == "assistant" {
 					streamAssistantPreview(w, m.Content)
 				}
-				_ = chat.WriteMessage(w, chat.MessageBubble(messageRole(m.Role), m.Content, m.CreatedAt))
+				bubble := chat.MessageBubble
+				if m.Role == "assistant" {
+					bubble = chat.SafeMessageBubble
+				}
+				_ = chat.WriteMessage(w, bubble(messageRole(m.Role), m.Content, m.CreatedAt))
 				lastID = m.ID
 			}
 		}
@@ -195,9 +202,14 @@ func (h *ChatHandler) ListMessages(w http.ResponseWriter, r *http.Request, id in
 		http.Error(w, "could not load messages", http.StatusInternalServerError)
 		return
 	}
+	msgs = chat.TrimForDisplay(msgs, 80)
 	var buf strings.Builder
 	for _, m := range msgs {
-		buf.WriteString(chat.MessageBubble(messageRole(m.Role), m.Content, m.CreatedAt))
+		if m.Role == "assistant" {
+			buf.WriteString(chat.SafeMessageBubble(messageRole(m.Role), m.Content, m.CreatedAt))
+		} else {
+			buf.WriteString(chat.MessageBubble(messageRole(m.Role), m.Content, m.CreatedAt))
+		}
 	}
 	_, _ = w.Write([]byte(buf.String()))
 }
