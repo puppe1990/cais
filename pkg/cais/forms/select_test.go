@@ -30,6 +30,19 @@ func TestFieldSelect_rendersOptions(t *testing.T) {
 	}
 }
 
+func TestFieldSelect_searchableByDefault(t *testing.T) {
+	got := string(FieldSelect(SelectFieldData{
+		Name:  "category_id",
+		Label: "Category",
+		Options: []SelectOption{
+			{Value: "1", Label: "Books"},
+		},
+	}))
+	if !strings.Contains(got, `data-cais-select-search="true"`) {
+		t.Errorf("missing searchable marker: %s", got)
+	}
+}
+
 func TestFieldSelect_requiredPlaceholder(t *testing.T) {
 	got := string(FieldSelect(SelectFieldData{
 		Name:     "category_id",

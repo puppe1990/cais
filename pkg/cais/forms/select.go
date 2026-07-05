@@ -61,7 +61,7 @@ func FieldSelect(f SelectFieldData) template.HTML {
 	b.WriteString(template.HTMLEscapeString(f.Name))
 	b.WriteString(`">`)
 	b.WriteString(template.HTMLEscapeString(f.Label))
-	b.WriteString(`</label><select class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" id="`)
+	b.WriteString(`</label><select data-cais-select-search="true" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" id="`)
 	b.WriteString(template.HTMLEscapeString(f.Name))
 	b.WriteString(`" name="`)
 	b.WriteString(template.HTMLEscapeString(f.Name))

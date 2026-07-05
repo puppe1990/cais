@@ -34,6 +34,23 @@ func TestCaisJS_hasSSEReconnect(t *testing.T) {
 	}
 }
 
+func TestCaisJS_hasSelectSearch(t *testing.T) {
+	data, err := assets.ReadFile("assets/cais.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	for _, want := range []string{
+		"data-cais-select-search",
+		"initSelectSearch",
+		"cais-select-search",
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("cais.js missing select search helper %q", want)
+		}
+	}
+}
+
 func TestCaisJS_hasChatAgentModule(t *testing.T) {
 	data, err := assets.ReadFile("assets/cais.js")
 	if err != nil {

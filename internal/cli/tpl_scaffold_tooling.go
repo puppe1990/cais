@@ -108,6 +108,110 @@ const tplInputCSS = `@tailwind base;
     padding-right: 2.5rem;
   }
 
+  .cais-select-search {
+    position: relative;
+  }
+
+  .cais-select-search-native {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .cais-select-search-trigger {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgb(203 213 225);
+    background: rgb(255 255 255);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    outline: none;
+  }
+
+  .cais-select-search-trigger:focus {
+    box-shadow: 0 0 0 2px rgb(99 102 241);
+  }
+
+  .cais-select-search-trigger:disabled {
+    cursor: not-allowed;
+    background: rgb(248 250 252);
+    opacity: 0.6;
+  }
+
+  .cais-select-search-panel {
+    position: absolute;
+    z-index: 20;
+    margin-top: 0.25rem;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    border: 1px solid rgb(226 232 240);
+    background: rgb(255 255 255);
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.1),
+      0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+
+  .cais-select-search-input {
+    width: 100%;
+    border: 0;
+    border-bottom: 1px solid rgb(226 232 240);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    outline: none;
+  }
+
+  .cais-select-search-list {
+    max-height: 12rem;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0.25rem 0;
+    list-style: none;
+  }
+
+  .cais-select-search-option {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    cursor: pointer;
+  }
+
+  .cais-select-search-option:hover {
+    background: rgb(238 242 255);
+  }
+
+  .cais-select-search-option.is-selected {
+    background: rgb(238 242 255);
+    font-weight: 500;
+    color: rgb(67 56 202);
+  }
+
+  .cais-select-search-option.is-highlighted {
+    background: rgb(241 245 249);
+  }
+
+  .cais-select-search-option.is-hidden {
+    display: none;
+  }
+
+  .cais-select-search-chevron {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    color: rgb(148 163 184);
+  }
+
   .cais-chat-messages-wrap {
     position: relative;
     min-height: 0;
@@ -219,6 +323,18 @@ module.exports = {
     "cais-chat-scroll-down",
     "cais-thinking",
     "cais-thinking-dots",
+    "cais-select-search",
+    "cais-select-search-native",
+    "cais-select-search-trigger",
+    "cais-select-search-panel",
+    "cais-select-search-input",
+    "cais-select-search-list",
+    "cais-select-search-option",
+    "cais-select-search-label",
+    "cais-select-search-chevron",
+    "is-selected",
+    "is-highlighted",
+    "is-hidden",
   ],
   theme: {
     extend: {

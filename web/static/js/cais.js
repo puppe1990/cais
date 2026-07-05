@@ -672,4 +672,216 @@
     if (showIcon) showIcon.classList.toggle("hidden", show);
     if (hideIcon) hideIcon.classList.toggle("hidden", !show);
   });
+
+  var openSelectSearch = null;
+
+  function normalizeSelectSearchText(value) {
+    return (value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function selectSearchLabel(select) {
+    var option = select.options[select.selectedIndex];
+    if (!option) return "";
+    return option.textContent.trim();
+  }
+
+  function closeSelectSearchPanel(wrap) {
+    if (!wrap) return;
+    var panel = wrap.querySelector(".cais-select-search-panel");
+    var trigger = wrap.querySelector(".cais-select-search-trigger");
+    if (panel) panel.classList.add("hidden");
+    if (trigger) trigger.setAttribute("aria-expanded", "false");
+    if (openSelectSearch === wrap) openSelectSearch = null;
+  }
+
+  function visibleSelectSearchOptions(wrap) {
+    var list = wrap.querySelector(".cais-select-search-list");
+    if (!list) return [];
+    return Array.prototype.filter.call(list.children, function (item) {
+      return !item.classList.contains("is-hidden");
+    });
+  }
+
+  function highlightSelectSearchOption(wrap, optionEl) {
+    var list = wrap.querySelector(".cais-select-search-list");
+    if (!list) return;
+    Array.prototype.forEach.call(list.children, function (item) {
+      item.classList.remove("is-highlighted");
+    });
+    if (optionEl) optionEl.classList.add("is-highlighted");
+  }
+
+  function syncSelectSearchOptions(wrap) {
+    var select = wrap.querySelector("select[data-cais-select-search]");
+    var list = wrap.querySelector(".cais-select-search-list");
+    if (!select || !list) return;
+    list.innerHTML = "";
+    Array.prototype.forEach.call(select.options, function (option) {
+      var item = document.createElement("li");
+      item.className = "cais-select-search-option";
+      item.setAttribute("role", "option");
+      item.setAttribute("data-value", option.value);
+      item.textContent = option.textContent.trim();
+      if (option.selected) item.classList.add("is-selected");
+      list.appendChild(item);
+    });
+  }
+
+  function updateSelectSearchTrigger(wrap) {
+    var select = wrap.querySelector("select[data-cais-select-search]");
+    var trigger = wrap.querySelector(".cais-select-search-trigger");
+    var label = wrap.querySelector(".cais-select-search-label");
+    if (!select || !trigger || !label) return;
+    label.textContent = selectSearchLabel(select);
+    trigger.disabled = !!select.disabled;
+  }
+
+  function filterSelectSearchOptions(wrap, query) {
+    var list = wrap.querySelector(".cais-select-search-list");
+    if (!list) return;
+    var needle = normalizeSelectSearchText(query);
+    Array.prototype.forEach.call(list.children, function (item) {
+      var hay = normalizeSelectSearchText(item.textContent);
+      var match = !needle || hay.indexOf(needle) !== -1;
+      item.classList.toggle("is-hidden", !match);
+      item.classList.remove("is-highlighted");
+    });
+    var visible = visibleSelectSearchOptions(wrap);
+    if (visible.length) highlightSelectSearchOption(wrap, visible[0]);
+  }
+
+  function selectSearchValue(wrap, value) {
+    var select = wrap.querySelector("select[data-cais-select-search]");
+    var list = wrap.querySelector(".cais-select-search-list");
+    if (!select || !list) return;
+    select.value = value;
+    Array.prototype.forEach.call(list.children, function (item) {
+      item.classList.toggle("is-selected", item.getAttribute("data-value") === value);
+    });
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    updateSelectSearchTrigger(wrap);
+    closeSelectSearchPanel(wrap);
+  }
+
+  function openSelectSearchPanel(wrap) {
+    if (!wrap) return;
+    if (openSelectSearch && openSelectSearch !== wrap) {
+      closeSelectSearchPanel(openSelectSearch);
+    }
+    var panel = wrap.querySelector(".cais-select-search-panel");
+    var trigger = wrap.querySelector(".cais-select-search-trigger");
+    var input = wrap.querySelector(".cais-select-search-input");
+    if (!panel || !trigger || trigger.disabled) return;
+    syncSelectSearchOptions(wrap);
+    updateSelectSearchTrigger(wrap);
+    panel.classList.remove("hidden");
+    trigger.setAttribute("aria-expanded", "true");
+    openSelectSearch = wrap;
+    if (input) {
+      input.value = "";
+      filterSelectSearchOptions(wrap, "");
+      input.focus();
+    }
+  }
+
+  function enhanceSelectSearch(select) {
+    if (!select || select.getAttribute("data-cais-select-search") === "false") return;
+    var wrap = document.createElement("div");
+    wrap.className = "cais-select-search";
+    var parent = select.parentNode;
+    parent.insertBefore(wrap, select);
+    wrap.appendChild(select);
+    select.classList.add("cais-select-search-native");
+    select.setAttribute("tabindex", "-1");
+    select.setAttribute("aria-hidden", "true");
+
+    var trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "cais-select-search-trigger";
+    trigger.setAttribute("aria-haspopup", "listbox");
+    trigger.setAttribute("aria-expanded", "false");
+    trigger.innerHTML =
+      '<span class="cais-select-search-label"></span>' +
+      '<svg class="cais-select-search-chevron" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">' +
+      '<path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />' +
+      "</svg>";
+
+    var panel = document.createElement("div");
+    panel.className = "cais-select-search-panel hidden";
+    panel.innerHTML =
+      '<input type="search" class="cais-select-search-input" placeholder="Search..." autocomplete="off" aria-label="Search options" />' +
+      '<ul class="cais-select-search-list" role="listbox"></ul>';
+
+    wrap.appendChild(trigger);
+    wrap.appendChild(panel);
+    syncSelectSearchOptions(wrap);
+    updateSelectSearchTrigger(wrap);
+
+    trigger.addEventListener("click", function () {
+      if (panel.classList.contains("hidden")) {
+        openSelectSearchPanel(wrap);
+      } else {
+        closeSelectSearchPanel(wrap);
+      }
+    });
+
+    var searchInput = panel.querySelector(".cais-select-search-input");
+    searchInput.addEventListener("input", function () {
+      filterSelectSearchOptions(wrap, searchInput.value);
+    });
+    searchInput.addEventListener("keydown", function (evt) {
+      var visible = visibleSelectSearchOptions(wrap);
+      if (!visible.length) return;
+      var current = panel.querySelector(".cais-select-search-option.is-highlighted");
+      var index = current ? visible.indexOf(current) : -1;
+      if (evt.key === "ArrowDown") {
+        evt.preventDefault();
+        highlightSelectSearchOption(wrap, visible[Math.min(index + 1, visible.length - 1)]);
+      } else if (evt.key === "ArrowUp") {
+        evt.preventDefault();
+        highlightSelectSearchOption(wrap, visible[Math.max(index - 1, 0)]);
+      } else if (evt.key === "Enter") {
+        evt.preventDefault();
+        var pick = panel.querySelector(".cais-select-search-option.is-highlighted") || visible[0];
+        if (pick) selectSearchValue(wrap, pick.getAttribute("data-value"));
+      } else if (evt.key === "Escape") {
+        evt.preventDefault();
+        closeSelectSearchPanel(wrap);
+        trigger.focus();
+      }
+    });
+
+    panel.querySelector(".cais-select-search-list").addEventListener("click", function (evt) {
+      var option = evt.target.closest(".cais-select-search-option");
+      if (!option || option.classList.contains("is-hidden")) return;
+      selectSearchValue(wrap, option.getAttribute("data-value"));
+    });
+  }
+
+  function initSelectSearch(root) {
+    var scope = root || document;
+    scope
+      .querySelectorAll("select[data-cais-select-search]:not([data-cais-select-bound])")
+      .forEach(function (select) {
+        select.setAttribute("data-cais-select-bound", "true");
+        enhanceSelectSearch(select);
+      });
+  }
+
+  document.body.addEventListener("click", function (evt) {
+    if (!openSelectSearch) return;
+    if (evt.target.closest(".cais-select-search") === openSelectSearch) return;
+    closeSelectSearchPanel(openSelectSearch);
+  });
+
+  document.body.addEventListener("htmx:afterSettle", function () {
+    initSelectSearch();
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    initSelectSearch();
+  });
 })();
