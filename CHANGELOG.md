@@ -9,6 +9,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 ### Added
 
 - `pkg/cais/chat`: `UnsafeLiveHTML` + `UnsafeMessageHTML` + `WriteUnsafe*` helpers — enables first-class streaming agent UIs with rich pre-rendered content (Markdown, media) in #chat-live and #chat-stream without duplicating bubble wrappers in the app.
+- `cais.js`: `bindChatAutoScrollResize` + ResizeObserver on messages/live — more reliable auto-scroll/follow for live streaming (less hacks for height updates after DOM changes).
 - `pkg/cais/sqlite` package docs — WAL / busy_timeout guidance for SSE chat apps
 - README — `testutil` chat assertion examples
 
