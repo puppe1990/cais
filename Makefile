@@ -1,4 +1,4 @@
-.PHONY: dev build test test-v css css-watch docker clean lint format format-check pre-commit-install ci install-cli pwa
+.PHONY: dev build test test-v css css-watch docker clean lint format format-check pre-commit-install ci install-cli pwa js-build js-test
 
 BIN := bin/cais
 CSS_IN := input.css
@@ -37,10 +37,16 @@ format:
 format-check:
 	npm run format:check
 
+js-build:
+	npm run js:build
+
+js-test:
+	npm run js:test
+
 pre-commit-install:
 	pre-commit install
 
-ci: test lint format-check
+ci: test js-test lint format-check
 
 install-cli:
 	go install ./cmd/cais

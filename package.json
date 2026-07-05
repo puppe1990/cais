@@ -1,11 +1,14 @@
 {
   "private": true,
   "devDependencies": {
+    "esbuild": "^0.25.0",
     "prettier": "^3.5.3",
     "tailwindcss": "^3.4.17"
   },
   "scripts": {
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "js:build": "node scripts/js-build.mjs",
+    "js:test": "node --test 'pkg/cais/js/**/*.test.mjs'"
   }
 }

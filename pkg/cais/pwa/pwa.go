@@ -115,6 +115,7 @@ func WriteStatic(appDir string, cfg Config) error {
 		{"assets/sse-ext.min.js", "js/sse-ext.min.js"},
 		{"assets/cais-core.js", "js/cais-core.js"},
 		{"assets/cais-chat.js", "js/cais-chat.js"},
+		{"assets/cais-chat-logic.mjs", "js/cais-chat-logic.mjs"},
 		{"assets/offline.html", "offline.html"},
 		{"assets/icon.png", "icons/icon.png"},
 		{"assets/go-on-cais.jpg", "img/go-on-cais.jpg"},
