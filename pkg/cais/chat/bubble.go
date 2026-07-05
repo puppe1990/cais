@@ -13,10 +13,25 @@ type Role string
 const (
 	RoleUser      Role = "user"
 	RoleAssistant Role = "assistant"
+	RoleDetail    Role = "detail"
 )
 
 const assistantBubbleClass = "cais-chat-bubble assistant max-w-[85%] rounded-2xl rounded-bl-sm bg-white border border-slate-200 px-4 py-2 text-sm text-slate-800 shadow-xs"
 const userBubbleClass = "cais-chat-bubble user max-w-[85%] rounded-2xl rounded-br-sm bg-indigo-600 px-4 py-2 text-sm text-white shadow-xs"
+const detailBubbleClass = "cais-chat-bubble detail max-w-[85%] rounded-xl rounded-bl-sm bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600 shadow-xs self-start"
+
+// DetailBubble renders collapsible tool/log output without polluting assistant bubbles.
+func DetailBubble(text string) string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return ""
+	}
+	escaped := html.EscapeString(text)
+	return fmt.Sprintf(
+		`<details class="%s"><summary class="cursor-pointer font-medium text-slate-500">Details</summary><pre class="mt-1 whitespace-pre-wrap">%s</pre></details>`,
+		detailBubbleClass, escaped,
+	)
+}
 
 // LiveBubble is a single assistant fragment updated in #chat-live via event: stream.
 func LiveBubble(text string) string {

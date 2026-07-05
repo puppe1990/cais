@@ -98,3 +98,28 @@ func TestIsThinkingHTML(t *testing.T) {
 		t.Error("live bubble is not thinking HTML")
 	}
 }
+
+func TestDetailBubble_escapesAndUsesDetailRole(t *testing.T) {
+	got := DetailBubble("line1\n<script>")
+	for _, want := range []string{
+		"cais-chat-bubble detail",
+		"<details",
+		"<summary",
+		"line1",
+		"&lt;script&gt;",
+		"self-start",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in %q", want, got)
+		}
+	}
+	if strings.Contains(got, "<script>") {
+		t.Errorf("expected escaped HTML, got %q", got)
+	}
+}
+
+func TestDetailBubble_emptyReturnsEmpty(t *testing.T) {
+	if DetailBubble("   ") != "" {
+		t.Error("empty detail should return empty string")
+	}
+}

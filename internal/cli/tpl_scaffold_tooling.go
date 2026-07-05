@@ -224,12 +224,18 @@ const tplInputCSS = `@tailwind base;
     color: rgb(148 163 184);
   }
 
+  .cais-chat-shell {
+    min-height: 0;
+  }
+
   .cais-chat-messages-wrap {
     position: relative;
     min-height: 0;
   }
 
   #chat-messages {
+    overflow-x: hidden;
+    max-width: 100%;
     overflow-anchor: none;
     -webkit-overflow-scrolling: touch;
   }

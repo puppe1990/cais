@@ -301,9 +301,30 @@
     Array.from(stream.children).forEach(function (node) {
       appendStreamNode(history, node);
     });
+    pruneEmptyChatNodes();
   }
 
   window.caisFinalizeChatStream = finalizeChatStream;
+
+  function nodeHasVisibleChatContent(node) {
+    if (!node) return false;
+    if (node.querySelector("img, pre, code, details, .cais-thinking-dots")) return true;
+    var bubble =
+      node.querySelector(".cais-chat-bubble") ||
+      (node.classList.contains("cais-chat-bubble") ? node : null);
+    if (bubble && bubble.textContent.trim()) return true;
+    return !!node.textContent.trim();
+  }
+
+  function pruneEmptyChatNodes() {
+    ["#chat-stream", "#chat-live", "#chat-history"].forEach(function (sel) {
+      var el = document.querySelector(sel);
+      if (!el) return;
+      Array.from(el.children).forEach(function (child) {
+        if (!nodeHasVisibleChatContent(child)) child.remove();
+      });
+    });
+  }
 
   function clearChatLive() {
     var live = chatLiveEl();
@@ -599,6 +620,8 @@
     if (!target || !chatEnabled()) return;
     if (target.id === "chat-history") {
       dedupOptimisticUserBubble(target);
+      finalizeChatStream();
+      pruneEmptyChatNodes();
       formatMessageTimes(target);
       caisChatScrollBottomSoon();
       return;
