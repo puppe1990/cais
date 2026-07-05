@@ -51,15 +51,31 @@ func TestScaffoldStreamChat_CreatesFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	body := string(routesBody)
+	routes := string(routesBody)
 	for _, want := range []string{
 		`NewChatHandler`,
 		`/chat/{id}/stream`,
 		`cais.IntParam("id", chat.Stream)`,
 		`middleware.RequireAuth("/login")`,
 	} {
-		if !strings.Contains(body, want) {
+		if !strings.Contains(routes, want) {
 			t.Errorf("routes.go missing %q", want)
+		}
+	}
+
+	chatBody, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/chat.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := string(chatBody)
+	for _, want := range []string{
+		`pkg/cais/chat`,
+		`chat.WriteStream`,
+		`chat.MessageBubble`,
+		`chat.WriteMessage`,
+	} {
+		if !strings.Contains(handler, want) {
+			t.Errorf("chat.go missing %q", want)
 		}
 	}
 }
