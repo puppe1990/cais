@@ -390,20 +390,20 @@ func checkChatSSEPattern(dir string) doctorCheck {
 }
 
 func checkSSEReconnectJS(dir string) doctorCheck {
-	path := filepath.Join(dir, "web/static/js/cais.js")
+	path := filepath.Join(dir, "web/static/js/cais-core.js")
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return doctorCheck{Name: "SSE reconnect", OK: true, Detail: "skipped (no cais.js)"}
+		return doctorCheck{Name: "SSE reconnect", OK: true, Detail: "skipped (no cais-core.js)"}
 	}
 	content := string(data)
 	if strings.Contains(content, "reconnectChatSSE") && strings.Contains(content, "htmx:sseClose") {
-		return doctorCheck{Name: "SSE reconnect", OK: true, Detail: "cais.js reconnects SSE after hx-boost"}
+		return doctorCheck{Name: "SSE reconnect", OK: true, Detail: "cais-core.js reconnects SSE after hx-boost"}
 	}
 	return doctorCheck{
 		Name:     "SSE reconnect",
 		Optional: true,
-		Detail:   "cais.js missing hx-boost SSE reconnect helpers",
-		FixHint:  "run cais pwa to refresh cais.js from framework",
+		Detail:   "cais-core.js missing hx-boost SSE reconnect helpers",
+		FixHint:  "run cais pwa to refresh cais-core.js from framework",
 	}
 }
 
@@ -435,20 +435,20 @@ func checkChatAgentJS(dir string) doctorCheck {
 	if !chatUsesAgentSlots(dir) {
 		return doctorCheck{Name: "chat agent JS", OK: true, Detail: "skipped (no agent chat partial)"}
 	}
-	path := filepath.Join(dir, "web/static/js/cais.js")
+	path := filepath.Join(dir, "web/static/js/cais-chat.js")
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return doctorCheck{Name: "chat agent JS", OK: true, Detail: "skipped (no cais.js)"}
+		return doctorCheck{Name: "chat agent JS", OK: true, Detail: "skipped (no cais-chat.js)"}
 	}
 	content := string(data)
 	if strings.Contains(content, "finalizeChatStream") && strings.Contains(content, "data-cais-chat") {
-		return doctorCheck{Name: "chat agent JS", OK: true, Detail: "cais.js finalizes multi-slot SSE chat"}
+		return doctorCheck{Name: "chat agent JS", OK: true, Detail: "cais-chat.js finalizes multi-slot SSE chat"}
 	}
 	return doctorCheck{
 		Name:     "chat agent JS",
 		Optional: true,
-		Detail:   "agent chat partial present but cais.js missing finalizeChatStream",
-		FixHint:  "run cais pwa to refresh cais.js from framework",
+		Detail:   "agent chat partial present but cais-chat.js missing finalizeChatStream",
+		FixHint:  "run cais pwa to refresh cais-chat.js from framework",
 	}
 }
 
@@ -519,19 +519,19 @@ func checkChatEnterSubmitJS(dir string) doctorCheck {
 	if !appUsesChatForm(dir) {
 		return doctorCheck{Name: "chat enter-submit JS", OK: true, Detail: "skipped (no chat form)"}
 	}
-	path := filepath.Join(dir, "web/static/js/cais.js")
+	path := filepath.Join(dir, "web/static/js/cais-chat.js")
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return doctorCheck{Name: "chat enter-submit JS", OK: true, Detail: "skipped (no cais.js)"}
+		return doctorCheck{Name: "chat enter-submit JS", OK: true, Detail: "skipped (no cais-chat.js)"}
 	}
 	content := string(data)
 	if strings.Contains(content, "bindChatEnterSubmit") && strings.Contains(content, "data-cais-chat-form") {
-		return doctorCheck{Name: "chat enter-submit JS", OK: true, Detail: "cais.js handles Enter-to-send on chat forms"}
+		return doctorCheck{Name: "chat enter-submit JS", OK: true, Detail: "cais-chat.js handles Enter-to-send on chat forms"}
 	}
 	return doctorCheck{
 		Name:     "chat enter-submit JS",
 		Optional: true,
-		Detail:   "chat form present but cais.js missing bindChatEnterSubmit",
+		Detail:   "chat form present but cais-chat.js missing bindChatEnterSubmit",
 		FixHint:  "run cais pwa to refresh cais.js from framework",
 	}
 }
