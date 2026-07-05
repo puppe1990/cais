@@ -37,6 +37,35 @@ func DetailBubble(text string) string {
 	)
 }
 
+// DetailBubbleWithTitle is DetailBubble but allows a custom <summary> label (useful for tool names).
+func DetailBubbleWithTitle(title, text string) string {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		title = "Details"
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return ""
+	}
+	return fmt.Sprintf(
+		`<details class="%s"><summary class="cursor-pointer font-medium text-slate-500">%s</summary><pre class="mt-1 whitespace-pre-wrap">%s</pre></details>`,
+		detailBubbleClass, html.EscapeString(title), html.EscapeString(text),
+	)
+}
+
+// ToolCallBubble renders a collapsible tool invocation (for permissions/audit in agent UIs).
+func ToolCallBubble(tool, input string) string {
+	if tool == "" {
+		tool = "tool"
+	}
+	return DetailBubbleWithTitle("tool: "+tool, input)
+}
+
+// ToolResultBubble renders tool output safely (distinguishes from assistant text).
+func ToolResultBubble(output string) string {
+	return DetailBubbleWithTitle("tool result", output)
+}
+
 // LiveBubble is a single assistant fragment updated in #chat-live via event: stream.
 func LiveBubble(text string) string {
 	return fmt.Sprintf(

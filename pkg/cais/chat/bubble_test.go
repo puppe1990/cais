@@ -124,6 +124,7 @@ func TestDetailBubble_emptyReturnsEmpty(t *testing.T) {
 	}
 }
 
+<<<<<<< HEAD
 func TestTruncate_shortDoesNothing(t *testing.T) {
 	got := Truncate("hello world", 100)
 	if got != "hello world" {
@@ -184,5 +185,22 @@ func TestTrimForDisplay_smallerThanLimitReturnsAll(t *testing.T) {
 	all := []int{1, 2, 3}
 	if got := TrimForDisplay(all, 10); len(got) != 3 {
 		t.Errorf("unexpected trim: %v", got)
+	}
+}
+
+func TestDetailBubbleWithTitle_andToolHelpers(t *testing.T) {
+	d := DetailBubbleWithTitle("mytool", "some output\nwith\nlines")
+	if !strings.Contains(d, "<summary") || !strings.Contains(d, "mytool") || !strings.Contains(d, "some output") {
+		t.Errorf("bad detail with title: %s", d)
+	}
+
+	tc := ToolCallBubble("fs.read", `{"path":"x"}`)
+	if !strings.Contains(tc, "tool: fs.read") {
+		t.Error("ToolCallBubble title wrong")
+	}
+
+	tr := ToolResultBubble("42")
+	if !strings.Contains(tr, "tool result") {
+		t.Error("ToolResultBubble title wrong")
 	}
 }
