@@ -18,8 +18,21 @@ not inner presentation class names. See pkg/cais/stream.WriteEvent.
         </div>
         {{- end }}
       </div>
+      {{/* 
+        Extension point for agent UIs.
+        Override this block in your page/partial to inject additional slots
+        (e.g. for tool details or multi-client messages) without forking the whole partial.
+        Example in consumer:
+          {{ define "chat_extra_stream_slots" }}
+            <div id="chat-stream" class="..."></div>
+            <div id="chat-live" ...></div>
+            <div sse-swap="detail" hx-target="#chat-stream" hx-swap="beforeend"></div>
+          {{ end }}
+      */}}
+      {{ block "chat_extra_stream_slots" . }}
       <div id="chat-stream" class="flex flex-col gap-3"></div>
       <div id="chat-live" class="flex flex-col gap-3"></div>
+      {{ end }}
       <div
         id="chat-thinking"
         class="hidden cais-thinking flex items-center gap-2.5 max-w-[85%] rounded-2xl rounded-bl-sm bg-slate-100 border border-slate-200 px-4 py-3 text-sm text-slate-600 shadow-xs self-start"
@@ -44,6 +57,7 @@ not inner presentation class names. See pkg/cais/stream.WriteEvent.
         <div sse-swap="stream" hx-target="#chat-live" hx-swap="innerHTML"></div>
         <div sse-swap="message" hx-target="#chat-stream" hx-swap="beforeend"></div>
         <div sse-swap="thinking" hx-target="#chat-thinking" hx-swap="outerHTML"></div>
+        {{ block "chat_extra_sse_listeners" . }}{{ end }}
       </div>
     </div>
   </div>
