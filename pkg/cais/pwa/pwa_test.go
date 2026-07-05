@@ -68,6 +68,7 @@ func TestCaisJS_hasChatAgentModule(t *testing.T) {
 		"window.caisFinalizeChatStream",
 		"bindChatEnterSubmit",
 		"dedupOptimisticUserBubble",
+		"pruneEmptyChatNodes",
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("cais.js missing chat agent helper %q", want)

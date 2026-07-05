@@ -16,6 +16,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 - `hxChatForm` no longer uses inline `hx-on:keydown` or `this.reset()` — input clear and Enter handled in `cais.js`
 - `cais g stream chat` submit button uses `htmx-request-hide` + `htmx-indicator` pattern
+- `cais g stream chat` uses mobile `cais-chat-shell` layout (sticky footer, viewport height)
+- `#chat-messages` includes `overflow-x-hidden` — `cais doctor --mobile` warns when missing
+- `finalizeChatStream` runs after `#chat-history` swaps; `pruneEmptyChatNodes` removes empty SSE slots
+
+### Added
+
+- `chat.DetailBubble` — collapsible tool/log output for agent streams
 
 ### Added
 

@@ -273,13 +273,13 @@ const tplConversationsPage = `{{"{{"}} define "conversations" {{"}}"}}
 `
 
 const tplChatPage = `{{"{{"}} define "chat" {{"}}"}}
-<section class="max-w-2xl mx-auto px-4 py-6 flex flex-col min-h-[70vh]">
-  <div class="flex items-center gap-3 mb-4">
+<section class="cais-chat-shell max-w-2xl mx-auto px-4 flex flex-col min-h-0 h-[calc(100dvh-8rem)] sm:h-[calc(100dvh-6rem)]">
+  <div class="flex items-center gap-3 py-3 shrink-0 border-b border-slate-200">
     <a href="/chat" class="text-slate-500 hover:text-slate-900" aria-label="Back to conversations">←</a>
     <h1 class="text-lg font-bold text-slate-900 truncate">{{"{{"}} if .Conversation.Title {{"}}"}}{{"{{"}} .Conversation.Title {{"}}"}}{{"{{"}} else {{"}}"}}Chat{{"{{"}} end {{"}}"}}</h1>
   </div>
   {{"{{"}} template "chat_sse_agent" . {{"}}"}}
-  <form class="mt-4 flex gap-2" {{"{{"}} hxChatForm (printf "/chat/%d/messages" .Conversation.ID) "#chat-thinking" {{"}}"}}>
+  <form class="shrink-0 sticky bottom-0 py-3 bg-white border-t border-slate-200 flex gap-2" {{"{{"}} hxChatForm (printf "/chat/%d/messages" .Conversation.ID) "#chat-thinking" {{"}}"}}>
     {{"{{"}} csrfField .CSRFToken {{"}}"}}
     <textarea name="content" rows="2" class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Message…" required></textarea>
     <button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white self-end inline-flex items-center justify-center shrink-0 min-h-10">

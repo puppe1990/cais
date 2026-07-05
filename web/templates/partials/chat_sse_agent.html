@@ -1,6 +1,6 @@
 {{ define "chat_sse_agent" }}
 <div class="cais-chat-messages-wrap relative flex-1 min-h-0 flex flex-col">
-  <div id="chat-messages" class="cais-chat-messages flex-1 overflow-y-auto overscroll-contain py-3 min-h-0" data-cais-chat="true">
+  <div id="chat-messages" class="cais-chat-messages flex-1 overflow-y-auto overflow-x-hidden max-w-full overscroll-contain py-3 min-h-0" data-cais-chat="true">
     <div class="flex flex-col gap-3 min-h-full justify-end">
       <div id="chat-history" class="flex flex-col gap-3">
         {{- range .Messages }}

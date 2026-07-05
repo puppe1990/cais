@@ -472,6 +472,14 @@ func checkChatScrollContainer(dir string) doctorCheck {
 			continue
 		}
 		if strings.Contains(content, `id="chat-messages"`) {
+			if !strings.Contains(content, "overflow-x-hidden") && !strings.Contains(content, "overflow-x: hidden") {
+				return doctorCheck{
+					Name:     "chat scroll container",
+					Optional: true,
+					Detail:   "#chat-messages missing overflow-x-hidden (horizontal scroll risk)",
+					FixHint:  "add overflow-x-hidden max-w-full to #chat-messages (see chat_sse_agent.html)",
+				}
+			}
 			return doctorCheck{Name: "chat scroll container", OK: true, Detail: "#chat-messages scroll container present"}
 		}
 		return doctorCheck{
