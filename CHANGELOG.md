@@ -8,6 +8,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ### Added
 
+- `pkg/cais/cache`: `Key(parts ...any)` and `Hash(v any)` — stable key building and short content hashing. Helps avoid embedding full lists (e.g. 80 sessions) in cache keys for list pages.
+- `pkg/cais/httpx`: `NotModified(w, r, etag)` and `SetETag(w, etag)` — simple ETag / 304 conditional response support for cacheable pages and lists.
+
+### Added
+
 - `pkg/cais/chat`: `Truncate`, `SafeMessageBubble`, `TrimForDisplay`, `MaxMessageChars` — server-side safety and perf for large/polluted agent histories (addresses loading 1-2s, 500s on huge turns)
 - `cais g stream chat` scaffold now demonstrates TrimForDisplay + SafeMessageBubble in Show/ListMessages/Stream
 - `pkg/cais/chat`: `UnsafeLiveHTML` + `UnsafeMessageHTML` + `WriteUnsafe*` helpers — enables first-class streaming agent UIs with rich pre-rendered content (Markdown, media) in #chat-live and #chat-stream without duplicating bubble wrappers in the app.

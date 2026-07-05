@@ -138,3 +138,37 @@ func TestRenderPageOrPartial_fullPageWhenNotHTMX(t *testing.T) {
 		t.Errorf("body = %q, want page content", rr.Body.String())
 	}
 }
+
+func TestNotModified_returns304OnMatch(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/list", nil)
+	req.Header.Set("If-None-Match", `"abc123"`)
+
+	if !NotModified(rr, req, "abc123") {
+		t.Fatal("expected NotModified to return true")
+	}
+	if rr.Code != http.StatusNotModified {
+		t.Errorf("status = %d, want 304", rr.Code)
+	}
+	if et := rr.Header().Get("ETag"); et != `"abc123"` {
+		t.Errorf("ETag = %q, want quoted", et)
+	}
+}
+
+func TestNotModified_returnsFalseOnMismatch(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/list", nil)
+	req.Header.Set("If-None-Match", `"old"`)
+
+	if NotModified(rr, req, "new") {
+		t.Error("should not be not-modified")
+	}
+}
+
+func TestSetETag(t *testing.T) {
+	rr := httptest.NewRecorder()
+	SetETag(rr, "xyz")
+	if et := rr.Header().Get("ETag"); et != `"xyz"` {
+		t.Errorf("ETag = %q", et)
+	}
+}

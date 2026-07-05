@@ -1,6 +1,11 @@
 package cache
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -53,4 +58,32 @@ func (c *Cache[V]) Delete(key string) {
 	c.mu.Lock()
 	delete(c.data, key)
 	c.mu.Unlock()
+}
+
+// Key builds a deterministic cache key by joining the parts with "|".
+// Recommended for list pages: combine stable identifiers + a Hash() of a version struct
+// (e.g. count + max updated time) instead of serializing the entire list into the key.
+func Key(parts ...any) string {
+	if len(parts) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	for i, p := range parts {
+		if i > 0 {
+			b.WriteByte('|')
+		}
+		fmt.Fprintf(&b, "%v", p)
+	}
+	return b.String()
+}
+
+// Hash returns a short (16 hex chars) stable hash of v.
+// Use it to create cache keys / ETags that change only when the important data changes.
+func Hash(v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		b = []byte(fmt.Sprintf("%#v", v))
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:8])
 }

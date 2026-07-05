@@ -3,6 +3,7 @@ package httpx
 import (
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/puppe1990/cais/pkg/cais"
 )
@@ -59,4 +60,50 @@ func RenderPageOrPartial(w http.ResponseWriter, r *http.Request, renderer *cais.
 		return
 	}
 	RenderOrError(w, renderer, opts.Layout, opts.Page, opts.Data, cfg)
+}
+
+// NotModified returns true and sends 304 Not Modified (with ETag) when the
+// request's If-None-Match matches the given etag. This is useful for list pages
+// and other cacheable responses.
+//
+// Typical usage:
+//
+//	etag := `"` + cache.Hash(myListVersion) + `"`
+//	if httpx.NotModified(w, r, etag) {
+//	    return
+//	}
+//	httpx.SetETag(w, etag)
+//	... render ...
+func NotModified(w http.ResponseWriter, r *http.Request, etag string) bool {
+	if etag == "" {
+		return false
+	}
+	if match := r.Header.Get("If-None-Match"); match != "" {
+		if stripQuotes(match) == stripQuotes(etag) {
+			w.Header().Set("ETag", quoteETag(etag))
+			w.WriteHeader(http.StatusNotModified)
+			return true
+		}
+	}
+	return false
+}
+
+// SetETag sets the ETag header (adding quotes if necessary).
+func SetETag(w http.ResponseWriter, etag string) {
+	if etag != "" {
+		w.Header().Set("ETag", quoteETag(etag))
+	}
+}
+
+func quoteETag(etag string) string {
+	if strings.HasPrefix(etag, `"`) || strings.HasPrefix(etag, `W/"`) {
+		return etag
+	}
+	return `"` + etag + `"`
+}
+
+func stripQuotes(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.TrimPrefix(s, `W/`)
+	return strings.Trim(s, `"`)
 }
