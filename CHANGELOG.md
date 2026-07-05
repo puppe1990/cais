@@ -8,6 +8,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ### Added
 
+- `pkg/cais/chat` — generic SSE chat HTML helpers (`LiveBubble`, `MessageBubble`, `ThinkingHTML`, `WriteStream`, `WriteMessage`)
 - `pkg/cais/stream` — `Flush`, `RelaySSE`, and `RelayAndCopy` for HTMX SSE through middleware-wrapped `ResponseWriter`s
 - Logger skips misleading `Completed` log line for `/stream` and `/event` paths
 - `cais.js` reconnects SSE after `hx-boost` swaps (`data-cais-sse-persist`, `htmx:sseClose` handler)
