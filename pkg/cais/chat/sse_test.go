@@ -19,8 +19,8 @@ func TestWriteStream_emitsStreamEvent(t *testing.T) {
 	if !strings.Contains(body, "data: ") {
 		t.Error("missing data line")
 	}
-	if !strings.Contains(body, "data-cais-live") {
-		t.Error("data should include live bubble")
+	if !strings.Contains(body, `data-cais-live="true"`) {
+		t.Error("data should include live bubble contract marker")
 	}
 }
 
