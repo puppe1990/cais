@@ -105,16 +105,22 @@ func TestHxChatForm(t *testing.T) {
 		`hx-post="/chat/1/messages"`,
 		`hx-target="#chat-history"`,
 		`hx-swap="beforeend"`,
-		`hx-on:keydown`,
-		`Enter`,
-		`shiftKey`,
-		`requestSubmit`,
 		`chat-thinking`,
 		`data-cais-chat-form`,
 		`caisFinalizeChatStream`,
+		`hx-disabled-elt="button[type='submit']"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("HxChatForm missing %q, got %q", want, got)
+		}
+	}
+	for _, omit := range []string{
+		`hx-on:keydown`,
+		`hx-on::after-request`,
+		`this.reset()`,
+	} {
+		if strings.Contains(got, omit) {
+			t.Errorf("HxChatForm should not contain %q, got %q", omit, got)
 		}
 	}
 }

@@ -35,13 +35,14 @@ func HxForm(postURL, target, indicator string) template.HTMLAttr {
 	return template.HTMLAttr(b.String())
 }
 
-// HxChatForm returns attributes for a chat message form: Enter sends, Shift+Enter newline.
+// HxChatForm returns attributes for a chat message form.
+// Enter-to-send is handled by cais.js (bindChatEnterSubmit) on form[data-cais-chat-form].
 func HxChatForm(postURL, thinkingID string) template.HTMLAttr {
 	var b strings.Builder
 	b.WriteString(`data-cais-chat-form="true" hx-post="`)
 	b.WriteString(template.HTMLEscapeString(postURL))
 	b.WriteString(`" hx-target="#chat-history" hx-swap="beforeend" hx-disabled-elt="button[type='submit']"`)
-	b.WriteString(` hx-on::after-request="this.reset()" hx-on::before-request="window.caisFinalizeChatStream?.()`)
+	b.WriteString(` hx-on::before-request="window.caisFinalizeChatStream?.()`)
 	if thinkingID != "" {
 		id := strings.TrimPrefix(thinkingID, "#")
 		b.WriteString(`;document.getElementById('`)
@@ -49,7 +50,6 @@ func HxChatForm(postURL, thinkingID string) template.HTMLAttr {
 		b.WriteString(`')?.classList.remove('hidden')`)
 	}
 	b.WriteString(`"`)
-	b.WriteString(` hx-on:keydown="if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); this.requestSubmit(); }"`)
 	return template.HTMLAttr(b.String())
 }
 

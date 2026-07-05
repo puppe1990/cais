@@ -96,9 +96,11 @@
     return elt.closest ? elt.closest("form[data-cais-chat-form]") : null;
   }
 
-  function chatTextarea(form) {
+  function chatInputField(form) {
     return form
-      ? form.querySelector("#chat-text, textarea[name='text'], textarea[name='content']")
+      ? form.querySelector(
+          "#chat-text, textarea[name='text'], textarea[name='content'], input[name='text'], input[name='content']"
+        )
       : null;
   }
 
@@ -165,6 +167,54 @@
     document.querySelectorAll("[data-cais-optimistic-user]").forEach(function (el) {
       el.remove();
     });
+  }
+
+  function userBubbleText(node) {
+    if (!node) return "";
+    var bubble = node.querySelector ? node.querySelector(".cais-chat-bubble.user") : null;
+    if (bubble) return bubble.textContent.trim();
+    return node.textContent.trim();
+  }
+
+  function historyHasUserText(history, text) {
+    if (!history || !text) return false;
+    var nodes = history.querySelectorAll(".cais-msg-user, .cais-chat-bubble.user");
+    for (var i = nodes.length - 1; i >= 0; i--) {
+      if (userBubbleText(nodes[i]) === text) return true;
+    }
+    return false;
+  }
+
+  function dedupOptimisticUserBubble(history) {
+    history = history || chatHistoryEl();
+    if (!history) return;
+    document.querySelectorAll("[data-cais-optimistic-user]").forEach(function (opt) {
+      var text = userBubbleText(opt);
+      if (historyHasUserText(history, text)) opt.remove();
+    });
+  }
+
+  function bindChatEnterSubmit() {
+    if (document.documentElement.dataset.caisChatEnterBound === "true") return;
+    document.documentElement.dataset.caisChatEnterBound = "true";
+    document.addEventListener(
+      "keydown",
+      function (evt) {
+        if (evt.key !== "Enter" || evt.shiftKey || evt.isComposing || evt.defaultPrevented) return;
+        var target = evt.target;
+        if (!target || !target.matches) return;
+        if (!target.matches("textarea, input[type='text']")) return;
+        var form = chatFormFrom(target);
+        if (!form) return;
+        evt.preventDefault();
+        if (typeof form.requestSubmit === "function") {
+          form.requestSubmit();
+        } else {
+          form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+        }
+      },
+      true
+    );
   }
 
   function appendOptimisticUserBubble(text) {
@@ -412,17 +462,17 @@
     savedFocus = document.activeElement;
     var chatForm = chatFormFrom(evt.detail.elt);
     if (chatForm) {
-      if (chatEnabled()) {
-        finalizeChatStream();
-        if (chatForm.getAttribute("data-cais-chat-optimistic") === "true") {
-          var ta = chatTextarea(chatForm);
-          if (ta) {
-            chatForm._caisDraft = ta.value;
-            appendOptimisticUserBubble(ta.value);
-            ta.value = "";
+      var field = chatInputField(chatForm);
+      if (field) {
+        chatForm._caisDraft = field.value;
+        if (chatEnabled()) {
+          finalizeChatStream();
+          if (chatForm.getAttribute("data-cais-chat-optimistic") === "true") {
+            appendOptimisticUserBubble(field.value);
           }
+          field.value = "";
+          caisChatScrollBottomSoon();
         }
-        caisChatScrollBottomSoon();
       }
       scheduleChatFallback();
     }
@@ -445,7 +495,7 @@
     rollbackOptimistic();
     var chatForm = chatFormFrom(evt.detail.elt);
     if (chatForm && chatForm._caisDraft !== undefined) {
-      var ta = chatTextarea(chatForm);
+      var ta = chatInputField(chatForm);
       if (ta) ta.value = chatForm._caisDraft;
       delete chatForm._caisDraft;
       removeOptimisticUserBubble();
@@ -548,7 +598,7 @@
     var target = evt.detail && evt.detail.target;
     if (!target || !chatEnabled()) return;
     if (target.id === "chat-history") {
-      removeOptimisticUserBubble();
+      dedupOptimisticUserBubble(target);
       formatMessageTimes(target);
       caisChatScrollBottomSoon();
       return;
@@ -560,6 +610,8 @@
   });
 
   document.body.addEventListener("htmx:sseMessage", caisChatScrollBottom);
+
+  bindChatEnterSubmit();
 
   document.addEventListener("DOMContentLoaded", function () {
     syncNavTabs();

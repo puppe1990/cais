@@ -8,6 +8,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ### Added
 
+- `cais.js` `bindChatEnterSubmit` — delegated Enter-to-send on `form[data-cais-chat-form]` (Shift+Enter newline)
+- `cais.js` `dedupOptimisticUserBubble` — drops optimistic user bubble when server partial already includes it
+- Chat form submit CSS — `inline-flex` button + scoped `htmx-indicator` / `htmx-request-hide` swap
+
+### Changed
+
+- `hxChatForm` no longer uses inline `hx-on:keydown` or `this.reset()` — input clear and Enter handled in `cais.js`
+- `cais g stream chat` submit button uses `htmx-request-hide` + `htmx-indicator` pattern
+
+### Added
+
 - `hxChatForm` calls `window.caisFinalizeChatStream` before submit to merge SSE stream slots
 - `cais doctor --mobile` — chat agent JS finalize check and `#chat-messages` scroll container check
 - `cais g stream chat` demo uses `pkg/cais/chat` — `event: stream` typing preview + timestamped `event: message`
