@@ -52,6 +52,8 @@ func runDoctor(w io.Writer, dir string, opts doctorOptions) error {
 			checkChatSSEPattern(dir),
 			checkSSEReconnectJS(dir),
 			checkChatAgentJS(dir),
+			checkChatEnterSubmitJS(dir),
+			checkChatFormCSS(dir),
 			checkChatScrollContainer(dir),
 			checkHealthLANURLs(dir),
 		)
@@ -490,6 +492,78 @@ func checkChatScrollContainer(dir string) doctorCheck {
 		}
 	}
 	return doctorCheck{Name: "chat scroll container", OK: true, Detail: "skipped (no data-cais-chat)"}
+}
+
+func appUsesChatForm(dir string) bool {
+	root := filepath.Join(dir, "web", "templates")
+	found := false
+	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".html") {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+		content := string(data)
+		if strings.Contains(content, "hxChatForm") || strings.Contains(content, `data-cais-chat-form`) {
+			found = true
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
+func checkChatEnterSubmitJS(dir string) doctorCheck {
+	if !appUsesChatForm(dir) {
+		return doctorCheck{Name: "chat enter-submit JS", OK: true, Detail: "skipped (no chat form)"}
+	}
+	path := filepath.Join(dir, "web/static/js/cais.js")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return doctorCheck{Name: "chat enter-submit JS", OK: true, Detail: "skipped (no cais.js)"}
+	}
+	content := string(data)
+	if strings.Contains(content, "bindChatEnterSubmit") && strings.Contains(content, "data-cais-chat-form") {
+		return doctorCheck{Name: "chat enter-submit JS", OK: true, Detail: "cais.js handles Enter-to-send on chat forms"}
+	}
+	return doctorCheck{
+		Name:     "chat enter-submit JS",
+		Optional: true,
+		Detail:   "chat form present but cais.js missing bindChatEnterSubmit",
+		FixHint:  "run cais pwa to refresh cais.js from framework",
+	}
+}
+
+func checkChatFormCSS(dir string) doctorCheck {
+	if !appUsesChatForm(dir) && !chatUsesAgentSlots(dir) {
+		return doctorCheck{Name: "chat form CSS", OK: true, Detail: "skipped (no chat UI)"}
+	}
+	path := filepath.Join(dir, "input.css")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return doctorCheck{Name: "chat form CSS", OK: true, Detail: "skipped (no input.css)"}
+	}
+	content := string(data)
+	hasShell := strings.Contains(content, ".cais-chat-shell")
+	hasSubmit := strings.Contains(content, "form[data-cais-chat-form]")
+	if hasShell && hasSubmit {
+		return doctorCheck{Name: "chat form CSS", OK: true, Detail: "mobile chat shell + submit indicator CSS present"}
+	}
+	missing := []string{}
+	if !hasShell {
+		missing = append(missing, ".cais-chat-shell")
+	}
+	if !hasSubmit {
+		missing = append(missing, "form[data-cais-chat-form]")
+	}
+	return doctorCheck{
+		Name:     "chat form CSS",
+		Optional: true,
+		Detail:   "input.css missing: " + strings.Join(missing, ", "),
+		FixHint:  "run cais css after updating input.css from Cais scaffold",
+	}
 }
 
 func checkHealthLANURLs(dir string) doctorCheck {

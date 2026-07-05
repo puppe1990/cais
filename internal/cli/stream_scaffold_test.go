@@ -78,6 +78,21 @@ func TestScaffoldStreamChat_CreatesFiles(t *testing.T) {
 			t.Errorf("chat.go missing %q", want)
 		}
 	}
+
+	testBody, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/chat_test.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tests := string(testBody)
+	for _, want := range []string{
+		`testutil.AssertChatMarkers`,
+		`TestChatHandler_Show_NotFound_Returns404`,
+		`TestChatHandler_PostMessage_ReturnsUserBubble`,
+	} {
+		if !strings.Contains(tests, want) {
+			t.Errorf("chat_test.go missing %q", want)
+		}
+	}
 }
 
 func TestCLI_GenerateStreamChatDryRun(t *testing.T) {

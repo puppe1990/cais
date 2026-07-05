@@ -74,6 +74,8 @@ func TestDoctor_MobileChecks_chatSSEAndReconnect(t *testing.T) {
 		"[ok] SSE reconnect",
 		"[ok] health lan_urls",
 		"[ok] chat agent JS",
+		"[ok] chat enter-submit JS",
+		"[ok] chat form CSS",
 		"[ok] chat scroll container",
 	} {
 		if !strings.Contains(out, want) {
