@@ -422,6 +422,23 @@
     });
   }
 
+  // Improve auto-follow reliability for live streaming (height changes after DOM inserts).
+  // Uses ResizeObserver when available so we react to actual bubble growth instead of only timers.
+  var chatScrollResizeObserver = null;
+  function bindChatAutoScrollResize() {
+    var box = chatMessagesEl();
+    if (!box || chatScrollResizeObserver || typeof ResizeObserver === "undefined") return;
+    chatScrollResizeObserver = new ResizeObserver(function () {
+      if (chatStickToBottom) {
+        // Defer to next frame to let layout settle (live content + images).
+        requestAnimationFrame(caisChatScrollBottom);
+      }
+    });
+    chatScrollResizeObserver.observe(box);
+    var live = chatLiveEl();
+    if (live) chatScrollResizeObserver.observe(live);
+  }
+
   window.caisChatScrollBottom = caisChatScrollBottom;
   window.caisRemoveOptimisticUserBubble = removeOptimisticUserBubble;
 
@@ -429,6 +446,7 @@
     if (!chatEnabled()) return;
     chatStickToBottom = true;
     bindChatScrollDown();
+    bindChatAutoScrollResize();
     formatMessageTimes(chatMessagesEl());
     caisChatScrollBottomSoon();
     updateChatScrollDownButton();

@@ -69,6 +69,8 @@ func TestCaisJS_hasChatAgentModule(t *testing.T) {
 		"bindChatEnterSubmit",
 		"dedupOptimisticUserBubble",
 		"pruneEmptyChatNodes",
+		"bindChatAutoScrollResize",
+		"ResizeObserver",
 		"caisRemoveOptimisticUserBubble",
 	} {
 		if !strings.Contains(content, want) {
