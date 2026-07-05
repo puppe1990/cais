@@ -108,7 +108,7 @@ Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap so layouts render corre
 - `boot.Print` shows **LAN** URLs for phone testing on Wi‑Fi
 - `GET /health` returns `lan_urls` via `netutil.HealthPayload` — use this array, never concatenate `APP_URL` + port manually
 - `cais pwa --bump` increments `CACHE_VERSION` in `sw.js` after template/HTML changes
-- `cais doctor --mobile` checks flash markup, Google Fonts CSP, SW cache, chat SSE partial, SSE reconnect in `cais.js`, and health `lan_urls`
+- `cais doctor --mobile` checks flash markup, Google Fonts CSP, SW cache, chat SSE partial, SSE reconnect, chat agent JS (`finalizeChatStream`), `#chat-messages` scroll container, and health `lan_urls`
 - Scaffold `input.css` uses system fonts (no `fonts.googleapis.com` — blocked by default CSP)
 
 **Mobile SSE checklist:** `cais doctor --mobile` → `cais pwa --bump` → open boot **LAN** URL on phone → stay on chat page while agent responds (avoid hx-boost away mid-stream)
@@ -161,9 +161,28 @@ func relayHandler(w http.ResponseWriter, upstream *http.Response) {
 }
 ```
 
-**Chat template pattern** — `web/templates/partials/chat_sse.html`: `#chat-history` holds messages; `#chat-sse` child uses `sse-swap="message"` + `hx-swap="beforeend"` + `hx-target="#chat-history"` so SSE appends bubbles instead of replacing history. Set `data-cais-sse-persist="true"` so `cais.js` reconnects SSE after `hx-boost` navigation.
+**Chat template patterns** — two partials ship with `cais new`:
 
-**Chat form** — `{{ hxChatForm "/chat/{id}/messages" "#chat-thinking" }}` on the `<form>`: Enter sends, Shift+Enter newline. Optional `data-cais-poll-url` on `#chat-sse` enables 4s/8s/15s history refresh fallback when SSE fails.
+| Partial               | Use case                        | DOM                                                                    |
+| --------------------- | ------------------------------- | ---------------------------------------------------------------------- |
+| `chat_sse.html`       | Echo / simple bots              | Single `#chat-history`; SSE appends with `beforeend`                   |
+| `chat_sse_agent.html` | Agent streaming (tokens, tools) | `#chat-history` + `#chat-stream` + `#chat-live` under `#chat-messages` |
+
+Simple mode — `chat_sse.html`: `#chat-sse` uses `sse-swap="message"` + `hx-swap="beforeend"` + `hx-target="#chat-history"`. Set `data-cais-sse-persist="true"` so `cais.js` reconnects SSE after `hx-boost` navigation.
+
+Agent mode — `chat_sse_agent.html`: opt-in with `data-cais-chat="true"`. SSE events:
+
+| Event      | Target           | Swap        | Purpose                                   |
+| ---------- | ---------------- | ----------- | ----------------------------------------- |
+| `stream`   | `#chat-live`     | `innerHTML` | Live token/tool bubble (`data-cais-live`) |
+| `message`  | `#chat-stream`   | `beforeend` | Finalized assistant chunks                |
+| `thinking` | `#chat-thinking` | `outerHTML` | Thinking indicator                        |
+
+**Ordering pitfall** — `hxChatForm` posts user bubbles to `#chat-history` with `beforeend`. If agent SSE writes to sibling containers (`#chat-stream`, `#chat-live`) without merging first, the user input appears above in-flight assistant output. Agent mode requires `cais.js` `finalizeChatStream()` (runs automatically when `data-cais-chat` is present; also exposed as `window.caisFinalizeChatStream`).
+
+**Server helpers** — `pkg/cais/chat`: `LiveBubble`, `MessageBubble` (UTC `<time class="cais-msg-time">` for device-local formatting in `cais.js`), `WriteStream`, `WriteMessage`.
+
+**Chat form** — `{{ hxChatForm "/chat/{id}/messages" "#chat-thinking" }}` on the `<form>`: Enter sends, Shift+Enter newline. Optional `data-cais-chat-optimistic="true"` shows the user bubble immediately. Optional `data-cais-poll-url` on `#chat-sse` enables history refresh fallback when SSE fails (poll is skipped while stream slots are active).
 
 `cais doctor` warns when `sse-ext.min.js` is present and `WriteTimeout > 0` in `internal/app/app.go`.
 
