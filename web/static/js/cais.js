@@ -440,6 +440,7 @@
   }
 
   window.caisChatScrollBottom = caisChatScrollBottom;
+  window.caisRemoveOptimisticUserBubble = removeOptimisticUserBubble;
 
   function bootChatModule() {
     if (!chatEnabled()) return;
@@ -470,6 +471,7 @@
       data.indexOf("cais-chat-bubble assistant") !== -1 ||
       data.indexOf("cais-msg-assistant") !== -1
     ) {
+      removeOptimisticUserBubble();
       clearChatLive();
       hideChatThinking();
       clearChatFallbackTimers();
@@ -486,6 +488,7 @@
       scheduleSSEReconnect();
     }
     if (chatEnabled()) {
+      removeOptimisticUserBubble();
       refreshChatMessages();
     }
   });
@@ -493,6 +496,7 @@
   document.body.addEventListener("htmx:sseError", function () {
     scheduleSSEReconnect();
     if (chatEnabled()) {
+      removeOptimisticUserBubble();
       refreshChatMessages();
     }
   });
