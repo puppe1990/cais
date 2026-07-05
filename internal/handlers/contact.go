@@ -68,7 +68,7 @@ func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ContactHandler) renderContactResponse(w http.ResponseWriter, r *http.Request, status int, partial string, data any) {
-	httpx.RenderPageOrPartial(w, r, h.renderer, httpx.RenderOptions{
+	httpx.WritePage(w, r, h.renderer, httpx.PageConfig{
 		Layout:  "base",
 		Page:    "contact",
 		Partial: partial,
