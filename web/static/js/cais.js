@@ -863,10 +863,12 @@
 
   function initSelectSearch(root) {
     var scope = root || document;
-    scope.querySelectorAll('select[data-cais-select-search]:not([data-cais-select-bound])').forEach(function (select) {
-      select.setAttribute("data-cais-select-bound", "true");
-      enhanceSelectSearch(select);
-    });
+    scope
+      .querySelectorAll("select[data-cais-select-search]:not([data-cais-select-bound])")
+      .forEach(function (select) {
+        select.setAttribute("data-cais-select-bound", "true");
+        enhanceSelectSearch(select);
+      });
   }
 
   document.body.addEventListener("click", function (evt) {
