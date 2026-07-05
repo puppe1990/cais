@@ -93,7 +93,7 @@ func TestDoctor_MobileWarnsMultiSlotWithoutFinalize(t *testing.T) {
 	}, true, false); err != nil {
 		t.Fatal(err)
 	}
-	jsPath := filepath.Join(dir, "web/static/js/cais.js")
+	jsPath := filepath.Join(dir, "web/static/js/cais-chat.js")
 	body, err := os.ReadFile(jsPath)
 	if err != nil {
 		t.Fatal(err)
