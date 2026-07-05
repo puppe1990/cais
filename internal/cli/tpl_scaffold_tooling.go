@@ -107,13 +107,119 @@ const tplInputCSS = `@tailwind base;
   .relative > input[type="password"] {
     padding-right: 2.5rem;
   }
+
+  .cais-chat-messages-wrap {
+    position: relative;
+    min-height: 0;
+  }
+
+  #chat-messages {
+    overflow-anchor: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cais-chat-scroll-down {
+    position: absolute;
+    bottom: 0.75rem;
+    left: 50%;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(226 232 240);
+    background: rgb(255 255 255);
+    color: rgb(79 70 229);
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.1),
+      0 4px 6px -4px rgb(0 0 0 / 0.1);
+    transform: translateX(-50%) translateY(0.5rem);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .cais-chat-scroll-down:not(.hidden) {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .cais-chat-scroll-down:active {
+    transform: translateX(-50%) scale(0.96);
+  }
+
+  .cais-chat-bubble {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+
+  .cais-msg-time {
+    font-size: 0.625rem;
+    line-height: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: rgb(148 163 184);
+  }
+
+  .cais-msg-user .cais-msg-time {
+    color: rgb(129 140 248);
+  }
+
+  .cais-thinking-dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    width: 1.5rem;
+  }
+
+  .cais-thinking-dots span {
+    display: block;
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: 9999px;
+    background: rgb(148 163 184);
+    animation: cais-thinking-bounce 1.2s ease-in-out infinite;
+  }
+
+  .cais-thinking-dots span:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+
+  .cais-thinking-dots span:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+
+  @keyframes cais-thinking-bounce {
+    0%,
+    80%,
+    100% {
+      transform: translateY(0);
+      opacity: 0.4;
+    }
+    40% {
+      transform: translateY(-0.2rem);
+      opacity: 1;
+    }
+  }
 }
 `
 
 const tplTailwind = `/** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./web/templates/**/*.html"],
-  safelist: ["cais-password-wrap", "cais-password-toggle"],
+  safelist: [
+    "cais-password-wrap",
+    "cais-password-toggle",
+    "cais-chat-scroll-down",
+    "cais-thinking",
+    "cais-thinking-dots",
+  ],
   theme: {
     extend: {
       fontFamily: {

@@ -137,7 +137,11 @@ func TestScaffold_InputCSSIncludesHTMXStyles(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(css)
-	for _, needle := range []string{".htmx-swapping", ".htmx-settling", ".htmx-indicator", ".no-scrollbar", ".cais-toast-enter", ".cais-skeleton"} {
+	for _, needle := range []string{
+		".htmx-swapping", ".htmx-settling", ".htmx-indicator", ".no-scrollbar",
+		".cais-toast-enter", ".cais-skeleton",
+		".cais-chat-scroll-down", ".cais-msg-time", ".cais-thinking-dots",
+	} {
 		if !strings.Contains(body, needle) {
 			t.Errorf("input.css missing %q", needle)
 		}
