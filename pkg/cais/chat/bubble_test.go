@@ -123,3 +123,66 @@ func TestDetailBubble_emptyReturnsEmpty(t *testing.T) {
 		t.Error("empty detail should return empty string")
 	}
 }
+
+func TestTruncate_shortDoesNothing(t *testing.T) {
+	got := Truncate("hello world", 100)
+	if got != "hello world" {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestTruncate_longTruncatesWithMarker(t *testing.T) {
+	long := strings.Repeat("x", 20000)
+	got := Truncate(long, 100)
+	if !strings.HasSuffix(got, "… [truncated]") {
+		t.Errorf("expected truncation marker, got %q", got)
+	}
+	if len(got) > 120 {
+		t.Errorf("truncated too long: %d", len(got))
+	}
+}
+
+func TestTruncate_respectsWordBoundaryWhenPossible(t *testing.T) {
+	text := "hello world this is a long sentence with spaces " + strings.Repeat("y", 50)
+	got := Truncate(text, 30)
+	if !strings.HasSuffix(got, "… [truncated]") {
+		t.Errorf("expected ends with truncation marker, got %q", got)
+	}
+	if len(got) > 50 {
+		t.Errorf("truncated result still too long: %d", len(got))
+	}
+}
+
+func TestSafeMessageBubble_truncatesLargeContent(t *testing.T) {
+	huge := strings.Repeat("A", 30000) + " secret"
+	got := SafeMessageBubble(RoleAssistant, huge, timeFromTest())
+	if strings.Contains(got, "secret") {
+		t.Error("should not include content after truncation point")
+	}
+	if !strings.Contains(got, "[truncated]") {
+		t.Error("expected [truncated] marker in safe bubble")
+	}
+}
+
+func TestMessageBubble_keepsFullContent_unlessUsingSafe(t *testing.T) {
+	huge := strings.Repeat("B", 15000)
+	got := MessageBubble(RoleUser, huge, timeFromTest())
+	if !strings.Contains(got, strings.Repeat("B", 100)) {
+		t.Error("MessageBubble should preserve original (caller responsible for size)")
+	}
+}
+
+func TestTrimForDisplay_keepsRecent(t *testing.T) {
+	all := []string{"m1", "m2", "m3", "m4", "m5"}
+	got := TrimForDisplay(all, 2)
+	if len(got) != 2 || got[0] != "m4" || got[1] != "m5" {
+		t.Errorf("got %v, want last 2", got)
+	}
+}
+
+func TestTrimForDisplay_smallerThanLimitReturnsAll(t *testing.T) {
+	all := []int{1, 2, 3}
+	if got := TrimForDisplay(all, 10); len(got) != 3 {
+		t.Errorf("unexpected trim: %v", got)
+	}
+}

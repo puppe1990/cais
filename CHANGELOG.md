@@ -8,6 +8,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ### Added
 
+- `pkg/cais/chat`: `Truncate`, `SafeMessageBubble`, `TrimForDisplay`, `MaxMessageChars` — server-side safety and perf for large/polluted agent histories (addresses loading 1-2s, 500s on huge turns)
+- `cais g stream chat` scaffold now demonstrates TrimForDisplay + SafeMessageBubble in Show/ListMessages/Stream
+
+### Added
+
 - `pkg/cais/sqlite` package docs — WAL / busy_timeout guidance for SSE chat apps
 - README — `testutil` chat assertion examples
 
