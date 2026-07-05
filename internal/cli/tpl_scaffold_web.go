@@ -80,7 +80,7 @@ const tplLayoutBaseClose = `
         </div>
         {{"{{"}} end {{"}}"}}
       </div>
-      <main id="cais-main" data-cais-view-transition class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-grow">{{"{{"}} template "content" . {{"}}"}}</main>
+      <main id="cais-main"  class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-grow">{{"{{"}} template "content" . {{"}}"}}</main>
     </div>
     <footer class="mt-auto border-t border-slate-200/80 pt-8 pb-6 text-center text-xs text-slate-400">
       <div class="max-w-7xl mx-auto px-4">
