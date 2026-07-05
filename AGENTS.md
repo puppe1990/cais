@@ -182,7 +182,7 @@ Agent mode — `chat_sse_agent.html`: opt-in with `data-cais-chat="true"`. SSE e
 
 **Server helpers** — `pkg/cais/chat`: `LiveBubble`, `MessageBubble` (UTC `<time class="cais-msg-time">` for device-local formatting in `cais.js`), `WriteStream`, `WriteMessage`.
 
-**Chat form** — `{{ hxChatForm "/chat/{id}/messages" "#chat-thinking" }}` on the `<form>`: Enter sends, Shift+Enter newline. Optional `data-cais-chat-optimistic="true"` shows the user bubble immediately. Optional `data-cais-poll-url` on `#chat-sse` enables history refresh fallback when SSE fails (poll is skipped while stream slots are active).
+**Chat form** — `{{ hxChatForm "/chat/{id}/messages" "#chat-thinking" }}` on the `<form>`: `cais.js` `bindChatEnterSubmit` sends on Enter, Shift+Enter newline. Input clears on submit; use `data-cais-chat-optimistic="true"` only when the POST partial does **not** return a user bubble (otherwise `dedupOptimisticUserBubble` drops the duplicate). Optional `data-cais-poll-url` on `#chat-sse` enables history refresh fallback when SSE fails (poll is skipped while stream slots are active).
 
 `cais doctor` warns when `sse-ext.min.js` is present and `WriteTimeout > 0` in `internal/app/app.go`.
 

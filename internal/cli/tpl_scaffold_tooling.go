@@ -54,6 +54,18 @@ const tplInputCSS = `@tailwind base;
     @apply hidden;
   }
 
+  form[data-cais-chat-form] button[type="submit"] {
+    @apply inline-flex items-center justify-center shrink-0;
+  }
+
+  form[data-cais-chat-form].htmx-request button[type="submit"] .htmx-request-hide {
+    @apply hidden;
+  }
+
+  form[data-cais-chat-form].htmx-request button[type="submit"] .htmx-indicator {
+    @apply inline-flex;
+  }
+
   .cais-toast-enter {
     animation: cais-toast-in 200ms ease-out;
   }

@@ -282,7 +282,10 @@ const tplChatPage = `{{"{{"}} define "chat" {{"}}"}}
   <form class="mt-4 flex gap-2" {{"{{"}} hxChatForm (printf "/chat/%d/messages" .Conversation.ID) "#chat-thinking" {{"}}"}}>
     {{"{{"}} csrfField .CSRFToken {{"}}"}}
     <textarea name="content" rows="2" class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Message…" required></textarea>
-    <button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white self-end">Send</button>
+    <button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white self-end inline-flex items-center justify-center shrink-0 min-h-10">
+      <span class="htmx-request-hide">Send</span>
+      <span class="htmx-indicator text-xs font-bold">…</span>
+    </button>
   </form>
 </section>
 {{"{{"}} end {{"}}"}}
