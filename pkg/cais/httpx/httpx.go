@@ -76,13 +76,7 @@ type PageConfig struct {
 //
 // Use this instead of manual cais.IsHTMX + Render* calls in handlers.
 func WritePage(w http.ResponseWriter, r *http.Request, renderer *cais.Renderer, cfg PageConfig, c cais.Config) {
-	RenderPageOrPartial(w, r, renderer, RenderOptions{
-		Layout:  cfg.Layout,
-		Page:    cfg.Page,
-		Partial: cfg.Partial,
-		Data:    cfg.Data,
-		Status:  cfg.Status,
-	}, c)
+	RenderPageOrPartial(w, r, renderer, RenderOptions(cfg), c)
 }
 
 // NotModified returns true and sends 304 Not Modified (with ETag) when the
