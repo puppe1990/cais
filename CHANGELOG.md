@@ -15,6 +15,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 - README — `testutil` chat assertion examples
 - `cais.js`: remove optimistic user bubbles on SSE error/close + when assistant streaming starts; `window.caisRemoveOptimisticUserBubble` (better rollback during streaming for #86)
 - `pkg/cais/chat`: `DetailBubbleWithTitle`, `ToolCallBubble`, `ToolResultBubble` — basic primitives for tool-calling, permissions flows and distinguishing tool output (#87)
+- `pkg/cais/chat`: `SelectWindowWithLastUser` — robust history window with pinned last user (for #85)
 
 ### Added
 

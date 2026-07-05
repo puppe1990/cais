@@ -117,6 +117,49 @@ func TrimForDisplay[T any](items []T, max int) []T {
 	return items[len(items)-max:]
 }
 
+// SelectWindowWithLastUser returns a display window of at most max items from the recent tail,
+// while guaranteeing that the most recent message for which isUser returns true is present.
+// This eliminates the common app-level "tail + pin last user message" hacks for polluted histories.
+func SelectWindowWithLastUser[T any](items []T, max int, isUser func(T) bool) []T {
+	n := len(items)
+	if n == 0 || max <= 0 {
+		return items
+	}
+	if n <= max {
+		return items
+	}
+
+	// locate most recent user
+	lastUser := -1
+	for i := n - 1; i >= 0; i-- {
+		if isUser(items[i]) {
+			lastUser = i
+			break
+		}
+	}
+
+	window := TrimForDisplay(items, max)
+	if lastUser < 0 {
+		return window
+	}
+
+	// already inside the tail window?
+	windowStart := n - len(window)
+	if lastUser >= windowStart {
+		return window
+	}
+
+	// include it by shifting start back (still aim for ~max size)
+	start := lastUser
+	if n-start > max {
+		start = n - max
+	}
+	if start < 0 {
+		start = 0
+	}
+	return items[start:]
+}
+
 // UnsafeLiveHTML returns a live-update fragment containing pre-rendered HTML (e.g. progressive Markdown from Goldmark).
 // The caller MUST sanitize/escape untrusted content. No HTML escaping is performed here.
 // This enables first-class rich streaming UIs without forcing the app to duplicate the live bubble wrapper.
