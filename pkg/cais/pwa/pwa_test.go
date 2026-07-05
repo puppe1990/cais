@@ -109,6 +109,7 @@ func TestWriteStatic(t *testing.T) {
 		"web/static/js/sse-ext.min.js",
 		"web/static/js/cais-core.js",
 		"web/static/js/cais-chat.js",
+		"web/static/js/cais-chat-logic.mjs",
 		"web/static/offline.html",
 		"web/static/icons/icon.png",
 		"web/static/img/go-on-cais.jpg",
