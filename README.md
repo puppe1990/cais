@@ -198,6 +198,10 @@ httpx.RenderOrError(w, renderer, "base", "home", PageData{Site: site}, cfg)
 ```go
 renderer := testutil.NewRenderer(t)
 req := testutil.NewRequest(http.MethodGet, "/items/1", testutil.PathValue("id", "1"))
+
+// Chat handlers (cais g stream chat):
+testutil.AssertChatMarkers(t, rr.Body.String())
+testutil.AssertHTMLContains(t, rr.Body.String(), "hello", "cais-msg-user")
 ```
 
 **Admin auth** — Bearer token via `ADMIN_TOKEN` (required when `ENV=production`):
