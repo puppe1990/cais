@@ -209,7 +209,7 @@ func patchLayoutNavForStreamChat(dir string, dryRun bool) error {
 	if !strings.Contains(content, marker) {
 		marker = "</nav>"
 	}
-	navLink := "\n    " + `<a href="/chat" data-cais-nav="/chat" hx-boost="true" hx-target="#cais-main" hx-select="#cais-main" hx-push-url="true" hx-swap="innerHTML swap:150ms transition:true" data-cais-view-transition class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100">Chat</a>`
+	navLink := "\n    " + `<a href="/chat" data-cais-nav="/chat" hx-boost="true" hx-target="#cais-main" hx-select="#cais-main" hx-push-url="true" hx-swap="morph:innerHTML" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100">Chat</a>`
 	content = strings.Replace(content, marker, navLink+"\n    "+marker, 1)
 	return updateScaffoldFile(path, []byte(content), "web/templates/layouts/base.html", dryRun)
 }

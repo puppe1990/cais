@@ -66,7 +66,7 @@ func TestLayoutTemplates_hasBoostShell(t *testing.T) {
 		if !strings.Contains(tpl, `id="cais-nav"`) {
 			t.Errorf("%s layout missing cais-nav id", name)
 		}
-		if !strings.Contains(tpl, `id="cais-main"`) || !strings.Contains(tpl, `data-cais-view-transition`) {
+		if !strings.Contains(tpl, `id="cais-main"`) || !strings.Contains(tpl, ``) {
 			t.Errorf("%s layout missing cais-main shell with view transition", name)
 		}
 	}

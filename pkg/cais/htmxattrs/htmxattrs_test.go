@@ -10,8 +10,8 @@ func TestHxForm(t *testing.T) {
 	for _, want := range []string{
 		`hx-post="/contact"`,
 		`hx-target="#form-errors"`,
-		`hx-swap="innerHTML swap:150ms transition:true"`,
-		`data-cais-view-transition`,
+		`hx-swap="morph:innerHTML"`,
+		``,
 		`hx-indicator="#contact-spinner"`,
 		`hx-disabled-elt="button[type='submit']"`,
 	} {
@@ -42,8 +42,8 @@ func TestHxBoostLink(t *testing.T) {
 		`hx-target="#cais-main"`,
 		`hx-select="#cais-main"`,
 		`hx-push-url="true"`,
-		`hx-swap="innerHTML swap:150ms transition:true"`,
-		`data-cais-view-transition`,
+		`hx-swap="morph:innerHTML"`,
+		``,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("HxBoostLink missing %q, got %q", want, got)

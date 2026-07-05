@@ -50,7 +50,8 @@
       </div>
     </div>
     {{ end }}
-    <main class="flex-grow max-w-5xl w-full mx-auto p-6">{{ template "content" . }}</main>
+    <!-- #cais-main is the SPA target. Nav uses morph:innerHTML (see #103). -->
+    <main id="cais-main" class="flex-grow max-w-5xl w-full mx-auto p-6">{{ template "content" . }}</main>
     <footer class="border-t border-slate-200 p-4 text-center text-sm text-slate-500">
       {{ t "layout.footer" }}
     </footer>

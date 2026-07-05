@@ -273,7 +273,7 @@ Layout loads `cais.js` after `htmx.min.js` — CSRF header, focus restore, optim
 - **Forms** — `{{ hxForm "/path" "#errors" "#spinner" }}` (`pkg/cais/htmxattrs`); `.htmx-request-hide` on submit label
 - **Bool toggles** — `data-cais-optimistic="toggle"` for instant class flip (see resource generator)
 - **Count / remove** — `data-cais-optimistic="count"` or `"remove"` for feed-style actions (rollback on error)
-- **View transitions** — `data-cais-view-transition` on forms and boosted nav (when supported)
+- **Morph swaps** — default for nav (`hx-swap="morph:innerHTML"`) and paginate for better mobile/SPA state. The old `data-cais-view-transition` attr was removed (was dead code). Use `hxMorphOuter` helper for toggles.
 - **CSS** — `input.css`: `.htmx-swapping`, `.htmx-settling`, `.cais-skeleton`, `.cais-toast-enter`
 - **Response headers** — `cais.SetToast`, `cais.SetFocus(w, "#field")`, `cais.SetRetarget`, `cais.SetTrigger`
 - **Admin CRUD** — `cais g resource` generates `hxForm` admin forms, inline delete (`hx-swap="delete"`), `RenderPageOrPartial` on 422

@@ -26,7 +26,7 @@ func HxForm(postURL, target, indicator string) template.HTMLAttr {
 	b.WriteString(template.HTMLEscapeString(postURL))
 	b.WriteString(`" hx-target="`)
 	b.WriteString(template.HTMLEscapeString(target))
-	b.WriteString(`" hx-swap="innerHTML swap:150ms transition:true" data-cais-view-transition hx-disabled-elt="button[type='submit']"`)
+	b.WriteString(`" hx-swap="morph:innerHTML" hx-disabled-elt="button[type='submit']"`)
 	if indicator != "" {
 		b.WriteString(` hx-indicator="`)
 		b.WriteString(template.HTMLEscapeString(indicator))
@@ -65,8 +65,9 @@ func HxDelete(url, confirm string) template.HTMLAttr {
 }
 
 // HxBoostLink returns attributes for SPA-like navigation into #cais-main.
+// Uses morph swap (adopted per #103) for better state preservation on mobile/SPA nav.
 func HxBoostLink() template.HTMLAttr {
-	return template.HTMLAttr(`hx-boost="true" hx-target="#cais-main" hx-select="#cais-main" hx-push-url="true" hx-swap="innerHTML swap:150ms transition:true" data-cais-view-transition`)
+	return template.HTMLAttr(`hx-boost="true" hx-target="#cais-main" hx-select="#cais-main" hx-push-url="true" hx-swap="morph:innerHTML"`)
 }
 
 // HxPaginate returns attributes for HTMX pagination with morph swap and URL push.
