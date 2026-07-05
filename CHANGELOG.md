@@ -16,6 +16,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 - `pkg/cais/sqlite` package docs — WAL / busy_timeout guidance for SSE chat apps
 - README — `testutil` chat assertion examples
 - `cais.js`: remove optimistic user bubbles on SSE error/close + when assistant streaming starts; `window.caisRemoveOptimisticUserBubble` (better rollback during streaming for #86)
+- `pkg/cais/chat`: `DetailBubbleWithTitle`, `ToolCallBubble`, `ToolResultBubble` — basic primitives for tool-calling, permissions flows and distinguishing tool output (#87)
 
 ### Added
 
