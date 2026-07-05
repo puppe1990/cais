@@ -89,3 +89,43 @@ func TestConcurrentAccess(t *testing.T) {
 		t.Fatal("Get returned false after concurrent access")
 	}
 }
+
+func TestKey(t *testing.T) {
+	k1 := Key("list", 42, "en", true)
+	k2 := Key("list", 42, "en", true)
+	if k1 != k2 {
+		t.Errorf("Key not stable: %s != %s", k1, k2)
+	}
+	if k1 == "" {
+		t.Error("Key returned empty")
+	}
+
+	k3 := Key("list", 99)
+	if k3 == k1 {
+		t.Error("different parts produced same key")
+	}
+}
+
+func TestHash_stableAndShort(t *testing.T) {
+	type listVer struct {
+		Count    int
+		LastMod  string
+		Page     int
+	}
+
+	v1 := listVer{Count: 80, LastMod: "2026-07-05T10:00", Page: 1}
+	h1 := Hash(v1)
+	h2 := Hash(v1)
+	if h1 != h2 {
+		t.Error("Hash not stable for same value")
+	}
+	if len(h1) == 0 || len(h1) > 32 {
+		t.Errorf("Hash length suspicious: %d", len(h1))
+	}
+
+	v2 := listVer{Count: 81, LastMod: "2026-07-05T10:00", Page: 1}
+	h3 := Hash(v2)
+	if h3 == h1 {
+		t.Error("different values produced same hash")
+	}
+}
