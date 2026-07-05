@@ -8,6 +8,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ### Added
 
+- `pkg/cais/sqlite` package docs — WAL / busy_timeout guidance for SSE chat apps
+- README — `testutil` chat assertion examples
+
+### Added
+
 - `testutil.AssertHTMLContains` / `testutil.AssertChatMarkers` — chat handler HTML assertions
 - `cais dev` auto-bumps PWA `CACHE_VERSION` when `sw.js` is present
 - `cais doctor --mobile` — chat enter-submit JS (`bindChatEnterSubmit`) and chat form CSS checks
