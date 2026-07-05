@@ -28,6 +28,25 @@ func TestIsLiveHTML(t *testing.T) {
 	}
 }
 
+// TestContractMarkersAreStable documents the attributes that client JS (and
+// future typed SSE dispatch) relies on. Presentation classes may change without
+// breaking the contract (see #98).
+func TestContractMarkersAreStable(t *testing.T) {
+	live := LiveBubble("x")
+	if !strings.Contains(live, `data-cais-live="true"`) {
+		t.Error("live contract requires data-cais-live marker")
+	}
+	// even if cais-chat-bubble class name changes, data attr stays
+	msg := UnsafeMessageHTML(RoleAssistant, "hi", time.Date(2026, 7, 5, 0, 0, 0, 0, time.UTC))
+	if !strings.Contains(msg, "cais-msg-assistant") {
+		t.Error("finalized message contract uses cais-msg-*")
+	}
+	think := ThinkingHTML("...")
+	if !strings.Contains(think, `id="chat-thinking"`) {
+		t.Error("thinking contract uses id")
+	}
+}
+
 func TestMessageBubble_assistantTimestampUTC(t *testing.T) {
 	at := time.Date(2026, 7, 4, 21, 30, 0, 0, time.UTC)
 	got := MessageBubble(RoleAssistant, "Hello", at)

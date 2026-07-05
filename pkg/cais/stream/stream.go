@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -46,4 +47,15 @@ func RelayAndCopy(w http.ResponseWriter, src io.Reader) (int64, error) {
 			return total, readErr
 		}
 	}
+}
+
+// WriteEvent emits a named SSE event (e.g. "stream", "message", "thinking").
+// The event name on the wire is the source of truth for client behavior.
+// Clients must not sniff the HTML payload to decide what kind of update it is.
+func WriteEvent(w http.ResponseWriter, event, html string) error {
+	_, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, html)
+	if err != nil {
+		return err
+	}
+	return Flush(w)
 }

@@ -107,3 +107,40 @@ func TestRelayAndCopy_forwardsEvents(t *testing.T) {
 		t.Errorf("body = %q, want both SSE events", body)
 	}
 }
+
+func TestWriteEvent_emitsNamedSSEEvent(t *testing.T) {
+	rr := httptest.NewRecorder()
+	payload := `<div data-cais-live="true" class="foo">token</div>`
+	if err := WriteEvent(rr, "stream", payload); err != nil {
+		t.Fatalf("WriteEvent error: %v", err)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "event: stream\n") {
+		t.Errorf("missing 'event: stream\\n', got %q", body)
+	}
+	if !strings.Contains(body, "data: "+payload) {
+		t.Errorf("missing data payload, got %q", body)
+	}
+	if !strings.Contains(body, "\n\n") {
+		t.Error("SSE event should end with blank line")
+	}
+}
+
+func TestWriteEvent_emitsMessageAndThinking(t *testing.T) {
+	for _, tc := range []struct {
+		event string
+		html  string
+	}{
+		{"message", `<div class="cais-msg cais-msg-assistant">final</div>`},
+		{"thinking", `<div id="chat-thinking">...</div>`},
+	} {
+		rr := httptest.NewRecorder()
+		if err := WriteEvent(rr, tc.event, tc.html); err != nil {
+			t.Fatalf("WriteEvent(%s) error: %v", tc.event, err)
+		}
+		body := rr.Body.String()
+		if !strings.Contains(body, "event: "+tc.event+"\n") {
+			t.Errorf("event %s: missing event line, got %q", tc.event, body)
+		}
+	}
+}

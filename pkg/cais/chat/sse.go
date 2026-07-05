@@ -1,7 +1,6 @@
 package chat
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -10,29 +9,17 @@ import (
 
 // WriteStream emits event: stream for live token/tool updates into #chat-live.
 func WriteStream(w http.ResponseWriter, html string) error {
-	_, err := fmt.Fprintf(w, "event: stream\ndata: %s\n\n", html)
-	if err != nil {
-		return err
-	}
-	return stream.Flush(w)
+	return stream.WriteEvent(w, "stream", html)
 }
 
 // WriteMessage emits event: message for finalized bubbles appended to #chat-stream.
 func WriteMessage(w http.ResponseWriter, html string) error {
-	_, err := fmt.Fprintf(w, "event: message\ndata: %s\n\n", html)
-	if err != nil {
-		return err
-	}
-	return stream.Flush(w)
+	return stream.WriteEvent(w, "message", html)
 }
 
 // WriteThinking emits event: thinking for the thinking indicator swap.
 func WriteThinking(w http.ResponseWriter, html string) error {
-	_, err := fmt.Fprintf(w, "event: thinking\ndata: %s\n\n", html)
-	if err != nil {
-		return err
-	}
-	return stream.Flush(w)
+	return stream.WriteEvent(w, "thinking", html)
 }
 
 // WriteUnsafeLive writes a pre-rendered HTML fragment to the live slot (see chat.UnsafeLiveHTML).

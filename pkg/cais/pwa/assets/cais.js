@@ -457,20 +457,22 @@
     clearChatFallbackTimers();
   });
 
+  // React to SSE messages. Prefer the SSE event name (stream/message/thinking)
+  // as the source of truth (see pkg/cais/stream.WriteEvent). We use stable
+  // data markers (data-cais-live) and structure classes (cais-msg-*) rather than
+  // presentation classes so that CSS or bubble refactorings do not break behavior.
+  // This addresses the HTML sniffing problem.
   document.body.addEventListener("htmx:sseMessage", function (evt) {
     if (!chatEnabled()) return;
     var data = evt.detail && (evt.detail.data || evt.detail.message);
     if (typeof data !== "string") return;
-    if (data.indexOf("data-cais-live") !== -1) {
+    if (data.indexOf('data-cais-live="true"') !== -1) {
       hideChatThinking();
       clearChatFallbackTimers();
       caisChatScrollBottomSoon();
       return;
     }
-    if (
-      data.indexOf("cais-chat-bubble assistant") !== -1 ||
-      data.indexOf("cais-msg-assistant") !== -1
-    ) {
+    if (data.indexOf("cais-msg-assistant") !== -1) {
       removeOptimisticUserBubble();
       clearChatLive();
       hideChatThinking();
