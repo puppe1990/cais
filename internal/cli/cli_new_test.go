@@ -57,19 +57,34 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 		"internal/i18n/pt.go",
 		".env.example",
 		"internal/handlers/dashboard.go",
-		"web/templates/pages/dashboard.html",
+		"internal/handlers/inertia_test.go",
+		"web/templates/app.html",
+		"web/src/main.js",
+		"web/src/pages/Home.svelte",
+		"web/src/pages/Contact.svelte",
+		"web/src/pages/Dashboard.svelte",
+		"web/src/pages/Login.svelte",
+		"vite.config.js",
+		"svelte.config.js",
+		"package.json",
 		"web/static/manifest.webmanifest",
 		"web/static/js/sw.js",
-		"web/static/js/cais-core.js",
-		"web/static/js/cais-chat.js",
 		"web/static/img/go-on-cais.jpg",
 		"web/static/og.png",
 		"web/static/icons/icon.png",
-		"web/templates/partials/chat_sse.html",
-		"web/templates/partials/chat_sse_agent.html",
 	} {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
 			t.Errorf("missing %s: %v", path, err)
+		}
+	}
+
+	for _, path := range []string{
+		"web/static/js/htmx.min.js",
+		"web/static/js/cais.js",
+		"web/templates/pages/home.html",
+	} {
+		if _, err := os.Stat(filepath.Join(appDir, path)); err == nil {
+			t.Errorf("HTMX scaffold artifact should not exist: %s", path)
 		}
 	}
 
@@ -77,16 +92,24 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(appGo), "WriteTimeout:      0,") {
-		t.Error("app.go should disable WriteTimeout for SSE streaming")
+	if !strings.Contains(string(appGo), "Inertia   *inertia.Inertia") {
+		t.Error("app.go should wire gonertia Inertia in Deps")
 	}
 
-	layout, err := os.ReadFile(filepath.Join(appDir, "web/templates/layouts/base.html"))
+	gomod, err := os.ReadFile(filepath.Join(appDir, "go.mod"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(layout), "flashMessage") {
-		t.Error("base.html should use flashMessage helper")
+	if !strings.Contains(string(gomod), "gonertia") {
+		t.Error("go.mod should require gonertia")
+	}
+
+	pkg, err := os.ReadFile(filepath.Join(appDir, "package.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(pkg), "@inertiajs/svelte") {
+		t.Error("package.json should include @inertiajs/svelte")
 	}
 
 	css, err := os.ReadFile(filepath.Join(appDir, "input.css"))
@@ -321,12 +344,12 @@ func TestCLI_NewBlankCreatesEmptyApp(t *testing.T) {
 
 	for _, path := range []string{
 		"internal/handlers/home.go",
-		"web/templates/pages/home.html",
-		"web/templates/layouts/welcome.html",
-		"web/templates/partials/cais_logo.html",
+		"web/templates/app.html",
+		"web/src/pages/Home.svelte",
+		"web/src/main.js",
 	} {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
-			t.Errorf("blank app missing welcome screen file %s: %v", path, err)
+			t.Errorf("blank app missing inertia file %s: %v", path, err)
 		}
 	}
 
@@ -335,8 +358,8 @@ func TestCLI_NewBlankCreatesEmptyApp(t *testing.T) {
 		"internal/handlers/dashboard.go",
 		"internal/models/contact.go",
 		"internal/store/migrations/001_contacts.sql",
-		"web/templates/pages/contact.html",
-		"web/templates/pages/dashboard.html",
+		"web/src/pages/Contact.svelte",
+		"web/static/js/htmx.min.js",
 	} {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err == nil {
 			t.Errorf("blank app should not have %s", path)
@@ -443,7 +466,7 @@ func TestCLI_NewMainUsesTemplateHotReload(t *testing.T) {
 	}
 }
 
-func TestCLI_NewIncludesHTMXAndAir(t *testing.T) {
+func TestCLI_NewIncludesInertiaAndVite(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "full")
 	if err := scaffoldNewApp(appDir, scaffoldData{
@@ -453,8 +476,10 @@ func TestCLI_NewIncludesHTMXAndAir(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{
-		"web/static/js/htmx.min.js",
-		"web/static/js/sse-ext.min.js",
+		"web/templates/app.html",
+		"vite.config.js",
+		"web/src/pages/Home.svelte",
+		"svelte.config.js",
 		".air.toml",
 	} {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {

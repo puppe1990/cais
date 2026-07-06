@@ -8,7 +8,7 @@ import (
 const sampleRoutes = `package app
 
 func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
-	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog, cfg)
+	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog, cfg, nil)
 	r.Get("/", home.ServeHTTP)
 }
 `

@@ -18,8 +18,8 @@ import (
 )
 
 func registerRoutes(r *cais.Router, deps Deps, cfg cais.Config) {
-	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog, cfg)
-	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, deps.Site, deps.Catalog, cfg)
+	home := handlers.NewHomeHandler(deps.Renderer, deps.Site, deps.Catalog, cfg, nil)
+	contact := handlers.NewContactHandler(deps.Renderer, deps.Store, deps.Site, deps.Catalog, cfg, nil)
 
 	r.Get("/", home.ServeHTTP)
 	r.Post("/contact", contact.Post)

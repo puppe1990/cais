@@ -18,6 +18,14 @@ func TestDoctor_SSEWriteTimeoutWarnsWhenPositive(t *testing.T) {
 	}, true, false); err != nil {
 		t.Fatal(err)
 	}
+	// Simulate an HTMX/SSE app (Inertia scaffolds skip this check without sse-ext).
+	sseDir := filepath.Join(dir, "web/static/js")
+	if err := os.MkdirAll(sseDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sseDir, "sse-ext.min.js"), []byte("// sse"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	appGo := filepath.Join(dir, "internal/app/app.go")
 	body, err := os.ReadFile(appGo)
@@ -70,16 +78,21 @@ func TestDoctor_MobileChecks_chatSSEAndReconnect(t *testing.T) {
 
 	out := runDoctorOutputMobile(t, dir)
 	for _, want := range []string{
-		"[ok] chat SSE pattern",
-		"[ok] SSE reconnect",
 		"[ok] health lan_urls",
-		"[ok] chat agent JS",
-		"[ok] chat enter-submit JS",
-		"[ok] chat form CSS",
-		"[ok] chat scroll container",
+		"[ok] CSP fonts",
+		"[ok] PWA cache version",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("expected %q in doctor --mobile output, got:\n%s", want, out)
+		}
+	}
+	for _, skipped := range []string{
+		"chat SSE pattern",
+		"SSE reconnect",
+		"chat agent JS",
+	} {
+		if !strings.Contains(out, skipped) {
+			t.Errorf("expected %q check in doctor --mobile output, got:\n%s", skipped, out)
 		}
 	}
 }
@@ -93,19 +106,13 @@ func TestDoctor_MobileWarnsMultiSlotWithoutFinalize(t *testing.T) {
 	}, true, false); err != nil {
 		t.Fatal(err)
 	}
-	jsPath := filepath.Join(dir, "web/static/js/cais-chat.js")
-	body, err := os.ReadFile(jsPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	stripped := strings.ReplaceAll(string(body), "finalizeChatStream", "")
-	if err := os.WriteFile(jsPath, []byte(stripped), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
+	// Inertia scaffolds have no chat partials or cais.js — agent chat check is skipped.
 	out := runDoctorOutputMobile(t, dir)
-	if !strings.Contains(out, "[warn] chat agent JS") {
-		t.Errorf("expected chat agent JS warning when finalizeChatStream removed, got:\n%s", out)
+	if !strings.Contains(out, "chat agent JS") {
+		t.Errorf("expected chat agent JS check in output, got:\n%s", out)
+	}
+	if strings.Contains(out, "[warn] chat agent JS") {
+		t.Errorf("Inertia scaffold should not warn on chat agent JS, got:\n%s", out)
 	}
 }
 
@@ -132,11 +139,11 @@ func TestDoctor_AllOK(t *testing.T) {
 	if err := runDoctor(&buf, dir, doctorOptions{}); err != nil {
 		t.Fatalf("doctor failed: %v\n%s", err, buf.String())
 	}
-	if !strings.Contains(buf.String(), "htmx.min.js") {
-		t.Error("missing htmx check")
+	if !strings.Contains(buf.String(), "Inertia frontend") {
+		t.Error("missing Inertia frontend check")
 	}
-	if !strings.Contains(buf.String(), "sse-ext.min.js") {
-		t.Error("missing sse extension check")
+	if !strings.Contains(buf.String(), "vite.config.js") {
+		t.Error("missing vite.config.js check")
 	}
 }
 

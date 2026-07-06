@@ -24,7 +24,12 @@ func TestScaffoldTemplates_allRequiredPresent(t *testing.T) {
 		TplRoutesBlank         string
 		TplHomeHandler         string
 		TplHomeTest            string
-		TplHomeTestMinimal     string
+		TplAppHTML             string
+		TplMainJS              string
+		TplViteConfig          string
+		TplSvelteConfig        string
+		TplVitestSetup         string
+		TplSvelteHome          string
 		TplContactHandler      string
 		TplContactTest         string
 		TplDashboardHandler    string
@@ -95,7 +100,12 @@ func TestScaffoldTemplates_allRequiredPresent(t *testing.T) {
 		TplRoutesBlank:         tplRoutesBlank,
 		TplHomeHandler:         tplHomeHandler,
 		TplHomeTest:            tplHomeTest,
-		TplHomeTestMinimal:     tplHomeTestMinimal,
+		TplAppHTML:             tplAppHTML,
+		TplMainJS:              tplMainJS,
+		TplViteConfig:          tplViteConfig,
+		TplSvelteConfig:        tplSvelteConfig,
+		TplVitestSetup:         tplVitestSetup,
+		TplSvelteHome:          tplSvelteHome,
 		TplContactHandler:      tplContactHandler,
 		TplContactTest:         tplContactTest,
 		TplDashboardHandler:    tplDashboardHandler,

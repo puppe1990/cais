@@ -6,6 +6,7 @@ go 1.26
 
 require (
 	github.com/puppe1990/cais v0.1.0
+	github.com/romsar/gonertia/v3 v3.0.0
 	modernc.org/sqlite v1.53.0
 )
 `

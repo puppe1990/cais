@@ -25,60 +25,59 @@ func qualityToolingFiles() map[string]string {
 
 func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) error {
 	files := map[string]string{
-		"go.mod":                                      tplGoMod,
-		"cmd/server/main.go":                          tplMain,
-		"cmd/console/main.go":                         tplConsole,
-		"internal/app/app.go":                         tplApp,
-		"internal/app/routes.go":                      tplRoutes,
-		"internal/handlers/home.go":                   tplHomeHandler,
-		"internal/handlers/home_test.go":              tplHomeTest,
-		"internal/handlers/contact.go":                tplContactHandler,
-		"internal/handlers/contact_test.go":           tplContactTest,
-		"internal/handlers/dashboard.go":              tplDashboardHandler,
-		"internal/handlers/dashboard_test.go":         tplDashboardTest,
-		"internal/handlers/helpers_test.go":           tplHelpersTest,
-		"internal/models/contact.go":                  tplContactModel,
-		"internal/store/store.go":                     tplStore,
-		"internal/store/password_reset.go":            tplStorePasswordReset,
-		"internal/store/store_test.go":                tplStoreTest,
-		"internal/store/migrations.go":                tplMigrations,
-		"internal/store/migrations/001_contacts.sql":  tplMigration001,
-		"internal/store/migrations/002_auth.sql":      tplMigration002Auth,
-		"internal/models/user.go":                     tplUserModel,
-		"internal/handlers/auth.go":                   tplAuthHandler,
-		"internal/handlers/auth_test.go":              tplAuthTest,
-		"web/templates/pages/login.html":              tplPageLogin,
-		"web/templates/pages/signup.html":             tplPageSignup,
-		"web/templates/pages/forgot_password.html":    tplPageForgotPassword,
-		"web/templates/pages/reset_password.html":     tplPageResetPassword,
-		"web/embed.go":                                tplWebEmbed,
-		"web/templates/layouts/base.html":             tplLayout,
-		"web/templates/layouts/welcome.html":          tplLayoutWelcome,
-		"web/templates/partials/cais_logo.html":       tplCaisLogo,
-		"web/templates/partials/icons.html":           tplPartialIcons,
-		"web/templates/partials/nav_links.html":       tplPartialNavLinks,
-		"web/templates/pages/home.html":               tplPageHome,
-		"web/templates/pages/contact.html":            tplPageContact,
-		"web/templates/pages/dashboard.html":          tplPageDashboard,
-		"web/templates/partials/contact_errors.html":  tplPartialErrors,
-		"web/templates/partials/contact_success.html": tplPartialSuccess,
-		"web/templates/partials/chat_sse.html":        tplPartialChatSSE,
-		"web/templates/partials/chat_sse_agent.html":  tplPartialChatSSEAgent,
-		"web/static/js/.gitkeep":                      "",
-		"web/static/css/styles.css":                   tplEmptyCSS,
-		"input.css":                                   tplInputCSS,
-		"tailwind.config.js":                          tplTailwind,
-		"package.json":                                tplPackageJSON,
-		"Makefile":                                    tplMakefile,
-		".gitignore":                                  tplGitignore,
-		".air.toml":                                   tplAir,
-		".env.example":                                tplEnvExample,
-		"README.md":                                   tplREADME,
-		"internal/i18n/i18n.go":                       tplI18nCatalog,
-		"internal/i18n/en.go":                         tplI18nEn,
-		"internal/i18n/pt.go":                         tplI18nPt,
-		"internal/i18n/i18n_test.go":                  tplI18nTest,
-		"internal/db/seeds.go":                        tplSeeds,
+		"go.mod":                                     tplGoMod,
+		"cmd/server/main.go":                         tplMain,
+		"cmd/console/main.go":                        tplConsole,
+		"internal/app/app.go":                        tplApp,
+		"internal/app/routes.go":                     tplRoutes,
+		"internal/handlers/home.go":                  tplHomeHandler,
+		"internal/handlers/home_test.go":             tplHomeTest,
+		"internal/handlers/contact.go":               tplContactHandler,
+		"internal/handlers/contact_test.go":          tplContactTest,
+		"internal/handlers/dashboard.go":             tplDashboardHandler,
+		"internal/handlers/dashboard_test.go":        tplDashboardTest,
+		"internal/handlers/inertia_test.go":          tplInertiaTest,
+		"internal/handlers/helpers_test.go":          tplHelpersTest,
+		"internal/models/contact.go":                 tplContactModel,
+		"internal/store/store.go":                    tplStore,
+		"internal/store/password_reset.go":           tplStorePasswordReset,
+		"internal/store/store_test.go":               tplStoreTest,
+		"internal/store/migrations.go":               tplMigrations,
+		"internal/store/migrations/001_contacts.sql": tplMigration001,
+		"internal/store/migrations/002_auth.sql":     tplMigration002Auth,
+		"internal/models/user.go":                    tplUserModel,
+		"internal/handlers/auth.go":                  tplAuthHandler,
+		"internal/handlers/auth_test.go":             tplAuthTest,
+		"internal/handlers/auth_signup_test.go":      tplAuthSignupTest,
+		"internal/handlers/auth_reset_test.go":       tplAuthResetTest,
+		"web/embed.go":                               tplWebEmbed,
+		"web/templates/app.html":                     tplAppHTML,
+		"web/src/main.js":                            tplMainJS,
+		"web/src/pages/Home.svelte":                  tplSvelteHome,
+		"web/src/pages/Contact.svelte":               tplSvelteContact,
+		"web/src/pages/Dashboard.svelte":             tplSvelteDashboard,
+		"web/src/pages/Login.svelte":                 tplSvelteLogin,
+		"web/src/pages/Signup.svelte":                tplSvelteSignup,
+		"web/src/pages/ForgotPassword.svelte":        tplSvelteForgotPassword,
+		"web/src/pages/ResetPassword.svelte":         tplSvelteResetPassword,
+		"web/static/build/.gitkeep":                  tplBuildGitkeep,
+		"web/static/css/styles.css":                  tplEmptyCSS,
+		"input.css":                                  tplInputCSS,
+		"tailwind.config.js":                         tplTailwind,
+		"vite.config.js":                             tplViteConfig,
+		"svelte.config.js":                           tplSvelteConfig,
+		"vitest-setup.js":                            tplVitestSetup,
+		"package.json":                               tplPackageJSON,
+		"Makefile":                                   tplMakefile,
+		".gitignore":                                 tplGitignore,
+		".air.toml":                                  tplAir,
+		".env.example":                               tplEnvExample,
+		"README.md":                                  tplREADME,
+		"internal/i18n/i18n.go":                      tplI18nCatalog,
+		"internal/i18n/en.go":                        tplI18nEn,
+		"internal/i18n/pt.go":                        tplI18nPt,
+		"internal/i18n/i18n_test.go":                 tplI18nTest,
+		"internal/db/seeds.go":                       tplSeeds,
 	}
 	for path, content := range qualityToolingFiles() {
 		files[path] = content
@@ -86,38 +85,41 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 
 	if blank {
 		files = map[string]string{
-			"go.mod":                                tplGoMod,
-			"cmd/server/main.go":                    tplMainBlank,
-			"cmd/console/main.go":                   tplConsole,
-			"internal/app/app.go":                   tplAppBlank,
-			"internal/app/routes.go":                tplRoutesBlank,
-			"internal/handlers/helpers_test.go":     tplHelpersTest,
-			"internal/store/store.go":               tplStoreMinimal,
-			"internal/store/store_test.go":          tplStoreTestMinimal,
-			"internal/store/migrations.go":          tplMigrations,
-			"internal/store/migrations/.gitkeep":    "",
-			"web/embed.go":                          tplWebEmbed,
-			"internal/handlers/home.go":             tplHomeHandler,
-			"internal/handlers/home_test.go":        tplHomeTestMinimal,
-			"web/templates/layouts/base.html":       tplLayoutBlank,
-			"web/templates/layouts/welcome.html":    tplLayoutWelcome,
-			"web/templates/partials/cais_logo.html": tplCaisLogo,
-			"web/templates/pages/home.html":         tplPageHome,
-			"web/static/js/.gitkeep":                "",
-			"web/static/css/styles.css":             tplEmptyCSS,
-			"input.css":                             tplInputCSS,
-			"tailwind.config.js":                    tplTailwind,
-			"package.json":                          tplPackageJSON,
-			"Makefile":                              tplMakefile,
-			".gitignore":                            tplGitignore,
-			".air.toml":                             tplAir,
-			".env.example":                          tplEnvExample,
-			"README.md":                             tplREADMEBlank,
-			"internal/i18n/i18n.go":                 tplI18nCatalog,
-			"internal/i18n/en.go":                   tplI18nEn,
-			"internal/i18n/pt.go":                   tplI18nPt,
-			"internal/i18n/i18n_test.go":            tplI18nTest,
-			"internal/db/seeds.go":                  tplSeedsMinimal,
+			"go.mod":                             tplGoMod,
+			"cmd/server/main.go":                 tplMainBlank,
+			"cmd/console/main.go":                tplConsole,
+			"internal/app/app.go":                tplAppBlank,
+			"internal/app/routes.go":             tplRoutesBlank,
+			"internal/handlers/helpers_test.go":  tplHelpersTest,
+			"internal/handlers/inertia_test.go":  tplInertiaTest,
+			"internal/store/store.go":            tplStoreMinimal,
+			"internal/store/store_test.go":       tplStoreTestMinimal,
+			"internal/store/migrations.go":       tplMigrations,
+			"internal/store/migrations/.gitkeep": "",
+			"web/embed.go":                       tplWebEmbed,
+			"internal/handlers/home.go":          tplHomeHandler,
+			"internal/handlers/home_test.go":     tplHomeTest,
+			"web/templates/app.html":             tplAppHTML,
+			"web/src/main.js":                    tplMainJS,
+			"web/src/pages/Home.svelte":          tplSvelteHome,
+			"web/static/build/.gitkeep":          tplBuildGitkeep,
+			"web/static/css/styles.css":          tplEmptyCSS,
+			"input.css":                          tplInputCSS,
+			"tailwind.config.js":                 tplTailwind,
+			"vite.config.js":                     tplViteConfig,
+			"svelte.config.js":                   tplSvelteConfig,
+			"vitest-setup.js":                    tplVitestSetup,
+			"package.json":                       tplPackageJSON,
+			"Makefile":                           tplMakefile,
+			".gitignore":                         tplGitignore,
+			".air.toml":                          tplAir,
+			".env.example":                       tplEnvExample,
+			"README.md":                          tplREADMEBlank,
+			"internal/i18n/i18n.go":              tplI18nCatalog,
+			"internal/i18n/en.go":                tplI18nEn,
+			"internal/i18n/pt.go":                tplI18nPt,
+			"internal/i18n/i18n_test.go":         tplI18nTest,
+			"internal/db/seeds.go":               tplSeedsMinimal,
 		}
 		for path, content := range qualityToolingFiles() {
 			files[path] = content
@@ -133,16 +135,16 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		delete(files, "internal/models/user.go")
 		delete(files, "internal/store/migrations/001_contacts.sql")
 		delete(files, "internal/store/migrations/002_auth.sql")
-		delete(files, "web/templates/pages/contact.html")
-		delete(files, "web/templates/pages/dashboard.html")
-		delete(files, "web/templates/pages/login.html")
-		delete(files, "web/templates/partials/contact_errors.html")
-		delete(files, "web/templates/partials/contact_success.html")
+		delete(files, "web/src/pages/Contact.svelte")
+		delete(files, "web/src/pages/Dashboard.svelte")
+		delete(files, "web/src/pages/Login.svelte")
+		delete(files, "web/src/pages/Signup.svelte")
+		delete(files, "web/src/pages/ForgotPassword.svelte")
+		delete(files, "web/src/pages/ResetPassword.svelte")
 		files["internal/app/routes.go"] = tplRoutesMinimal
 		files["internal/store/store.go"] = tplStoreMinimal
 		files["internal/store/store_test.go"] = tplStoreTestMinimal
-		files["web/templates/layouts/base.html"] = tplLayoutMinimal
-		files["internal/handlers/home_test.go"] = tplHomeTestMinimal
+		files["internal/handlers/home_test.go"] = tplHomeTest
 		files["internal/store/migrations/.gitkeep"] = ""
 		files["internal/db/seeds.go"] = tplSeedsMinimal
 	}
@@ -157,7 +159,7 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		return fmt.Errorf("gofmt: %w", err)
 	}
 
-	if err := pwa.InstallTo(dir, data.AppName); err != nil {
+	if err := pwa.InstallForInertia(dir, data.AppName); err != nil {
 		return fmt.Errorf("pwa assets: %w", err)
 	}
 
@@ -181,7 +183,7 @@ func scaffoldHandler(dir, name string, dryRun bool) error {
 	files := map[string]string{
 		filepath.Join("internal/handlers", data.Snake+".go"):      tplGenericHandler,
 		filepath.Join("internal/handlers", data.Snake+"_test.go"): tplGenericHandlerTest,
-		filepath.Join("web/templates/pages", data.Snake+".html"):  tplGenericPage,
+		filepath.Join("web/src/pages", data.Pascal+".svelte"):     tplGenericPage,
 	}
 
 	for path, content := range files {
@@ -199,10 +201,10 @@ func scaffoldHandler(dir, name string, dryRun bool) error {
 
 func scaffoldPage(dir, name string, dryRun bool) error {
 	data := dataForHandler(name)
-	rel := filepath.Join("web/templates/pages", data.Snake+".html")
+	rel := filepath.Join("web/src/pages", data.Pascal+".svelte")
 	path := filepath.Join(dir, rel)
 	if _, err := os.Stat(path); err == nil {
-		return fmt.Errorf("web/templates/pages/%s.html already exists", data.Snake)
+		return fmt.Errorf("web/src/pages/%s.svelte already exists", data.Pascal)
 	}
 	return writeScaffoldTemplate(path, tplGenericPage, data, rel, dryRun)
 }
@@ -230,7 +232,7 @@ func patchRoutes(dir string, data scaffoldData, dryRun bool) error {
 	}
 
 	insert := fmt.Sprintf(
-		"\n\t%s := handlers.New%sHandler(deps.Renderer, deps.Site, deps.Catalog, cfg)\n\tr.Get(\"/%s\", %s.ServeHTTP)\n",
+		"\n\t%s := handlers.New%sHandler(deps.Site, deps.Catalog, deps.Inertia)\n\tr.Get(\"/%s\", %s.ServeHTTP)\n",
 		data.Camel, data.Pascal, data.Snake, data.Camel,
 	)
 

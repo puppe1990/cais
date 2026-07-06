@@ -27,14 +27,19 @@ func runDoctor(w io.Writer, dir string, opts doctorOptions) error {
 	checks := []doctorCheck{
 		checkGoMod(dir),
 		checkCaisDep(dir),
-		checkHTMX(dir),
-		checkSSEExt(dir),
+	}
+	if isInertiaApp(dir) {
+		checks = append(checks, checkInertiaFrontend(dir), checkViteConfig(dir))
+	} else {
+		checks = append(checks, checkHTMX(dir), checkSSEExt(dir))
+	}
+	checks = append(checks,
 		checkSSEWriteTimeout(dir),
 		checkAir(),
 		checkCSS(dir),
 		checkDeployLayout(dir),
 		checkQualityTooling(dir),
-	}
+	)
 	if isProduction(dir) {
 		checks = append(checks, checkAdminToken(dir), checkAppURL(dir))
 		if hasAuthHandler(dir) {
@@ -124,6 +129,95 @@ func extractCaisVersion(content string) string {
 		}
 	}
 	return "?"
+}
+
+func isInertiaApp(dir string) bool {
+	_, err := os.Stat(filepath.Join(dir, "vite.config.js"))
+	return err == nil
+}
+
+func checkInertiaFrontend(dir string) doctorCheck {
+	appHTML := filepath.Join(dir, "web/templates/app.html")
+	data, err := os.ReadFile(appHTML)
+	if err != nil {
+		return doctorCheck{
+			Name:    "Inertia frontend",
+			Detail:  "missing web/templates/app.html",
+			FixHint: "re-run cais new or restore app.html from Cais Inertia scaffold",
+		}
+	}
+	content := string(data)
+	missing := []string{}
+	for _, want := range []string{`{{ .inertia }}`, `{{ .inertiaHead }}`, `/static/build`} {
+		if !strings.Contains(content, want) {
+			missing = append(missing, want)
+		}
+	}
+	mainJS := filepath.Join(dir, "web/src/main.js")
+	if _, err := os.Stat(mainJS); err != nil {
+		missing = append(missing, "web/src/main.js")
+	}
+	pagesDir := filepath.Join(dir, "web/src/pages")
+	entries, err := os.ReadDir(pagesDir)
+	if err != nil {
+		missing = append(missing, "web/src/pages/")
+	} else {
+		hasSvelte := false
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".svelte") {
+				hasSvelte = true
+				break
+			}
+		}
+		if !hasSvelte {
+			missing = append(missing, "web/src/pages/*.svelte")
+		}
+	}
+	gomod, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+	if err != nil || !strings.Contains(string(gomod), "gonertia") {
+		missing = append(missing, "gonertia in go.mod")
+	}
+	if len(missing) > 0 {
+		return doctorCheck{
+			Name:    "Inertia frontend",
+			Detail:  "missing: " + strings.Join(missing, ", "),
+			FixHint: "cais install && npm run build; ensure gonertia is in go.mod",
+		}
+	}
+	return doctorCheck{Name: "Inertia frontend", OK: true, Detail: "app.html + Svelte pages + gonertia"}
+}
+
+func checkViteConfig(dir string) doctorCheck {
+	path := filepath.Join(dir, "vite.config.js")
+	if _, err := os.Stat(path); err != nil {
+		return doctorCheck{
+			Name:    "vite.config.js",
+			Detail:  "missing",
+			FixHint: "re-run cais new or restore vite.config.js from Cais Inertia scaffold",
+		}
+	}
+	pkgPath := filepath.Join(dir, "package.json")
+	data, err := os.ReadFile(pkgPath)
+	if err != nil {
+		return doctorCheck{Name: "vite.config.js", OK: true, Detail: "present (package.json unreadable)"}
+	}
+	if !strings.Contains(string(data), "@inertiajs/svelte") {
+		return doctorCheck{
+			Name:    "vite.config.js",
+			Detail:  "package.json missing @inertiajs/svelte",
+			FixHint: "cais install",
+		}
+	}
+	buildDir := filepath.Join(dir, "web/static/build")
+	if _, err := os.Stat(buildDir); err != nil {
+		return doctorCheck{
+			Name:     "vite.config.js",
+			Optional: true,
+			Detail:   "Vite build output missing — run npm run build before deploy",
+			FixHint:  "npm run build (or cais dev once)",
+		}
+	}
+	return doctorCheck{Name: "vite.config.js", OK: true, Detail: "Vite + @inertiajs/svelte configured"}
 }
 
 func checkHTMX(dir string) doctorCheck {
