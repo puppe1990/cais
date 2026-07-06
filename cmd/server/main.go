@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 
+	inertia "github.com/romsar/gonertia/v3"
+
 	"github.com/puppe1990/cais/internal/app"
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
@@ -79,11 +81,19 @@ func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 		return nil, err
 	}
 
+	// Inertia root from our new template (coexists with old renderer templates)
+	inertiaI, err := inertia.NewFromFileFS(tmplFS, "app.html")
+	if err != nil {
+		_ = s.Close()
+		return nil, fmt.Errorf("inertia root: %w", err)
+	}
+
 	return app.New(cfg, app.Deps{
 		Renderer:  renderer,
 		Store:     s,
 		StaticDir: staticDir,
 		Site:      meta.SiteFrom("Cais", cfg.AppURL),
 		Catalog:   catalog,
+		Inertia:   inertiaI,
 	})
 }

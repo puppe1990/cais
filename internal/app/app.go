@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	inertia "github.com/romsar/gonertia/v3"
+
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/devlog"
@@ -23,6 +25,7 @@ type Deps struct {
 	StaticDir string
 	Site      meta.Site
 	Catalog   *i18n.Catalog
+	Inertia   *inertia.Inertia
 }
 
 type App struct {
@@ -32,12 +35,37 @@ type App struct {
 	server *http.Server
 }
 
+// defaultInertiaRoot is a minimal root template sufficient for Inertia protocol
+// (provides {{ .inertia }} and {{ .inertiaHead }} placeholders). Used as
+// fallback in tests and until full Vite-built root is wired in bootstrap.
+const defaultInertiaRoot = `<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	{{ .inertiaHead }}
+</head>
+<body>
+	{{ .inertia }}
+</body>
+</html>`
+
 func New(cfg cais.Config, deps Deps) (*App, error) {
 	if deps.Renderer == nil {
 		return nil, fmt.Errorf("renderer is required")
 	}
 	if deps.Store == nil {
 		return nil, fmt.Errorf("store is required")
+	}
+
+	inertiaI := deps.Inertia
+	if inertiaI == nil {
+		var err error
+		inertiaI, err = inertia.New(defaultInertiaRoot)
+		if err != nil {
+			return nil, fmt.Errorf("inertia: %w", err)
+		}
+		// version defaults to empty; real asset version (for cache bust) set via options in bootstrap later
 	}
 
 	site := deps.Site
@@ -60,7 +88,15 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	r.Use(middleware.SecurityHeaders(cfg))
 	r.StaticForEnv("/static", deps.StaticDir, cfg)
 
-	registerRoutes(r, deps, cfg, site)
+	// pass possibly defaulted inertia down (deps.Inertia may be nil, register will see updated? use local)
+	registerRoutes(r, Deps{
+		Renderer:  deps.Renderer,
+		Store:     deps.Store,
+		StaticDir: deps.StaticDir,
+		Site:      site,
+		Catalog:   deps.Catalog,
+		Inertia:   inertiaI,
+	}, cfg, site)
 	devlog.Register(r, cfg.Env, buf)
 	r.Get("/health", healthHandler(deps.Store, cfg))
 
