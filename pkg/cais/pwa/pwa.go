@@ -140,6 +140,55 @@ func InstallTo(appDir, name string) error {
 	return WriteStatic(appDir, DefaultConfig(name))
 }
 
+// WriteStaticInertia writes PWA assets for Inertia+Svelte apps (no HTMX JS bundles).
+func WriteStaticInertia(appDir string, cfg Config) error {
+	if cfg.ThemeColor == "" {
+		cfg.ThemeColor = ThemeColor
+	}
+	if cfg.StartURL == "" {
+		cfg.StartURL = "/"
+	}
+
+	staticDir := filepath.Join(appDir, "web", "static")
+	if err := os.MkdirAll(filepath.Join(staticDir, "icons"), 0o755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(staticDir, "js"), 0o755); err != nil {
+		return err
+	}
+	if err := writeManifest(filepath.Join(staticDir, "manifest.webmanifest"), cfg); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(staticDir, "img"), 0o755); err != nil {
+		return err
+	}
+
+	for _, pair := range []struct{ src, dst string }{
+		{"assets/sw.js", "js/sw.js"},
+		{"assets/offline.html", "offline.html"},
+		{"assets/icon.png", "icons/icon.png"},
+		{"assets/go-on-cais.jpg", "img/go-on-cais.jpg"},
+	} {
+		if err := copyAsset(pair.src, filepath.Join(staticDir, pair.dst)); err != nil {
+			return err
+		}
+	}
+
+	if err := writeOGImage(filepath.Join(staticDir, "og.png")); err != nil {
+		return err
+	}
+	if err := writeAppIcons(filepath.Join(staticDir, "icons"), cfg.IconPath); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// InstallForInertia writes PWA assets for Inertia scaffolds (no HTMX).
+func InstallForInertia(appDir, name string) error {
+	return WriteStaticInertia(appDir, DefaultConfig(name))
+}
+
 func writeManifest(path string, cfg Config) error {
 	display := cfg.Display
 	if display == "" {

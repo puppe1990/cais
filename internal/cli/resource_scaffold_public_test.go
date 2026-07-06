@@ -53,18 +53,18 @@ func TestScaffoldResource_PublicInsertsNavAfterMarker(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	layout, err := os.ReadFile(filepath.Join(appDir, "web/templates/layouts/base.html"))
+	nav, err := os.ReadFile(filepath.Join(appDir, "web/src/pages/Home.svelte"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	body := string(layout)
+	body := string(nav)
 	if !strings.Contains(body, "<!-- cais:nav -->") {
-		t.Fatal("layout missing <!-- cais:nav --> marker")
+		t.Fatal("Home.svelte missing <!-- cais:nav --> marker")
 	}
 	markerIdx := strings.Index(body, "<!-- cais:nav -->")
 	linkIdx := strings.Index(body, `href="/products"`)
 	if linkIdx == -1 {
-		t.Fatal("layout missing public products nav link")
+		t.Fatal("Home.svelte missing public products nav link")
 	}
 	if linkIdx < markerIdx {
 		t.Error("nav link should appear after <!-- cais:nav --> marker")
@@ -88,16 +88,13 @@ func TestScaffoldResource_BlankAppLogoLinksToPublicList(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	layout, err := os.ReadFile(filepath.Join(appDir, "web/templates/layouts/base.html"))
+	nav, err := os.ReadFile(filepath.Join(appDir, "web/src/pages/Home.svelte"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	body := string(layout)
-	if !strings.Contains(body, `<a href="/"`) {
-		t.Error("blank app logo should link to welcome screen at /")
-	}
+	body := string(nav)
 	if !strings.Contains(body, `href="/books"`) {
-		t.Error("layout nav should include public books list link")
+		t.Error("Home.svelte nav should include public books list link")
 	}
 }
 

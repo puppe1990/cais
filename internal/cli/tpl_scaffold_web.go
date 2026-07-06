@@ -308,11 +308,3 @@ const tplPartialSuccess = `{{"{{- "}}define "contact_success" -{{"}}"}}
 <div class="text-green-600 text-sm mb-4">{{"{{"}} t "contact.success" {{"}}"}}</div>
 {{"{{- "}}end -{{"}}"}}
 `
-
-const tplGenericPage = `{{"{{"}} define "title" {{"}}"}}{{.Title}}{{"{{"}} end {{"}}"}} {{"{{"}} define "content" {{"}}"}}
-<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto mt-10">
-  <h2 class="text-2xl font-bold text-slate-800 mb-2">{{.Title}}</h2>
-  <p class="text-slate-600">{{.Title}} page — customize this template.</p>
-</div>
-{{"{{"}} end {{"}}"}}
-`

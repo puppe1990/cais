@@ -96,6 +96,21 @@ func TestNewRendererForEnv_stagingUsesDisk(t *testing.T) {
 	}
 }
 
+func TestNewRendererForEnv_inertiaOnlyUsesStub(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "app.html"), []byte("<html>{{ .inertia }}</html>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg := Config{Env: "development"}
+	r, err := NewRendererForEnv(cfg, nil, dir, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.pages) != 0 {
+		t.Fatal("expected stub renderer with no pages")
+	}
+}
+
 func TestNewRendererForEnv_productionUsesEmbed(t *testing.T) {
 	tmplFS, err := fsSubTestTemplates()
 	if err != nil {

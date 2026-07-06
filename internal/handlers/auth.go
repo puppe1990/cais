@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	inertia "github.com/romsar/gonertia/v3"
+
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/flash"
@@ -24,11 +26,11 @@ type AuthHandler struct {
 	cfg         cais.Config
 	catalog     *i18n.Catalog
 	resetNotify passwordreset.Notifier
+	inertia     *inertia.Inertia
 }
 
-type loginData struct {
-	meta.Site
-	Error string
+func NewAuthHandler(renderer *cais.Renderer, s store.Store, site meta.Site, sessions session.Store, cfg cais.Config, catalog *i18n.Catalog, i *inertia.Inertia) *AuthHandler {
+	return &AuthHandler{renderer: renderer, store: s, site: site, sessions: sessions, cfg: cfg, catalog: catalog, inertia: i}
 }
 
 type forgotPasswordData struct {
@@ -50,16 +52,22 @@ type signupData struct {
 	Errors validate.FieldErrors
 }
 
-func NewAuthHandler(renderer *cais.Renderer, s store.Store, site meta.Site, sessions session.Store, cfg cais.Config, catalog *i18n.Catalog) *AuthHandler {
-	return &AuthHandler{renderer: renderer, store: s, site: site, sessions: sessions, cfg: cfg, catalog: catalog}
-}
-
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if _, ok := session.UserID(r); ok {
+		if h.inertia != nil {
+			h.inertia.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+			return
+		}
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
-	httpx.RenderOrError(w, h.renderer, "base", "login", loginData{Site: meta.ForRequest(h.site, r)}, h.cfg)
+	if h.inertia != nil {
+		_ = h.inertia.Render(w, r, "Login", inertia.Props{
+			"site": meta.ForRequest(h.site, r),
+		})
+		return
+	}
+	httpx.RenderOrError(w, h.renderer, "base", "login", nil, h.cfg)
 }
 
 func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
@@ -72,15 +80,24 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	user, err := h.store.FindUserByEmail(email)
 	if err != nil || !session.VerifyPassword(user.PasswordHash, password) {
-		httpx.RenderOrError(w, h.renderer, "base", "login", loginData{
-			Site:  meta.ForRequest(h.site, r),
-			Error: h.catalog.T("auth.invalid_credentials"),
-		}, h.cfg)
+		if h.inertia != nil {
+			ctx := inertia.SetValidationErrors(r.Context(), inertia.ValidationErrors{
+				"email": h.catalog.T("auth.invalid_credentials"),
+			})
+			_ = h.inertia.Render(w, r.WithContext(ctx), "Login", inertia.Props{})
+			return
+		}
+		httpx.RenderOrError(w, h.renderer, "base", "login", nil, h.cfg)
 		return
 	}
 
 	if err := session.SignIn(w, h.sessions, r, user.ID, session.CookieOptionsFromConfig(h.cfg)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if h.inertia != nil {
+		ctx := inertia.SetFlash(r.Context(), inertia.Flash{"notice": h.catalog.T("auth.welcome")})
+		h.inertia.Redirect(w, r.WithContext(ctx), "/dashboard", http.StatusSeeOther)
 		return
 	}
 	flash.Set(w, "notice", h.catalog.T("auth.welcome"), h.cfg.CookieSecure())
@@ -89,12 +106,24 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandler) LogoutPost(w http.ResponseWriter, r *http.Request) {
 	session.SignOut(w, h.sessions, r, session.CookieOptionsFromConfig(h.cfg))
+	if h.inertia != nil {
+		h.inertia.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
 	httpx.SeeOther(w, r, "/login")
 }
 
 func (h *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	if _, ok := session.UserID(r); ok {
+		if h.inertia != nil {
+			h.inertia.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+			return
+		}
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		return
+	}
+	if h.inertia != nil {
+		_ = h.inertia.Render(w, r, "Signup", inertia.Props{"site": meta.ForRequest(h.site, r)})
 		return
 	}
 	httpx.RenderOrError(w, h.renderer, "base", "signup", signupData{Site: meta.ForRequest(h.site, r)}, h.cfg)
@@ -121,6 +150,15 @@ func (h *AuthHandler) SignUpPost(w http.ResponseWriter, r *http.Request) {
 		errs.Add("password_confirmation", h.catalog.T("auth.password_mismatch"))
 	}
 	if errs.Any() {
+		if h.inertia != nil {
+			ve := make(inertia.ValidationErrors)
+			for k, v := range errs {
+				ve[k] = v
+			}
+			ctx := inertia.SetValidationErrors(r.Context(), ve)
+			_ = h.inertia.Render(w, r.WithContext(ctx), "Signup", inertia.Props{})
+			return
+		}
 		httpx.RenderOrError(w, h.renderer, "base", "signup", signupData{
 			Site:   meta.ForRequest(h.site, r),
 			Email:  email,
@@ -137,6 +175,13 @@ func (h *AuthHandler) SignUpPost(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.store.CreateUser(email, hash)
 	if err != nil {
 		if errors.Is(err, store.ErrEmailTaken) {
+			if h.inertia != nil {
+				ctx := inertia.SetValidationErrors(r.Context(), inertia.ValidationErrors{
+					"email": h.catalog.T("auth.email_taken"),
+				})
+				_ = h.inertia.Render(w, r.WithContext(ctx), "Signup", inertia.Props{})
+				return
+			}
 			httpx.RenderOrError(w, h.renderer, "base", "signup", signupData{
 				Site:  meta.ForRequest(h.site, r),
 				Email: email,
@@ -154,13 +199,26 @@ func (h *AuthHandler) SignUpPost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if h.inertia != nil {
+		ctx := inertia.SetFlash(r.Context(), inertia.Flash{"notice": h.catalog.T("auth.welcome")})
+		h.inertia.Redirect(w, r.WithContext(ctx), "/dashboard", http.StatusSeeOther)
+		return
+	}
 	flash.Set(w, "notice", h.catalog.T("auth.welcome"), h.cfg.CookieSecure())
 	httpx.SeeOther(w, r, "/dashboard")
 }
 
 func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	if _, ok := session.UserID(r); ok {
+		if h.inertia != nil {
+			h.inertia.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+			return
+		}
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		return
+	}
+	if h.inertia != nil {
+		_ = h.inertia.Render(w, r, "ForgotPassword", inertia.Props{"site": meta.ForRequest(h.site, r)})
 		return
 	}
 	httpx.RenderOrError(w, h.renderer, "base", "forgot_password", forgotPasswordData{
@@ -180,6 +238,15 @@ func (h *AuthHandler) ForgotPasswordPost(w http.ResponseWriter, r *http.Request)
 		errs.Add("email", h.catalog.T("contact.email_invalid"))
 	}
 	if errs.Any() {
+		if h.inertia != nil {
+			ve := make(inertia.ValidationErrors)
+			for k, v := range errs {
+				ve[k] = v
+			}
+			ctx := inertia.SetValidationErrors(r.Context(), ve)
+			_ = h.inertia.Render(w, r.WithContext(ctx), "ForgotPassword", inertia.Props{})
+			return
+		}
 		httpx.RenderOrError(w, h.renderer, "base", "forgot_password", forgotPasswordData{
 			Site:   meta.ForRequest(h.site, r),
 			Email:  email,
@@ -198,16 +265,44 @@ func (h *AuthHandler) ForgotPasswordPost(w http.ResponseWriter, r *http.Request)
 	}
 
 	flash.Set(w, "notice", h.catalog.T("auth.reset_email_sent"), h.cfg.CookieSecure())
+	if h.inertia != nil {
+		h.inertia.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
 	httpx.SeeOther(w, r, "/login")
 }
 
 func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	if _, ok := session.UserID(r); ok {
+		if h.inertia != nil {
+			h.inertia.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+			return
+		}
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
 
 	token := strings.TrimSpace(r.URL.Query().Get("token"))
+	if h.inertia != nil {
+		props := inertia.Props{"site": meta.ForRequest(h.site, r), "token": token}
+		if token == "" {
+			ctx := inertia.SetValidationErrors(r.Context(), inertia.ValidationErrors{
+				"token": h.catalog.T("auth.reset_invalid_token"),
+			})
+			_ = h.inertia.Render(w, r.WithContext(ctx), "ResetPassword", props)
+			return
+		}
+		if _, ok := h.store.FindPasswordResetUserID(token); !ok {
+			ctx := inertia.SetValidationErrors(r.Context(), inertia.ValidationErrors{
+				"token": h.catalog.T("auth.reset_invalid_token"),
+			})
+			_ = h.inertia.Render(w, r.WithContext(ctx), "ResetPassword", props)
+			return
+		}
+		_ = h.inertia.Render(w, r, "ResetPassword", props)
+		return
+	}
+
 	if token == "" {
 		httpx.RenderOrError(w, h.renderer, "base", "reset_password", resetPasswordData{
 			Site:  meta.ForRequest(h.site, r),
@@ -243,6 +338,16 @@ func (h *AuthHandler) ResetPasswordPost(w http.ResponseWriter, r *http.Request) 
 	if token == "" {
 		errs.Add("token", h.catalog.T("auth.reset_invalid_token"))
 	} else if _, ok := h.store.FindPasswordResetUserID(token); !ok {
+		if h.inertia != nil {
+			ctx := inertia.SetValidationErrors(r.Context(), inertia.ValidationErrors{
+				"token": h.catalog.T("auth.reset_invalid_token"),
+			})
+			_ = h.inertia.Render(w, r.WithContext(ctx), "ResetPassword", inertia.Props{
+				"site":  meta.ForRequest(h.site, r),
+				"token": token,
+			})
+			return
+		}
 		httpx.RenderOrError(w, h.renderer, "base", "reset_password", resetPasswordData{
 			Site:  meta.ForRequest(h.site, r),
 			Error: h.catalog.T("auth.reset_invalid_token"),
@@ -256,6 +361,15 @@ func (h *AuthHandler) ResetPasswordPost(w http.ResponseWriter, r *http.Request) 
 		errs.Add("password_confirmation", h.catalog.T("auth.password_mismatch"))
 	}
 	if errs.Any() {
+		if h.inertia != nil {
+			ve := make(inertia.ValidationErrors)
+			for k, v := range errs {
+				ve[k] = v
+			}
+			ctx := inertia.SetValidationErrors(r.Context(), ve)
+			_ = h.inertia.Render(w, r.WithContext(ctx), "ResetPassword", inertia.Props{"token": token})
+			return
+		}
 		httpx.RenderOrError(w, h.renderer, "base", "reset_password", resetPasswordData{
 			Site:   meta.ForRequest(h.site, r),
 			Token:  token,
@@ -277,6 +391,11 @@ func (h *AuthHandler) ResetPasswordPost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if h.inertia != nil {
+		ctx := inertia.SetFlash(r.Context(), inertia.Flash{"notice": h.catalog.T("auth.reset_success")})
+		h.inertia.Redirect(w, r.WithContext(ctx), "/login", http.StatusSeeOther)
+		return
+	}
 	flash.Set(w, "notice", h.catalog.T("auth.reset_success"), h.cfg.CookieSecure())
 	httpx.SeeOther(w, r, "/login")
 }

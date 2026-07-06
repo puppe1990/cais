@@ -9,6 +9,7 @@ import (
 
 func TestPatchGoModReplace_CaisAppsLayout(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
+	t.Setenv("CAIS_REPLACE", "")
 	root := t.TempDir()
 	caisDir := filepath.Join(root, "Cais")
 	appsDir := filepath.Join(root, "Cais-apps", "demo")
@@ -37,6 +38,7 @@ func TestPatchGoModReplace_CaisAppsLayout(t *testing.T) {
 
 func TestPatchGoModReplace_RemoteAppDirFromCwd(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
+	t.Setenv("CAIS_REPLACE", "")
 	root := t.TempDir()
 	caisDir := filepath.Join(root, "Cais")
 	appsDir := filepath.Join(root, "Cais-apps")
@@ -69,6 +71,7 @@ func TestPatchGoModReplace_RemoteAppDirFromCwd(t *testing.T) {
 
 func TestPatchGoModReplace(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
+	t.Setenv("CAIS_REPLACE", "")
 	parent := t.TempDir()
 	appDir := filepath.Join(parent, "demo")
 	caisDir := filepath.Join(parent, "Cais")

@@ -1,10 +1,10 @@
 package cli
 
 const tplREADME = "# {{.AppName}}\n\n" +
-	"Full-stack Go app built with [Cais](https://github.com/puppe1990/cais): server-side HTML, HTMX, Tailwind, and SQLite.\n\n" +
+	"Full-stack Go app built with [Cais](https://github.com/puppe1990/cais): Inertia.js, Svelte, Tailwind, and SQLite.\n\n" +
 	"## Stack\n\n" +
-	"- Go 1.26 (net/http stdlib)\n" +
-	"- html/template + HTMX 2.x\n" +
+	"- Go 1.26 (net/http stdlib) + gonertia\n" +
+	"- Svelte 5 + @inertiajs/svelte (Vite → web/static/build/)\n" +
 	"- Tailwind CSS 3.x\n" +
 	"- SQLite (modernc.org/sqlite, no CGO)\n\n" +
 	"## Quick start\n\n" +
@@ -42,8 +42,9 @@ const tplREADME = "# {{.AppName}}\n\n" +
 	"internal/app/      → bootstrap and routes\n" +
 	"internal/handlers/ → HTTP handlers\n" +
 	"internal/store/    → SQLite + migrations\n" +
-	"web/templates/     → HTML\n" +
-	"web/static/        → CSS + JS\n" +
+	"web/templates/app.html → Inertia root shell\n" +
+	"web/src/pages/       → Svelte pages\n" +
+	"web/static/          → CSS + Vite build + PWA\n" +
 	"cmd/server/        → entry point\n" +
 	"```\n\n" +
 	"## Environment variables\n\n" +
@@ -60,7 +61,7 @@ const tplREADME = "# {{.AppName}}\n\n" +
 	"4. Run `cais doctor --mobile` to catch flash markup, font CSP, and SW cache issues.\n"
 
 const tplREADMEBlank = "# {{.AppName}}\n\n" +
-	"Full-stack Go app built with [Cais](https://github.com/puppe1990/cais): server-side HTML, HTMX, Tailwind, and SQLite.\n\n" +
+	"Full-stack Go app built with [Cais](https://github.com/puppe1990/cais): Inertia.js, Svelte, Tailwind, and SQLite.\n\n" +
 	"## Quick start\n\n" +
 	"```bash\n" +
 	"cais install  # npm install + go mod tidy\n" +

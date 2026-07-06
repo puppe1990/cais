@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,17 +24,31 @@ func NewRendererForEnv(cfg Config, embedded fs.FS, templatesDir string, catalog 
 	if cfg.Env != "production" && templatesDir != "" {
 		if _, err := os.Stat(templatesDir); err == nil {
 			r, err := NewRendererFromDir(templatesDir, catalog)
-			if err != nil {
-				return nil, err
+			if err == nil {
+				StartTemplateWatcher(templatesDir, r)
+				return r, nil
 			}
-			StartTemplateWatcher(templatesDir, r)
-			return r, nil
+			if isNoLayoutTemplatesErr(err) {
+				return NewRendererStub(catalog), nil
+			}
+			return nil, err
 		}
 	}
 	if embedded == nil {
 		return nil, fmt.Errorf("embedded template filesystem is required when not in development")
 	}
-	return NewRenderer(embedded, catalog)
+	r, err := NewRenderer(embedded, catalog)
+	if err != nil {
+		if isNoLayoutTemplatesErr(err) {
+			return NewRendererStub(catalog), nil
+		}
+		return nil, err
+	}
+	return r, nil
+}
+
+func isNoLayoutTemplatesErr(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "no layout templates found")
 }
 
 // ReloadFromDir re-parses templates from a directory (development hot reload).

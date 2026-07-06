@@ -4,9 +4,12 @@ import (
 	"net/http"
 	"strings"
 
+	inertia "github.com/romsar/gonertia/v3"
+
 	"github.com/puppe1990/cais/internal/models"
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
+	"github.com/puppe1990/cais/pkg/cais/flash"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
 	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
@@ -19,17 +22,26 @@ type ContactHandler struct {
 	site     meta.Site
 	catalog  *i18n.Catalog
 	cfg      cais.Config
+	inertia  *inertia.Inertia
+}
+
+func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site, catalog *i18n.Catalog, cfg cais.Config, i *inertia.Inertia) *ContactHandler {
+	return &ContactHandler{renderer: renderer, store: s, site: site, catalog: catalog, cfg: cfg, inertia: i}
 }
 
 type contactErrorData struct {
 	Message string
 }
 
-func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site, catalog *i18n.Catalog, cfg cais.Config) *ContactHandler {
-	return &ContactHandler{renderer: renderer, store: s, site: site, catalog: catalog, cfg: cfg}
-}
-
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
+	if h.inertia != nil {
+		props := inertia.Props{"site": meta.ForRequest(h.site, r)}
+		if msg, ok := flash.MessageFromRequest(r); ok {
+			props["flash"] = inertia.Flash{msg.Kind: msg.Message}
+		}
+		_ = h.inertia.Render(w, r, "Contact", props)
+		return
+	}
 	httpx.RenderOrError(w, h.renderer, "base", "contact", meta.ForRequest(h.site, r), h.cfg)
 }
 
@@ -54,6 +66,16 @@ func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
 		errs.Add("email", msg)
 	}
 	if errs.Any() {
+		if h.inertia != nil {
+			ve := make(inertia.ValidationErrors)
+			for k, v := range errs {
+				ve[k] = v
+			}
+			ctx := inertia.SetValidationErrors(r.Context(), ve)
+			// render same component so props.errors populated by gonertia
+			_ = h.inertia.Render(w, r.WithContext(ctx), "Contact", inertia.Props{})
+			return
+		}
 		h.renderContactResponse(w, r, http.StatusUnprocessableEntity, "contact_errors", contactErrorData{Message: errs.First()})
 		return
 	}
@@ -64,6 +86,11 @@ func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.inertia != nil {
+		flash.Set(w, "success", "Message sent successfully.", h.cfg.CookieSecure())
+		h.inertia.Redirect(w, r, "/contact", http.StatusSeeOther)
+		return
+	}
 	h.renderContactResponse(w, r, http.StatusOK, "contact_success", nil)
 }
 

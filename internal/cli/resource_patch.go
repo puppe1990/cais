@@ -224,11 +224,28 @@ func upgradeResourceRouteHandlers(content string, data scaffoldData) string {
 // public resource links after it; destroy removes links by href. Do not remove from templates.
 const layoutNavMarker = "<!-- cais:nav -->"
 
+func layoutNavFile(dir string) (path string, inertia bool) {
+	home := filepath.Join(dir, "web/src/pages/Home.svelte")
+	if _, err := os.Stat(home); err == nil {
+		return home, true
+	}
+	return filepath.Join(dir, "web/templates/layouts/base.html"), false
+}
+
+func publicNavLink(data scaffoldData, inertia bool) string {
+	if inertia {
+		return fmt.Sprintf(`    <a href="/%s" use:inertia class="underline">%s</a>
+`, data.Plural, toTitle(data.Plural))
+	}
+	return fmt.Sprintf(`          <a href="/%s" class="text-slate-600 hover:text-indigo-600 transition">%s</a>
+`, data.Plural, toTitle(data.Plural))
+}
+
 func patchLayoutNav(dir string, data scaffoldData, dryRun bool) error {
 	if !data.Public {
 		return nil
 	}
-	path := filepath.Join(dir, "web/templates/layouts/base.html")
+	path, inertia := layoutNavFile(dir)
 	body, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -238,17 +255,22 @@ func patchLayoutNav(dir string, data scaffoldData, dryRun bool) error {
 	if strings.Contains(content, linkHref) {
 		return nil
 	}
-	link := fmt.Sprintf(`          <a href="/%s" class="text-slate-600 hover:text-indigo-600 transition">%s</a>
-`, data.Plural, toTitle(data.Plural))
+	link := publicNavLink(data, inertia)
 	switch {
 	case strings.Contains(content, layoutNavMarker):
 		content = strings.Replace(content, layoutNavMarker, layoutNavMarker+"\n"+link, 1)
 	case strings.Contains(content, "</nav>"):
-		content = strings.Replace(content, "</nav>", link+"        </nav>", 1)
+		if inertia {
+			content = strings.Replace(content, "</nav>", link+"  </nav>", 1)
+		} else {
+			content = strings.Replace(content, "</nav>", link+"        </nav>", 1)
+		}
 	default:
 		return fmt.Errorf("%s: missing %s marker and </nav> element", path, layoutNavMarker)
 	}
-	content = patchLayoutLogoHref(dir, content, data)
+	if !inertia {
+		content = patchLayoutLogoHref(dir, content, data)
+	}
 	if dryRun {
 		return nil
 	}

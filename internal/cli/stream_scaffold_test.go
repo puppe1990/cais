@@ -29,7 +29,7 @@ func TestScaffoldStreamChat_CreatesFiles(t *testing.T) {
 		"web/templates/pages/conversations.html",
 		"web/templates/pages/chat.html",
 		"web/templates/partials/message.html",
-		"web/templates/partials/chat_sse_agent.html",
+		"web/templates/partials/chat_history.html",
 	} {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
 			t.Errorf("missing %s: %v", path, err)

@@ -13,30 +13,38 @@ Before writing production code:
 
 ## Structure
 
-| Directory              | Responsibility                                                                        |
-| ---------------------- | ------------------------------------------------------------------------------------- |
-| `pkg/cais/`            | Framework: config, router, render, htmx, middleware                                   |
-| `pkg/cais/httpx/`      | Render and redirect helpers for handlers                                              |
-| `pkg/cais/meta/`       | Open Graph / Twitter preview (`Site`, `PreviewHTML`)                                  |
-| `pkg/cais/session/`    | Cookie sessions (`SignIn`, `SignOut`, `Store`)                                        |
-| `pkg/cais/boot/`       | Rails-style startup banner                                                            |
-| `pkg/cais/devlog/`     | Development log buffer + `/logs` viewer                                               |
-| `pkg/cais/sqllog/`     | SQL query logging wrapper (`Wrap`, `EnabledForEnv`)                                   |
-| `pkg/cais/console/`    | Interactive REPL (yaegi + SQL)                                                        |
-| `pkg/cais/csrf/`       | CSRF tokens (double-submit cookie)                                                    |
-| `pkg/cais/validate/`   | Form field validation helpers                                                         |
-| `pkg/cais/forms/`      | Template helpers (`csrfField`, `fieldError`, `makeField`, `fieldInput`)               |
-| `pkg/cais/i18n/`       | Locale catalogs (`LOCALE` env, `t` template func)                                     |
-| `pkg/cais/testutil/`   | Test helpers (`NewRenderer`, `NewRequest`, `AssertHTMLContains`, `AssertChatMarkers`) |
-| `pkg/cais/pwa/`        | Default PWA assets generator (manifest, icons, og.png)                                |
-| `pkg/cais/cache/`      | In-memory TTL cache (stdlib)                                                          |
-| `pkg/cais/pagination/` | Offset/limit helpers for list pages                                                   |
-| `internal/app/`        | Bootstrap: route and dependency wiring                                                |
-| `internal/handlers/`   | HTTP handlers                                                                         |
-| `internal/store/`      | SQLite persistence                                                                    |
-| `web/templates/`       | HTML templates (layouts, pages, partials)                                             |
-| `web/static/`          | Tailwind CSS, HTMX, PWA (manifest, sw.js, icons)                                      |
-| `cmd/server/`          | Entry point                                                                           |
+| Directory                | Responsibility                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| `pkg/cais/`              | Framework: config, router, render, htmx, middleware                                   |
+| `pkg/cais/httpx/`        | Render and redirect helpers for handlers                                              |
+| `pkg/cais/meta/`         | Open Graph / Twitter preview (`Site`, `PreviewHTML`)                                  |
+| `pkg/cais/session/`      | Cookie sessions (`SignIn`, `SignOut`, `Store`)                                        |
+| `pkg/cais/boot/`         | Rails-style startup banner                                                            |
+| `pkg/cais/devlog/`       | Development log buffer + `/logs` viewer                                               |
+| `pkg/cais/sqllog/`       | SQL query logging wrapper (`Wrap`, `EnabledForEnv`)                                   |
+| `pkg/cais/console/`      | Interactive REPL (yaegi + SQL)                                                        |
+| `pkg/cais/csrf/`         | CSRF tokens (double-submit cookie)                                                    |
+| `pkg/cais/validate/`     | Form field validation helpers                                                         |
+| `pkg/cais/forms/`        | Template helpers (`csrfField`, `fieldError`, `makeField`, `fieldInput`)               |
+| `pkg/cais/i18n/`         | Locale catalogs (`LOCALE` env, `t` template func)                                     |
+| `pkg/cais/testutil/`     | Test helpers (`NewRenderer`, `NewRequest`, `AssertHTMLContains`, `AssertChatMarkers`) |
+| `pkg/cais/pwa/`          | Default PWA assets generator (manifest, icons, og.png)                                |
+| `pkg/cais/cache/`        | In-memory TTL cache (stdlib)                                                          |
+| `pkg/cais/pagination/`   | Offset/limit helpers for list pages                                                   |
+| `internal/cli/`          | Generators (`cais new`, `cais g`, `cais destroy`) — **Inertia + Svelte scaffolds**    |
+| `internal/app/`          | This repo's dogfood app bootstrap (`deps.Inertia`)                                    |
+| `internal/handlers/`     | HTTP handlers (gonertia + optional httpx fallback)                                    |
+| `internal/store/`        | SQLite persistence                                                                    |
+| `web/templates/app.html` | Inertia root shell                                                                    |
+| `web/src/pages/`         | Svelte pages                                                                          |
+| `web/static/`            | Tailwind CSS, Vite build, PWA                                                         |
+| `cmd/server/`            | Entry point                                                                           |
+
+### Generated apps (`cais new`)
+
+Same layout as this repo's demo: `app.html` + `web/src/pages/*.svelte` + gonertia. No HTMX assets in the default scaffold.
+
+`cais g resource` / `cais g stream chat` still generate **HTMX/html** admin and chat templates until ported to Svelte.
 
 ## Router path params and groups
 
@@ -79,14 +87,16 @@ Dev seed user: `demo@example.com` / `password`. Sessions persist in SQLite via `
 
 **Production cookies** — `session.CookieOptionsFromConfig(cfg)` sets `Secure` when `cfg.CookieSecure()` is true (`ENV=production`).
 
-## New page
+## New page (scaffolded app)
 
-1. Test in `internal/handlers/foo_test.go`
-2. Template in `web/templates/pages/foo.html`
-3. Handler in `internal/handlers/foo.go` — embed `meta.Site` in page data
-4. Register the route in `internal/app/app.go`
+1. Test in `internal/handlers/foo_test.go` — use `setupTestInertia` + `assertInertiaComponent` (see `inertia_test.go`)
+2. Svelte page in `web/src/pages/Foo.svelte`
+3. Handler — `h.inertia.Render(w, r, "Foo", inertia.Props{"site": meta.ForRequest(h.site, r)})`
+4. Register the route in `internal/app/routes.go`
 
-Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap so layouts render correct OG/Twitter tags (`absURL` template func).
+Or use `cais g handler foo` (creates handler + `web/src/pages/Foo.svelte` + route patch).
+
+Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap for OG/Twitter props in Inertia pages.
 
 ## CSRF
 

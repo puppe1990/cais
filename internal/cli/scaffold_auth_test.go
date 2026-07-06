@@ -22,10 +22,10 @@ func TestScaffoldNewApp_includesAuth(t *testing.T) {
 		"internal/models/user.go",
 		"internal/store/migrations/002_auth.sql",
 		"internal/store/password_reset.go",
-		"web/templates/pages/login.html",
-		"web/templates/pages/signup.html",
-		"web/templates/pages/forgot_password.html",
-		"web/templates/pages/reset_password.html",
+		"web/src/pages/Login.svelte",
+		"web/src/pages/Signup.svelte",
+		"web/src/pages/ForgotPassword.svelte",
+		"web/src/pages/ResetPassword.svelte",
 	} {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
 			t.Errorf("missing %s: %v", path, err)
@@ -88,14 +88,20 @@ func TestScaffoldNewApp_includesAuth(t *testing.T) {
 		t.Error("auth.go missing signup handlers")
 	}
 
-	for _, page := range []string{"login.html", "signup.html", "reset_password.html"} {
-		body, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages", page))
+	for _, tc := range []struct {
+		file   string
+		needle string
+	}{
+		{"Login.svelte", `type="password"`},
+		{"Signup.svelte", "password_confirmation"},
+		{"ResetPassword.svelte", "password_confirmation"},
+	} {
+		body, err := os.ReadFile(filepath.Join(appDir, "web/src/pages", tc.file))
 		if err != nil {
-			t.Fatalf("read %s: %v", page, err)
+			t.Fatalf("read %s: %v", tc.file, err)
 		}
-		s := string(body)
-		if !strings.Contains(s, "fieldPassword") {
-			t.Errorf("%s missing fieldPassword helper", page)
+		if !strings.Contains(string(body), tc.needle) {
+			t.Errorf("%s missing %q", tc.file, tc.needle)
 		}
 	}
 }

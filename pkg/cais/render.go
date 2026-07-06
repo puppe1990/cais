@@ -84,6 +84,19 @@ func NewRenderer(fsys fs.FS, catalog *i18n.Catalog) (*Renderer, error) {
 	return r, nil
 }
 
+// NewRendererStub returns an empty renderer for Inertia-only apps whose tests never
+// exercise httpx/html fallback paths.
+func NewRendererStub(catalog *i18n.Catalog) *Renderer {
+	if catalog == nil {
+		catalog = i18n.DefaultCatalog()
+	}
+	return &Renderer{
+		pages:    make(map[string]*template.Template),
+		partials: make(map[string]*template.Template),
+		catalog:  catalog,
+	}
+}
+
 func (r *Renderer) Render(w io.Writer, layout, page string, data any) error {
 	r.mu.RLock()
 	tmpl, ok := r.pages[page]

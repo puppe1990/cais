@@ -373,15 +373,15 @@ func unpatchMainForSeed(dir string, data scaffoldData, dryRun bool) error {
 }
 
 func unpatchLayoutNavForResource(dir string, data scaffoldData, dryRun bool) error {
-	path := filepath.Join(dir, "web/templates/layouts/base.html")
+	path, inertia := layoutNavFile(dir)
 	body, err := os.ReadFile(path)
 	if err != nil {
 		return nil
 	}
-	link := fmt.Sprintf(`          <a href="/%s" class="text-slate-600 hover:text-indigo-600 transition">%s</a>
-`, data.Plural, toTitle(data.Plural))
+	link := publicNavLink(data, inertia)
 	content := strings.Replace(string(body), link, "", 1)
-	return updateScaffoldFile(path, []byte(content), "web/templates/layouts/base.html", dryRun)
+	rel := strings.TrimPrefix(path, dir+string(os.PathSeparator))
+	return updateScaffoldFile(path, []byte(content), rel, dryRun)
 }
 
 func (c *CLI) cmdDestroy(args []string) error {

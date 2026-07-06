@@ -2,12 +2,13 @@
 
 ![Go on Cais](web/static/img/go-on-cais.jpg)
 
-Full-stack Go framework for mini apps on Lightsail: server-side HTML, HTMX, Tailwind, and SQLite.
+Full-stack Go framework for mini apps on Lightsail: **Inertia.js + Svelte**, Tailwind, and SQLite.
 
 ## Stack
 
 - Go 1.22+ minimum (`net/http` stdlib; `go.mod` may pin a newer toolchain)
-- `html/template` + HTMX 2.x
+- **Inertia.js + Svelte 5** (`cais new` scaffolds gonertia + Vite → `web/static/build/`)
+- HTMX helpers remain in `pkg/cais/` for `cais g resource` admin CRUD until ported to Svelte
 - PWA by default (manifest, service worker, offline page, icons, fullscreen display)
 - Open Graph / Twitter preview (`pkg/cais/meta`, default `og.png`)
 - Tailwind CSS 3.x

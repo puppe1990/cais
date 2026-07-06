@@ -196,7 +196,7 @@ func patchRoutesForStreamChat(dir string, dryRun bool) error {
 }
 
 func patchLayoutNavForStreamChat(dir string, dryRun bool) error {
-	path := filepath.Join(dir, "web/templates/layouts/base.html")
+	path, inertia := layoutNavFile(dir)
 	body, err := os.ReadFile(path)
 	if err != nil {
 		return nil
@@ -209,7 +209,15 @@ func patchLayoutNavForStreamChat(dir string, dryRun bool) error {
 	if !strings.Contains(content, marker) {
 		marker = "</nav>"
 	}
-	navLink := "\n    " + `<a href="/chat" data-cais-nav="/chat" hx-boost="true" hx-target="#cais-main" hx-select="#cais-main" hx-push-url="true" hx-swap="morph:innerHTML" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100">Chat</a>`
-	content = strings.Replace(content, marker, navLink+"\n    "+marker, 1)
-	return updateScaffoldFile(path, []byte(content), "web/templates/layouts/base.html", dryRun)
+	var navLink string
+	if inertia {
+		navLink = `    <a href="/chat" use:inertia class="underline">Chat</a>
+`
+	} else {
+		navLink = `          <a href="/chat" data-cais-nav="/chat" hx-boost="true" hx-target="#cais-main" hx-select="#cais-main" hx-push-url="true" hx-swap="morph:innerHTML" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100">Chat</a>
+`
+	}
+	content = strings.Replace(content, marker, navLink+marker, 1)
+	rel := strings.TrimPrefix(path, dir+string(os.PathSeparator))
+	return updateScaffoldFile(path, []byte(content), rel, dryRun)
 }

@@ -26,7 +26,7 @@ func TestScaffoldHandler_usesModernHandlerPattern(t *testing.T) {
 	}
 	body := string(handler)
 	for _, needle := range []string{
-		"httpx.RenderOrError",
+		"inertia.Render",
 		"meta.ForRequest",
 		"meta.Site",
 		"i18n.Catalog",
@@ -40,8 +40,8 @@ func TestScaffoldHandler_usesModernHandlerPattern(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(routes), "handlers.NewAboutHandler(deps.Renderer, deps.Site, deps.Catalog, cfg)") {
-		t.Error("routes.go should wire site, catalog, and cfg into handler")
+	if !strings.Contains(string(routes), "handlers.NewAboutHandler(deps.Site, deps.Catalog, deps.Inertia)") {
+		t.Error("routes.go should wire site, catalog, and inertia into handler")
 	}
 }
 
