@@ -3,6 +3,8 @@ package handlers
 import (
 	"net/http"
 
+	inertia "github.com/romsar/gonertia/v3"
+
 	"github.com/puppe1990/cais/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
@@ -20,10 +22,11 @@ type DashboardHandler struct {
 	store    store.Store
 	site     meta.Site
 	cfg      cais.Config
+	inertia  *inertia.Inertia
 }
 
-func NewDashboardHandler(renderer *cais.Renderer, s store.Store, site meta.Site, cfg cais.Config) *DashboardHandler {
-	return &DashboardHandler{renderer: renderer, store: s, site: site, cfg: cfg}
+func NewDashboardHandler(renderer *cais.Renderer, s store.Store, site meta.Site, cfg cais.Config, i *inertia.Inertia) *DashboardHandler {
+	return &DashboardHandler{renderer: renderer, store: s, site: site, cfg: cfg, inertia: i}
 }
 
 func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -33,6 +36,14 @@ func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.inertia != nil {
+		_ = h.inertia.Render(w, r, "Dashboard", inertia.Props{
+			"site":          meta.ForRequest(h.site, r),
+			"totalContacts": count,
+			"env":           h.cfg.Env,
+		})
+		return
+	}
 	httpx.WritePage(w, r, h.renderer, httpx.PageConfig{
 		Layout: "base",
 		Page:   "dashboard",

@@ -19,7 +19,7 @@ func newAuthHandlerForSignup(t *testing.T) (*AuthHandler, store.Store) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
-	h := NewAuthHandler(setupTestRenderer(t), s, testSite(), s.Sessions(), cais.Config{}, i18n.DefaultCatalog())
+	h := NewAuthHandler(setupTestRenderer(t), s, testSite(), s.Sessions(), cais.Config{}, i18n.DefaultCatalog(), setupTestInertia(t))
 	return h, s
 }
 
@@ -66,14 +66,23 @@ func TestAuth_SignUpPost_duplicateEmail_returnsError(t *testing.T) {
 		t.Fatalf("first signup status = %d, want 303", rr.Code)
 	}
 
-	req2 := httptest.NewRequest(http.MethodPost, "/signup", strings.NewReader(form.Encode()))
+	req2 := inertiaRequest(http.MethodPost, "/signup", strings.NewReader(form.Encode()))
 	req2.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr2 := httptest.NewRecorder()
 	h.SignUpPost(rr2, req2)
 	if rr2.Code != http.StatusOK {
 		t.Fatalf("duplicate signup status = %d, want 200", rr2.Code)
 	}
-	if !strings.Contains(rr2.Body.String(), "already registered") {
-		t.Errorf("body missing duplicate error: %s", rr2.Body.String())
-	}
+	assertInertiaComponent(t, rr2, "Signup")
+	assertInertiaErrors(t, rr2, "email")
+}
+
+func TestAuth_SignUp_InertiaComponent(t *testing.T) {
+	h, _ := newAuthHandlerForSignup(t)
+
+	req := inertiaRequest(http.MethodGet, "/signup", nil)
+	rr := httptest.NewRecorder()
+	h.SignUp(rr, req)
+
+	assertInertiaComponent(t, rr, "Signup")
 }

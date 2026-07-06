@@ -27,7 +27,7 @@ func (c *captureNotifier) NotifyReset(email, token string) error {
 
 func newAuthHandlerForReset(t *testing.T, s store.Store, notify passwordreset.Notifier) *AuthHandler {
 	t.Helper()
-	h := NewAuthHandler(setupTestRenderer(t), s, testSite(), s.Sessions(), cais.Config{AppURL: "http://localhost:8080"}, i18n.DefaultCatalog())
+	h := NewAuthHandler(setupTestRenderer(t), s, testSite(), s.Sessions(), cais.Config{AppURL: "http://localhost:8080"}, i18n.DefaultCatalog(), setupTestInertia(t))
 	h.resetNotify = notify
 	return h
 }
@@ -76,6 +76,17 @@ func TestAuth_ForgotPasswordPost_knownEmail_notifiesAndRedirects(t *testing.T) {
 	if len(notify.tokens) != 1 || notify.tokens[0] == "" {
 		t.Fatalf("notify tokens = %v", notify.tokens)
 	}
+}
+
+func TestAuth_ForgotPassword_InertiaComponent(t *testing.T) {
+	s := setupTestStore(t)
+	h := newAuthHandlerForReset(t, s, &captureNotifier{})
+
+	req := inertiaRequest(http.MethodGet, "/forgot-password", nil)
+	rr := httptest.NewRecorder()
+	h.ForgotPassword(rr, req)
+
+	assertInertiaComponent(t, rr, "ForgotPassword")
 }
 
 func TestAuth_ResetPasswordPost_validToken_updatesPassword(t *testing.T) {
@@ -130,7 +141,7 @@ func TestAuth_ResetPasswordPost_invalidToken_rendersError(t *testing.T) {
 		"password":              {"new-password-123"},
 		"password_confirmation": {"new-password-123"},
 	}
-	req := httptest.NewRequest(http.MethodPost, "/reset-password", strings.NewReader(form.Encode()))
+	req := inertiaRequest(http.MethodPost, "/reset-password", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr := httptest.NewRecorder()
 	h.ResetPasswordPost(rr, req)
@@ -138,7 +149,6 @@ func TestAuth_ResetPasswordPost_invalidToken_rendersError(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Errorf("status = %d, want 200", rr.Code)
 	}
-	if !strings.Contains(rr.Body.String(), "invalid") {
-		t.Errorf("body missing error: %s", rr.Body.String())
-	}
+	assertInertiaComponent(t, rr, "ResetPassword")
+	assertInertiaErrors(t, rr, "token")
 }
