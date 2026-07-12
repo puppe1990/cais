@@ -21,8 +21,9 @@ build: css
 
 AIR := $(shell command -v $(HOME)/go/bin/air 2>/dev/null || command -v air 2>/dev/null)
 
-dev: css
+dev: css js-build
 	$(MAKE) css-watch &
+	npm run build -- --watch &
 	$(AIR) -c .air.toml
 
 docker:
