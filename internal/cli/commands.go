@@ -73,6 +73,12 @@ func (c *CLI) cmdBuild(args []string) error {
 	if err := runTailwindBuild(dir, false); err != nil {
 		return err
 	}
+	if hasViteApp(dir) {
+		_, _ = fmt.Fprintln(c.Out, "→ vite build")
+		if err := runViteBuild(dir); err != nil {
+			return fmt.Errorf("vite build: %w", err)
+		}
+	}
 	_, _ = fmt.Fprintln(c.Out, "→ go build")
 	return runGoBuild(dir, opts)
 }
@@ -102,6 +108,12 @@ func (c *CLI) cmdDev() error {
 	if err := runTailwindBuild(dir, false); err != nil {
 		return err
 	}
+	if hasViteApp(dir) {
+		_, _ = fmt.Fprintln(c.Out, "→ vite build (initial)")
+		if err := runViteBuild(dir); err != nil {
+			return fmt.Errorf("vite build: %w", err)
+		}
+	}
 
 	if bumped, v, err := maybeBumpDevCache(dir); err != nil {
 		return fmt.Errorf("sw cache bump: %w", err)
@@ -117,6 +129,13 @@ func (c *CLI) cmdDev() error {
 		return fmt.Errorf("tailwind watch: %w", err)
 	}
 	defer func() { _ = watch.Process.Kill() }()
+
+	if viteWatch, err := startViteWatch(dir); err != nil {
+		return fmt.Errorf("vite watch: %w", err)
+	} else if viteWatch != nil {
+		_, _ = fmt.Fprintln(c.Out, "→ vite build --watch")
+		defer func() { _ = viteWatch.Process.Kill() }()
+	}
 
 	warnPortInUse(c.Out, dir)
 
