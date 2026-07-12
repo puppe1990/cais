@@ -33,7 +33,7 @@ func TestScaffoldResource_handlersEmbedMetaSite(t *testing.T) {
 	for _, want := range []string{
 		"meta.Site",
 		"meta.ForRequest(h.site, r)",
-		"site     meta.Site",
+		"site    meta.Site",
 	} {
 		if !strings.Contains(pub, want) {
 			t.Errorf("public handler missing %q:\n%s", want, pub)

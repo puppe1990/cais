@@ -60,16 +60,16 @@ func TestScaffoldResource_adminFormUsesFormHelpers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	form, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages/admin_widget_form.html"))
+	form, err := os.ReadFile(filepath.Join(appDir, "web/src/pages/AdminWidgetForm.svelte"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	body := string(form)
-	if !strings.Contains(body, `{{ csrfField .CSRFToken }}`) {
-		t.Error("admin form should use csrfField helper")
+	if !strings.Contains(body, `useForm`) {
+		t.Error("admin form should use @inertiajs/svelte useForm")
 	}
-	if !strings.Contains(body, `{{ fieldInput (makeField`) {
-		t.Error("admin form should use fieldInput/makeField helpers")
+	if !strings.Contains(body, `errors.`) {
+		t.Error("admin form should render errors prop")
 	}
 
 	admin, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/admin_widgets.go"))
@@ -80,7 +80,7 @@ func TestScaffoldResource_adminFormUsesFormHelpers(t *testing.T) {
 	if !strings.Contains(adminBody, "validate.FieldErrors") {
 		t.Error("admin handler should use validate.FieldErrors")
 	}
-	if !strings.Contains(adminBody, "StatusUnprocessableEntity") {
-		t.Error("admin handler should return 422 on validation errors")
+	if !strings.Contains(adminBody, "inertia.SetValidationErrors") {
+		t.Error("admin handler should use inertia.SetValidationErrors on validation errors")
 	}
 }
