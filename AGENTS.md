@@ -13,43 +13,43 @@ Before writing production code:
 
 ## Structure
 
-| Directory                | Responsibility                                                                        |
-| ------------------------ | ------------------------------------------------------------------------------------- |
-| `pkg/cais/`              | Framework: config, router, render, htmx, middleware                                   |
-| `pkg/cais/httpx/`        | Render and redirect helpers for handlers                                              |
-| `pkg/cais/meta/`         | Open Graph / Twitter preview (`Site`, `PreviewHTML`)                                  |
-| `pkg/cais/session/`      | Cookie sessions (`SignIn`, `SignOut`, `Store`)                                        |
-| `pkg/cais/boot/`         | Rails-style startup banner                                                            |
-| `pkg/cais/devlog/`       | Development log buffer + `/logs` viewer                                               |
-| `pkg/cais/sqllog/`       | SQL query logging wrapper (`Wrap`, `EnabledForEnv`)                                   |
-| `pkg/cais/console/`      | Interactive REPL (yaegi + SQL)                                                        |
-| `pkg/cais/csrf/`         | CSRF tokens (double-submit cookie)                                                    |
-| `pkg/cais/validate/`     | Form field validation helpers                                                         |
-| `pkg/cais/forms/`        | Template helpers (`csrfField`, `fieldError`, `makeField`, `fieldInput`)               |
-| `pkg/cais/i18n/`         | Locale catalogs (`LOCALE` env, `t` template func)                                     |
-| `pkg/cais/testutil/`     | Test helpers (`NewRenderer`, `NewRequest`, `AssertHTMLContains`, `AssertChatMarkers`) |
-| `pkg/cais/pwa/`          | Default PWA assets generator (manifest, icons, og.png)                                |
-| `pkg/cais/cache/`        | In-memory TTL cache + stable `Key`/`Hash` for ETags                                   |
-| `pkg/cais/pagination/`   | Offset/limit helpers for list pages                                                   |
-| `pkg/cais/stream/`       | SSE relay (`RelaySSE`, `WriteEvent`, `Flush`)                                           |
-| `pkg/cais/chat/`         | Chat bubbles, tool UI, SSE writers (`WriteStream`, `WriteMessage`)                    |
-| `pkg/cais/middleware/`   | CSRF, sessions, auth, rate limits, security headers                                   |
-| `pkg/cais/passwordreset/`| Password-reset tokens + notifier interface                                            |
-| `pkg/cais/sqlite/`       | WAL, busy timeout, foreign keys (`Configure`)                                         |
-| `pkg/cais/netutil/`      | Health payload + LAN URLs for mobile testing                                          |
-| `pkg/cais/migrate/`      | `schema_migrations` runner (idempotent on boot)                                       |
-| `pkg/cais/flash/`        | One-shot flash cookies                                                                |
-| `pkg/cais/jobs/`         | SQLite background job queue                                                           |
-| `internal/cli/`          | Generators (`cais new`, `cais g`, `cais destroy`) — **Inertia + Svelte scaffolds**    |
-| `internal/app/`          | This repo's dogfood app bootstrap (`deps.Inertia`)                                    |
-| `internal/handlers/`     | HTTP handlers (gonertia + optional httpx fallback)                                    |
-| `internal/store/`        | SQLite persistence                                                                    |
-| `web/templates/app.html` | Inertia root shell (loads Vite bundle)                                                |
-| `web/src/pages/`         | Svelte 5 pages (`@inertiajs/svelte`)                                                  |
-| `web/static/build/`      | Vite production output (`npm run build`)                                              |
-| `web/static/`            | Tailwind CSS, PWA assets, legacy HTMX JS                                              |
-| `web/embed.go`           | `embed.FS` for templates in production                                                |
-| `cmd/server/`            | Entry point                                                                           |
+| Directory                 | Responsibility                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------------- |
+| `pkg/cais/`               | Framework: config, router, render, htmx, middleware                                   |
+| `pkg/cais/httpx/`         | Render and redirect helpers for handlers                                              |
+| `pkg/cais/meta/`          | Open Graph / Twitter preview (`Site`, `PreviewHTML`)                                  |
+| `pkg/cais/session/`       | Cookie sessions (`SignIn`, `SignOut`, `Store`)                                        |
+| `pkg/cais/boot/`          | Rails-style startup banner                                                            |
+| `pkg/cais/devlog/`        | Development log buffer + `/logs` viewer                                               |
+| `pkg/cais/sqllog/`        | SQL query logging wrapper (`Wrap`, `EnabledForEnv`)                                   |
+| `pkg/cais/console/`       | Interactive REPL (yaegi + SQL)                                                        |
+| `pkg/cais/csrf/`          | CSRF tokens (double-submit cookie)                                                    |
+| `pkg/cais/validate/`      | Form field validation helpers                                                         |
+| `pkg/cais/forms/`         | Template helpers (`csrfField`, `fieldError`, `makeField`, `fieldInput`)               |
+| `pkg/cais/i18n/`          | Locale catalogs (`LOCALE` env, `t` template func)                                     |
+| `pkg/cais/testutil/`      | Test helpers (`NewRenderer`, `NewRequest`, `AssertHTMLContains`, `AssertChatMarkers`) |
+| `pkg/cais/pwa/`           | Default PWA assets generator (manifest, icons, og.png)                                |
+| `pkg/cais/cache/`         | In-memory TTL cache + stable `Key`/`Hash` for ETags                                   |
+| `pkg/cais/pagination/`    | Offset/limit helpers for list pages                                                   |
+| `pkg/cais/stream/`        | SSE relay (`RelaySSE`, `WriteEvent`, `Flush`)                                         |
+| `pkg/cais/chat/`          | Chat bubbles, tool UI, SSE writers (`WriteStream`, `WriteMessage`)                    |
+| `pkg/cais/middleware/`    | CSRF, sessions, auth, rate limits, security headers                                   |
+| `pkg/cais/passwordreset/` | Password-reset tokens + notifier interface                                            |
+| `pkg/cais/sqlite/`        | WAL, busy timeout, foreign keys (`Configure`)                                         |
+| `pkg/cais/netutil/`       | Health payload + LAN URLs for mobile testing                                          |
+| `pkg/cais/migrate/`       | `schema_migrations` runner (idempotent on boot)                                       |
+| `pkg/cais/flash/`         | One-shot flash cookies                                                                |
+| `pkg/cais/jobs/`          | SQLite background job queue                                                           |
+| `internal/cli/`           | Generators (`cais new`, `cais g`, `cais destroy`) — **Inertia + Svelte scaffolds**    |
+| `internal/app/`           | This repo's dogfood app bootstrap (`deps.Inertia`)                                    |
+| `internal/handlers/`      | HTTP handlers (gonertia + optional httpx fallback)                                    |
+| `internal/store/`         | SQLite persistence                                                                    |
+| `web/templates/app.html`  | Inertia root shell (loads Vite bundle)                                                |
+| `web/src/pages/`          | Svelte 5 pages (`@inertiajs/svelte`)                                                  |
+| `web/static/build/`       | Vite production output (`npm run build`)                                              |
+| `web/static/`             | Tailwind CSS, PWA assets, legacy HTMX JS                                              |
+| `web/embed.go`            | `embed.FS` for templates in production                                                |
+| `cmd/server/`             | Entry point                                                                           |
 
 ### Generated apps (`cais new`)
 
@@ -488,32 +488,32 @@ Console bindings: `store`, `cfg`, `db`, plus any custom keys in `Bindings`. Comm
 
 The `cais` CLI lives in `internal/cli/`. Scaffold templates are split by responsibility so agents can grep a single file instead of loading a 2400-line monolith.
 
-| Path                                      | Responsibility                                                 |
-| ----------------------------------------- | -------------------------------------------------------------- |
-| `internal/cli/cli.go`                     | Command routing (`new`, `g`, `destroy`, `db`, …)               |
-| `internal/cli/scaffold.go`                | `cais new` orchestration and `writeTemplate`                   |
-| `internal/cli/resource.go`                | `cais g resource` orchestration (writes files, calls patches)  |
-| `internal/cli/resource_patch.go`          | Patches store, routes, layout nav, seeds, main for resources   |
-| `internal/cli/resource_gen_*.go`          | Resource code generation (store, admin, public, HTML, fields)  |
-| `internal/cli/tpl_scaffold_*.go`          | Embedded `const tpl*` for `cais new` scaffolding               |
-| `internal/cli/tpl_scaffold_main.go`       | `cmd/server/main.go` (full + blank)                            |
-| `internal/cli/tpl_scaffold_app_core.go`   | `internal/app/app.go` (full + blank)                           |
-| `internal/cli/tpl_scaffold_routes.go`     | `internal/app/routes.go` (full, minimal, blank)                |
-| `internal/cli/tpl_scaffold_console.go`    | `cmd/console/main.go`                                          |
-| `internal/cli/tpl_scaffold_auth.go`       | Auth Go templates (handler, store, model, migration, tests)    |
-| `internal/cli/tpl_scaffold_auth_pages.go` | Auth HTML page templates (`login`, `signup`, reset)            |
-| `internal/cli/tpl_scaffold_inertia.go`    | Vite, Svelte, `app.html`, `web/src/main.js`                      |
-| `internal/cli/tpl_scaffold_handlers_inertia.go` | Inertia handler scaffolds (home, contact, auth, dashboard) |
-| `internal/cli/tpl_scaffold_web.go`        | Legacy HTMX layout fragments (resource/chat generators)        |
-| `internal/cli/tpl_stream_chat.go`         | `cais g stream chat` templates and handlers                    |
-| `internal/cli/stream.go`                  | `cais g stream chat` orchestration                             |
-| `internal/cli/scaffold_auth.go`           | `cais g auth` orchestration and store/app/route patches        |
-| `internal/cli/patch.go`                   | AST-safe patches into generated apps (`routes.go`, `store.go`) |
-| `internal/cli/patch/`                     | `go/ast` helpers — regex patches break nested `cais.IntParam`  |
-| `internal/cli/doctor.go`                  | `cais doctor` checks (Inertia, Vite, HTMX, PWA, mobile)        |
-| `internal/cli/pwa_cmd.go`                 | `cais pwa` asset writer                                        |
-| `internal/cli/commands.go`                | `cais install`, `cais css`, `cais dev`                         |
-| `internal/cli/destroy.go`                 | `cais destroy` — reverses generators                           |
+| Path                                            | Responsibility                                                 |
+| ----------------------------------------------- | -------------------------------------------------------------- |
+| `internal/cli/cli.go`                           | Command routing (`new`, `g`, `destroy`, `db`, …)               |
+| `internal/cli/scaffold.go`                      | `cais new` orchestration and `writeTemplate`                   |
+| `internal/cli/resource.go`                      | `cais g resource` orchestration (writes files, calls patches)  |
+| `internal/cli/resource_patch.go`                | Patches store, routes, layout nav, seeds, main for resources   |
+| `internal/cli/resource_gen_*.go`                | Resource code generation (store, admin, public, HTML, fields)  |
+| `internal/cli/tpl_scaffold_*.go`                | Embedded `const tpl*` for `cais new` scaffolding               |
+| `internal/cli/tpl_scaffold_main.go`             | `cmd/server/main.go` (full + blank)                            |
+| `internal/cli/tpl_scaffold_app_core.go`         | `internal/app/app.go` (full + blank)                           |
+| `internal/cli/tpl_scaffold_routes.go`           | `internal/app/routes.go` (full, minimal, blank)                |
+| `internal/cli/tpl_scaffold_console.go`          | `cmd/console/main.go`                                          |
+| `internal/cli/tpl_scaffold_auth.go`             | Auth Go templates (handler, store, model, migration, tests)    |
+| `internal/cli/tpl_scaffold_auth_pages.go`       | Auth HTML page templates (`login`, `signup`, reset)            |
+| `internal/cli/tpl_scaffold_inertia.go`          | Vite, Svelte, `app.html`, `web/src/main.js`                    |
+| `internal/cli/tpl_scaffold_handlers_inertia.go` | Inertia handler scaffolds (home, contact, auth, dashboard)     |
+| `internal/cli/tpl_scaffold_web.go`              | Legacy HTMX layout fragments (resource/chat generators)        |
+| `internal/cli/tpl_stream_chat.go`               | `cais g stream chat` templates and handlers                    |
+| `internal/cli/stream.go`                        | `cais g stream chat` orchestration                             |
+| `internal/cli/scaffold_auth.go`                 | `cais g auth` orchestration and store/app/route patches        |
+| `internal/cli/patch.go`                         | AST-safe patches into generated apps (`routes.go`, `store.go`) |
+| `internal/cli/patch/`                           | `go/ast` helpers — regex patches break nested `cais.IntParam`  |
+| `internal/cli/doctor.go`                        | `cais doctor` checks (Inertia, Vite, HTMX, PWA, mobile)        |
+| `internal/cli/pwa_cmd.go`                       | `cais pwa` asset writer                                        |
+| `internal/cli/commands.go`                      | `cais install`, `cais css`, `cais dev`                         |
+| `internal/cli/destroy.go`                       | `cais destroy` — reverses generators                           |
 
 **Generator tests** (split by domain — run focused suites while editing generators):
 
