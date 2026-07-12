@@ -53,6 +53,7 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		"web/embed.go":                               tplWebEmbed,
 		"web/templates/app.html":                     tplAppHTML,
 		"web/src/main.js":                            tplMainJS,
+		"web/src/components/AppLayout.svelte":        tplAppLayout,
 		"web/src/pages/Home.svelte":                  tplSvelteHome,
 		"web/src/pages/Contact.svelte":               tplSvelteContact,
 		"web/src/pages/Dashboard.svelte":             tplSvelteDashboard,
@@ -101,6 +102,7 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 			"internal/handlers/home_test.go":     tplHomeTest,
 			"web/templates/app.html":             tplAppHTML,
 			"web/src/main.js":                    tplMainJS,
+			"web/src/components/AppLayout.svelte": tplAppLayout,
 			"web/src/pages/Home.svelte":          tplSvelteHome,
 			"web/static/build/.gitkeep":          tplBuildGitkeep,
 			"web/static/css/styles.css":          tplEmptyCSS,
@@ -131,6 +133,8 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		delete(files, "internal/handlers/dashboard_test.go")
 		delete(files, "internal/handlers/auth.go")
 		delete(files, "internal/handlers/auth_test.go")
+		delete(files, "internal/handlers/auth_signup_test.go")
+		delete(files, "internal/handlers/auth_reset_test.go")
 		delete(files, "internal/models/contact.go")
 		delete(files, "internal/models/user.go")
 		delete(files, "internal/store/migrations/001_contacts.sql")
