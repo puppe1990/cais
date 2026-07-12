@@ -172,15 +172,24 @@ func patchRoutesForResource(dir string, data scaffoldData, dryRun bool, force bo
 
 	adminVar := "admin" + data.PluralPascal
 	var insert strings.Builder
+	inertiaApp := appUsesInertia(dir)
 	if data.Public {
 		pubVar := lowerFirst(data.PluralPascal)
-		fmt.Fprintf(&insert, "\t%s := handlers.New%sHandler(deps.Renderer, deps.Store, deps.Site, cfg)\n", pubVar, data.PluralPascal)
-		fmt.Fprintf(&insert, "\tr.Get(\"/%s\", %s.List)\n", data.Plural, pubVar)
-		if firstBoolField(data.Fields) != nil {
-			fmt.Fprintf(&insert, "\tr.Post(\"/%s/{id}/toggle\", cais.IntParam(\"id\", %s.Toggle))\n", data.Plural, pubVar)
+		if inertiaApp {
+			fmt.Fprintf(&insert, "\t%s := handlers.New%sHandler(deps.Store, deps.Site, deps.Inertia)\n", pubVar, data.PluralPascal)
+		} else {
+			fmt.Fprintf(&insert, "\t%s := handlers.New%sHandler(deps.Renderer, deps.Store, deps.Site, cfg)\n", pubVar, data.PluralPascal)
+			if firstBoolField(data.Fields) != nil {
+				fmt.Fprintf(&insert, "\tr.Post(\"/%s/{id}/toggle\", cais.IntParam(\"id\", %s.Toggle))\n", data.Plural, pubVar)
+			}
 		}
+		fmt.Fprintf(&insert, "\tr.Get(\"/%s\", %s.List)\n", data.Plural, pubVar)
 	}
-	fmt.Fprintf(&insert, "\t%s := handlers.NewAdmin%sHandler(deps.Renderer, deps.Store, deps.Site, cfg)\n", adminVar, data.PluralPascal)
+	if inertiaApp {
+		fmt.Fprintf(&insert, "\t%s := handlers.NewAdmin%sHandler(deps.Store, deps.Site, deps.Inertia)\n", adminVar, data.PluralPascal)
+	} else {
+		fmt.Fprintf(&insert, "\t%s := handlers.NewAdmin%sHandler(deps.Renderer, deps.Store, deps.Site, cfg)\n", adminVar, data.PluralPascal)
+	}
 	if data.AdminAuth == "bearer" {
 		fmt.Fprintf(&insert, "\tr.Group(middleware.AdminAuth(cfg), func(g *cais.Router) {\n")
 	} else {
@@ -209,13 +218,30 @@ func patchRoutesForResource(dir string, data scaffoldData, dryRun bool, force bo
 // upgradeResourceRouteHandlers rewrites legacy handler constructors when --force
 // regenerates handlers but routes.go already exists (pre meta.Site wiring).
 func upgradeResourceRouteHandlers(content string, data scaffoldData) string {
-	oldAdmin := fmt.Sprintf("handlers.NewAdmin%sHandler(deps.Renderer, deps.Store, cfg)", data.PluralPascal)
-	newAdmin := fmt.Sprintf("handlers.NewAdmin%sHandler(deps.Renderer, deps.Store, deps.Site, cfg)", data.PluralPascal)
-	content = strings.ReplaceAll(content, oldAdmin, newAdmin)
+	replacements := [][2]string{
+		{
+			fmt.Sprintf("handlers.NewAdmin%sHandler(deps.Renderer, deps.Store, cfg)", data.PluralPascal),
+			fmt.Sprintf("handlers.NewAdmin%sHandler(deps.Renderer, deps.Store, deps.Site, cfg)", data.PluralPascal),
+		},
+		{
+			fmt.Sprintf("handlers.NewAdmin%sHandler(deps.Renderer, deps.Store, deps.Site, cfg)", data.PluralPascal),
+			fmt.Sprintf("handlers.NewAdmin%sHandler(deps.Store, deps.Site, deps.Inertia)", data.PluralPascal),
+		},
+	}
 	if data.Public {
-		oldPub := fmt.Sprintf("handlers.New%sHandler(deps.Renderer, deps.Store, cfg)", data.PluralPascal)
-		newPub := fmt.Sprintf("handlers.New%sHandler(deps.Renderer, deps.Store, deps.Site, cfg)", data.PluralPascal)
-		content = strings.ReplaceAll(content, oldPub, newPub)
+		replacements = append(replacements,
+			[2]string{
+				fmt.Sprintf("handlers.New%sHandler(deps.Renderer, deps.Store, cfg)", data.PluralPascal),
+				fmt.Sprintf("handlers.New%sHandler(deps.Renderer, deps.Store, deps.Site, cfg)", data.PluralPascal),
+			},
+			[2]string{
+				fmt.Sprintf("handlers.New%sHandler(deps.Renderer, deps.Store, deps.Site, cfg)", data.PluralPascal),
+				fmt.Sprintf("handlers.New%sHandler(deps.Store, deps.Site, deps.Inertia)", data.PluralPascal),
+			},
+		)
+	}
+	for _, pair := range replacements {
+		content = strings.ReplaceAll(content, pair[0], pair[1])
 	}
 	return content
 }
@@ -225,6 +251,10 @@ func upgradeResourceRouteHandlers(content string, data scaffoldData) string {
 const layoutNavMarker = "<!-- cais:nav -->"
 
 func layoutNavFile(dir string) (path string, inertia bool) {
+	layout := filepath.Join(dir, "web/src/components/AppLayout.svelte")
+	if _, err := os.Stat(layout); err == nil {
+		return layout, true
+	}
 	home := filepath.Join(dir, "web/src/pages/Home.svelte")
 	if _, err := os.Stat(home); err == nil {
 		return home, true
@@ -234,7 +264,7 @@ func layoutNavFile(dir string) (path string, inertia bool) {
 
 func publicNavLink(data scaffoldData, inertia bool) string {
 	if inertia {
-		return fmt.Sprintf(`    <a href="/%s" use:inertia class="underline">%s</a>
+		return fmt.Sprintf(`        <a href="/%s" use:inertia class="hover:text-stone-600">%s</a>
 `, data.Plural, toTitle(data.Plural))
 	}
 	return fmt.Sprintf(`          <a href="/%s" class="text-slate-600 hover:text-indigo-600 transition">%s</a>

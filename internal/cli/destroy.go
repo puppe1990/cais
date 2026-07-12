@@ -18,10 +18,17 @@ func destroyResource(dir, name string, dryRun bool) error {
 		filepath.Join("web/templates/pages", "admin_"+data.Plural+".html"),
 		filepath.Join("web/templates/pages", "admin_"+data.Snake+"_show.html"),
 		filepath.Join("web/templates/pages", "admin_"+data.Snake+"_form.html"),
+		filepath.Join("web/templates/partials", "admin_"+data.Snake+"_form_errors.html"),
+		filepath.Join("web/templates/partials", "admin_"+data.Plural+"_index.html"),
+		filepath.Join("web/src/pages", "Admin"+data.PluralPascal+".svelte"),
+		filepath.Join("web/src/pages", "Admin"+data.Pascal+"Form.svelte"),
+		filepath.Join("web/src/pages", "Admin"+data.Pascal+"Show.svelte"),
 		filepath.Join("internal/handlers", data.Plural+".go"),
 		filepath.Join("internal/handlers", data.Plural+"_test.go"),
 		filepath.Join("web/templates/pages", data.Plural+".html"),
 		filepath.Join("web/templates/partials", data.Plural+"_toggle.html"),
+		filepath.Join("web/templates/partials", data.Plural+"_list.html"),
+		filepath.Join("web/src/pages", data.PluralPascal+".svelte"),
 	}
 
 	migrationsDir := filepath.Join(dir, "internal/store/migrations")
