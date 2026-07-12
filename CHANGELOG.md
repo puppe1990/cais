@@ -6,8 +6,34 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ## Unreleased
 
+## [0.8.0] - 2026-07-12
+
 ### Added
 
+- `internal/cli/frontend.go` — detect Vite apps; `cais build` runs `npm run build` when present
+- `cais dev` and `make dev` — initial Vite build plus `vite build --watch` for Svelte pages
+- `cais g resource` on Inertia scaffolds — Svelte admin CRUD (`Admin*.svelte`), Inertia handlers, and public list pages instead of HTMX templates
+- `web/src/components/AppLayout.svelte` — shared nav, flash, and slot for Inertia pages
+- `cais new` scaffolds `AppLayout` with `<!-- cais:nav -->` marker for public resource link patching
+- Home handler passes translated `labels` props to the Svelte home page (i18n keys + formatted subtitle)
+- Pre-commit hook runs `npm run test:fe` on `*.{js,mjs,svelte}` changes
+
+### Changed
+
+- `AGENTS.md` — Inertia + Svelte conventions, Vite build path, expanded CLI generator layout table
+- `home.stack` locale — `Go · Inertia · Svelte · SQLite` (was HTMX/Tailwind)
+- Public nav patching prefers `AppLayout.svelte` over `Home.svelte` on Inertia apps
+- Dogfood app removes legacy HTMX page templates (`web/templates/pages/*.html`)
+
+## [0.7.0] - 2026-07-05
+
+### Added
+
+- **Inertia + Svelte default frontend** — `cais new` scaffolds gonertia, Vite, and Svelte 5 pages (`Home`, `Contact`, `Login`, `Dashboard`, auth flows)
+- `cais g handler` / `cais g page` — generate Svelte pages in `web/src/pages/`
+- Inertia integration tests (`X-Inertia: true`, validation 422, redirect 303) in `internal/app/app_test.go`
+- Vitest + Testing Library for Svelte pages (`npm run test:fe`)
+- CI builds Vite assets before `go test`
 - `pkg/cais/cache`: `Key(parts ...any)` and `Hash(v any)` — stable key building and short content hashing. Helps avoid embedding full lists (e.g. 80 sessions) in cache keys for list pages.
 - `pkg/cais/httpx`: `NotModified(w, r, etag)` and `SetETag(w, etag)` — simple ETag / 304 conditional response support for cacheable pages and lists.
 
