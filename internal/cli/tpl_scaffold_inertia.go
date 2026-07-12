@@ -32,26 +32,57 @@ createInertiaApp({
 })
 `
 
-const tplSvelteHome = `<script>
+const tplAppLayout = `<script>
   import { inertia } from '@inertiajs/svelte'
-  export let title = 'Home'
   export let site = {}
+  export let flash = {}
+  export let labels = {}
 </script>
 
-<div class="flex min-h-screen flex-col items-center justify-center px-6 py-14 text-center">
-  <h1 class="mt-10 font-serif text-4xl font-semibold tracking-tight text-stone-800 md:text-5xl">
-    You're on {{.AppName}} (Svelte + Inertia)!
-  </h1>
-  <p data-testid="inertia-ready">Svelte + Inertia ready</p>
-  <p class="mt-3 max-w-md text-lg text-stone-600">Cais is ready to sail with Svelte.</p>
-  <nav class="mt-6 space-x-4 text-sm">
-    <!-- cais:nav -->
-    <a href="/contact" use:inertia class="underline">Contact</a>
-    <a href="/login" use:inertia class="underline">Login</a>
-    <a href="/dashboard" use:inertia class="underline">Dashboard</a>
-  </nav>
-  <p class="mt-6 text-xs text-stone-500">Inertia component: {title}</p>
+<div class="min-h-screen flex flex-col bg-stone-50 text-stone-900">
+  <header class="border-b border-stone-200 bg-white/80 backdrop-blur">
+    <nav class="mx-auto flex max-w-4xl items-center justify-between px-4 py-3 text-sm">
+      <a href="/" use:inertia class="font-semibold text-stone-800">{site.appName || '{{.AppName}}'}</a>
+      <div class="flex gap-4">
+        <!-- cais:nav -->
+        <a href="/contact" use:inertia class="hover:text-stone-600">{labels.contact || 'Contact'}</a>
+        <a href="/login" use:inertia class="hover:text-stone-600">{labels.login || 'Login'}</a>
+        <a href="/dashboard" use:inertia class="hover:text-stone-600">{labels.dashboard || 'Dashboard'}</a>
+      </div>
+    </nav>
+  </header>
+
+  {#if flash.notice}
+    <p class="mx-auto mt-4 max-w-4xl rounded-lg bg-green-50 px-4 py-2 text-sm text-green-800" data-testid="flash-notice">{flash.notice}</p>
+  {/if}
+  {#if flash.success}
+    <p class="mx-auto mt-4 max-w-4xl rounded-lg bg-green-50 px-4 py-2 text-sm text-green-800" data-testid="flash-success">{flash.success}</p>
+  {/if}
+
+  <main class="flex-1">
+    <slot />
+  </main>
 </div>
+`
+
+const tplSvelteHome = `<script>
+  import AppLayout from '../components/AppLayout.svelte'
+  export let title = 'Home'
+  export let site = {}
+  export let flash = {}
+  export let labels = {}
+</script>
+
+<AppLayout {site} {flash} {labels}>
+  <div class="flex flex-col items-center justify-center px-6 py-14 text-center">
+    <h1 class="mt-10 font-serif text-4xl font-semibold tracking-tight text-stone-800 md:text-5xl">
+      {labels.heading || "You're on {{.AppName}}!"}
+    </h1>
+    <p data-testid="inertia-ready" class="mt-3 text-lg text-stone-600">{labels.subtitle || '{{.AppName}} is ready to sail.'}</p>
+    <p class="mt-2 text-sm text-stone-500">{labels.stack || 'Go · Inertia · Svelte · SQLite'}</p>
+    <p class="mt-6 text-xs text-stone-500">Inertia component: {title}</p>
+  </div>
+</AppLayout>
 `
 
 const tplSvelteContact = `<script>
