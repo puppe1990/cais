@@ -25,9 +25,9 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 		"internal/models/product.go",
 		"internal/handlers/admin_products.go",
 		"internal/handlers/admin_products_test.go",
-		"web/templates/pages/admin_products.html",
-		"web/templates/pages/admin_product_show.html",
-		"web/templates/pages/admin_product_form.html",
+		"web/src/pages/AdminProducts.svelte",
+		"web/src/pages/AdminProductForm.svelte",
+		"web/src/pages/AdminProductShow.svelte",
 	} {
 		if _, err := os.Stat(filepath.Join(appDir, path)); err != nil {
 			t.Errorf("missing %s: %v", path, err)
@@ -60,12 +60,12 @@ func TestScaffoldResource_CreatesCRUD(t *testing.T) {
 	}
 }
 
-func TestScaffoldResource_adminHTMXDefaults(t *testing.T) {
+func TestScaffoldResource_adminInertiaDefaults(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
-	appDir := filepath.Join(t.TempDir(), "htmxshop")
+	appDir := filepath.Join(t.TempDir(), "inertiashop2")
 	if err := scaffoldNewApp(appDir, scaffoldData{
-		AppName:    "htmxshop",
-		ModulePath: "github.com/puppe1990/htmxshop",
+		AppName:    "inertiashop2",
+		ModulePath: "github.com/puppe1990/inertiashop2",
 	}, true, false); err != nil {
 		t.Fatal(err)
 	}
@@ -73,29 +73,24 @@ func TestScaffoldResource_adminHTMXDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	indexHTML, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages/admin_widgets.html"))
+	indexSvelte, err := os.ReadFile(filepath.Join(appDir, "web/src/pages/AdminWidgets.svelte"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	indexBody := string(indexHTML)
-	for _, want := range []string{`hx-post="/admin/widgets/`, `hx-swap="delete"`, `data-cais-optimistic="remove"`} {
+	indexBody := string(indexSvelte)
+	for _, want := range []string{`use:inertia`, `/admin/widgets/new`, `deleteItem`} {
 		if !strings.Contains(indexBody, want) {
 			t.Errorf("admin index missing %q", want)
 		}
 	}
 
-	formHTML, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages/admin_widget_form.html"))
+	formSvelte, err := os.ReadFile(filepath.Join(appDir, "web/src/pages/AdminWidgetForm.svelte"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	formBody := string(formHTML)
-	if !strings.Contains(formBody, `hxForm`) || !strings.Contains(formBody, `admin-widget-errors`) {
-		t.Error("admin form should use hxForm and errors target")
-	}
-
-	partialPath := filepath.Join(appDir, "web/templates/partials/admin_widget_form_errors.html")
-	if _, err := os.Stat(partialPath); err != nil {
-		t.Errorf("missing form errors partial: %v", err)
+	formBody := string(formSvelte)
+	if !strings.Contains(formBody, `useForm`) || !strings.Contains(formBody, `errors.`) {
+		t.Error("admin form should use useForm and errors prop")
 	}
 
 	adminGo, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/admin_widgets.go"))
@@ -103,11 +98,11 @@ func TestScaffoldResource_adminHTMXDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	adminBody := string(adminGo)
-	if !strings.Contains(adminBody, "RenderPageOrPartial") {
-		t.Error("admin handler should use RenderPageOrPartial on validation errors")
+	if !strings.Contains(adminBody, "inertia.SetValidationErrors") {
+		t.Error("admin handler should use inertia.SetValidationErrors on validation errors")
 	}
-	if !strings.Contains(adminBody, "IsHTMX") {
-		t.Error("admin Delete should handle HTMX with empty response")
+	if strings.Contains(adminBody, "IsHTMX") {
+		t.Error("inertia admin should not reference IsHTMX")
 	}
 }
 
@@ -216,15 +211,12 @@ func TestScaffoldResource_PluralPascal_ListAllMethod(t *testing.T) {
 		t.Errorf("admin handler wrong ListAll method: %s", admin)
 	}
 
-	publicHTML, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages/recipes.html"))
+	publicSvelte, err := os.ReadFile(filepath.Join(appDir, "web/src/pages/Recipes.svelte"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(publicHTML), `{{"{{"}}`) {
-		t.Error("recipes.html has escaped template syntax")
-	}
-	if !strings.Contains(string(publicHTML), `{{ range .Items }}`) {
-		t.Error("recipes.html missing valid template range")
+	if !strings.Contains(string(publicSvelte), `{#each items`) {
+		t.Error("Recipes.svelte missing items loop")
 	}
 }
 

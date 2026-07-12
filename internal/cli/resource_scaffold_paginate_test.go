@@ -58,45 +58,25 @@ func TestScaffoldResource_Paginate(t *testing.T) {
 	if !strings.Contains(adminBody, "perPage := 25") {
 		t.Error("admin handler should default perPage to 25")
 	}
-	for _, needle := range []string{"Page", "Total", "PerPage", "HasPrev", "HasNext"} {
+	for _, needle := range []string{`"page"`, `"total"`, `"perPage"`, `"hasPrev"`, `"hasNext"`} {
 		if !strings.Contains(adminBody, needle) {
-			t.Errorf("admin index data missing field %s", needle)
+			t.Errorf("admin index props missing %s", needle)
 		}
 	}
-	for _, needle := range []string{"RenderPageOrPartial", "admin_articles_index"} {
+	for _, needle := range []string{`inertia.Render(w, r, "AdminArticles"`, `"hasPrev"`, `"nextPage"`} {
 		if !strings.Contains(adminBody, needle) {
 			t.Errorf("paginated admin handler missing %q", needle)
 		}
 	}
 
-	html, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages/admin_articles.html"))
+	svelte, err := os.ReadFile(filepath.Join(appDir, "web/src/pages/AdminArticles.svelte"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	htmlBody := string(html)
-	for _, needle := range []string{`id="admin-articles"`, `admin_articles_index`} {
-		if !strings.Contains(htmlBody, needle) {
-			t.Errorf("admin page missing %q", needle)
-		}
-	}
-
-	partial, err := os.ReadFile(filepath.Join(appDir, "web/templates/partials/admin_articles_index.html"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	partialBody := string(partial)
-	if !strings.Contains(partialBody, `<table class="w-full`) {
-		t.Error("admin index partial should include table markup")
-	}
-	for _, needle := range []string{
-		`{{ if .HasPrev }}`,
-		`{{ if .HasNext }}`,
-		`hxPaginate`,
-		`?page={{ .PrevPage }}`,
-		`?page={{ .NextPage }}`,
-	} {
-		if !strings.Contains(partialBody, needle) {
-			t.Errorf("admin index partial missing pagination control %q", needle)
+	svelteBody := string(svelte)
+	for _, needle := range []string{`<table`, `hasPrev`, `nextPage`, `use:inertia`} {
+		if !strings.Contains(svelteBody, needle) {
+			t.Errorf("admin svelte page missing %q", needle)
 		}
 	}
 }
@@ -126,33 +106,25 @@ func TestScaffoldResource_PublicPaginate(t *testing.T) {
 	if strings.Contains(handlerBody, "ListAllPosts()") {
 		t.Error("paginated public handler should not call ListAllPosts")
 	}
-	for _, needle := range []string{"ListPosts(page, perPage)", "RenderPageOrPartial", "posts_list"} {
+	for _, needle := range []string{"ListPosts(page, perPage)", `inertia.Render(w, r, "Posts"`} {
 		if !strings.Contains(handlerBody, needle) {
 			t.Errorf("public handler missing %q", needle)
 		}
 	}
 
-	html, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages/posts.html"))
+	svelte, err := os.ReadFile(filepath.Join(appDir, "web/src/pages/Posts.svelte"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	htmlBody := string(html)
-	for _, needle := range []string{`id="posts-panel"`, `posts_list`} {
-		if !strings.Contains(htmlBody, needle) {
-			t.Errorf("public page missing %q", needle)
+	svelteBody := string(svelte)
+	for _, needle := range []string{`{#each items`, `hasPrev`, `use:inertia`} {
+		if !strings.Contains(svelteBody, needle) {
+			t.Errorf("public svelte page missing %q", needle)
 		}
 	}
 
-	partial, err := os.ReadFile(filepath.Join(appDir, "web/templates/partials/posts_list.html"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	partialBody := string(partial)
-	if !strings.Contains(partialBody, `id="posts-list"`) {
-		t.Error("public list partial should include list markup")
-	}
-	if !strings.Contains(partialBody, "hxPaginate") {
-		t.Error("public list partial should use hxPaginate for pagination links")
+	if !strings.Contains(svelteBody, "nextPage") {
+		t.Error("public svelte page should include nextPage pagination")
 	}
 }
 

@@ -13,36 +13,49 @@ Before writing production code:
 
 ## Structure
 
-| Directory                | Responsibility                                                                        |
-| ------------------------ | ------------------------------------------------------------------------------------- |
-| `pkg/cais/`              | Framework: config, router, render, htmx, middleware                                   |
-| `pkg/cais/httpx/`        | Render and redirect helpers for handlers                                              |
-| `pkg/cais/meta/`         | Open Graph / Twitter preview (`Site`, `PreviewHTML`)                                  |
-| `pkg/cais/session/`      | Cookie sessions (`SignIn`, `SignOut`, `Store`)                                        |
-| `pkg/cais/boot/`         | Rails-style startup banner                                                            |
-| `pkg/cais/devlog/`       | Development log buffer + `/logs` viewer                                               |
-| `pkg/cais/sqllog/`       | SQL query logging wrapper (`Wrap`, `EnabledForEnv`)                                   |
-| `pkg/cais/console/`      | Interactive REPL (yaegi + SQL)                                                        |
-| `pkg/cais/csrf/`         | CSRF tokens (double-submit cookie)                                                    |
-| `pkg/cais/validate/`     | Form field validation helpers                                                         |
-| `pkg/cais/forms/`        | Template helpers (`csrfField`, `fieldError`, `makeField`, `fieldInput`)               |
-| `pkg/cais/i18n/`         | Locale catalogs (`LOCALE` env, `t` template func)                                     |
-| `pkg/cais/testutil/`     | Test helpers (`NewRenderer`, `NewRequest`, `AssertHTMLContains`, `AssertChatMarkers`) |
-| `pkg/cais/pwa/`          | Default PWA assets generator (manifest, icons, og.png)                                |
-| `pkg/cais/cache/`        | In-memory TTL cache (stdlib)                                                          |
-| `pkg/cais/pagination/`   | Offset/limit helpers for list pages                                                   |
-| `internal/cli/`          | Generators (`cais new`, `cais g`, `cais destroy`) — **Inertia + Svelte scaffolds**    |
-| `internal/app/`          | This repo's dogfood app bootstrap (`deps.Inertia`)                                    |
-| `internal/handlers/`     | HTTP handlers (gonertia + optional httpx fallback)                                    |
-| `internal/store/`        | SQLite persistence                                                                    |
-| `web/templates/app.html` | Inertia root shell                                                                    |
-| `web/src/pages/`         | Svelte pages                                                                          |
-| `web/static/`            | Tailwind CSS, Vite build, PWA                                                         |
-| `cmd/server/`            | Entry point                                                                           |
+| Directory                 | Responsibility                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------------- |
+| `pkg/cais/`               | Framework: config, router, render, htmx, middleware                                   |
+| `pkg/cais/httpx/`         | Render and redirect helpers for handlers                                              |
+| `pkg/cais/meta/`          | Open Graph / Twitter preview (`Site`, `PreviewHTML`)                                  |
+| `pkg/cais/session/`       | Cookie sessions (`SignIn`, `SignOut`, `Store`)                                        |
+| `pkg/cais/boot/`          | Rails-style startup banner                                                            |
+| `pkg/cais/devlog/`        | Development log buffer + `/logs` viewer                                               |
+| `pkg/cais/sqllog/`        | SQL query logging wrapper (`Wrap`, `EnabledForEnv`)                                   |
+| `pkg/cais/console/`       | Interactive REPL (yaegi + SQL)                                                        |
+| `pkg/cais/csrf/`          | CSRF tokens (double-submit cookie)                                                    |
+| `pkg/cais/validate/`      | Form field validation helpers                                                         |
+| `pkg/cais/forms/`         | Template helpers (`csrfField`, `fieldError`, `makeField`, `fieldInput`)               |
+| `pkg/cais/i18n/`          | Locale catalogs (`LOCALE` env, `t` template func)                                     |
+| `pkg/cais/testutil/`      | Test helpers (`NewRenderer`, `NewRequest`, `AssertHTMLContains`, `AssertChatMarkers`) |
+| `pkg/cais/pwa/`           | Default PWA assets generator (manifest, icons, og.png)                                |
+| `pkg/cais/cache/`         | In-memory TTL cache + stable `Key`/`Hash` for ETags                                   |
+| `pkg/cais/pagination/`    | Offset/limit helpers for list pages                                                   |
+| `pkg/cais/stream/`        | SSE relay (`RelaySSE`, `WriteEvent`, `Flush`)                                         |
+| `pkg/cais/chat/`          | Chat bubbles, tool UI, SSE writers (`WriteStream`, `WriteMessage`)                    |
+| `pkg/cais/middleware/`    | CSRF, sessions, auth, rate limits, security headers                                   |
+| `pkg/cais/passwordreset/` | Password-reset tokens + notifier interface                                            |
+| `pkg/cais/sqlite/`        | WAL, busy timeout, foreign keys (`Configure`)                                         |
+| `pkg/cais/netutil/`       | Health payload + LAN URLs for mobile testing                                          |
+| `pkg/cais/migrate/`       | `schema_migrations` runner (idempotent on boot)                                       |
+| `pkg/cais/flash/`         | One-shot flash cookies                                                                |
+| `pkg/cais/jobs/`          | SQLite background job queue                                                           |
+| `internal/cli/`           | Generators (`cais new`, `cais g`, `cais destroy`) — **Inertia + Svelte scaffolds**    |
+| `internal/app/`           | This repo's dogfood app bootstrap (`deps.Inertia`)                                    |
+| `internal/handlers/`      | HTTP handlers (gonertia + optional httpx fallback)                                    |
+| `internal/store/`         | SQLite persistence                                                                    |
+| `web/templates/app.html`  | Inertia root shell (loads Vite bundle)                                                |
+| `web/src/pages/`          | Svelte 5 pages (`@inertiajs/svelte`)                                                  |
+| `web/static/build/`       | Vite production output (`npm run build`)                                              |
+| `web/static/`             | Tailwind CSS, PWA assets, legacy HTMX JS                                              |
+| `web/embed.go`            | `embed.FS` for templates in production                                                |
+| `cmd/server/`             | Entry point                                                                           |
 
 ### Generated apps (`cais new`)
 
-Same layout as this repo's demo: `app.html` + `web/src/pages/*.svelte` + gonertia. No HTMX assets in the default scaffold.
+Same layout as this repo's demo: `app.html` + `web/src/pages/*.svelte` + gonertia + Vite → `web/static/build/`. Default scaffold uses `pwa.InstallForInertia` (no HTMX JS bundles).
+
+`cais g handler` / `cais g page` generate **Svelte** pages in `web/src/pages/`.
 
 `cais g resource` / `cais g stream chat` still generate **HTMX/html** admin and chat templates until ported to Svelte.
 
@@ -76,7 +89,7 @@ Set `ADMIN_TOKEN` in production (`cfg.Validate()` fails on boot if missing). `Ad
 r.Use(middleware.LoadSession(deps.Store.Sessions()))
 r.Use(middleware.Flash)
 r.Get("/dashboard", middleware.RequireAuthFunc("/login", dashboard.ServeHTTP))
-auth := handlers.NewAuthHandler(renderer, store, site, store.Sessions(), cfg)
+auth := handlers.NewAuthHandler(renderer, store, site, store.Sessions(), cfg, catalog, inertia)
 session.SignIn(w, sessions, r, userID, session.CookieOptionsFromConfig(cfg))
 flash.Set(w, "notice", "Bem-vindo!", cfg.CookieSecure())
 ```
@@ -87,24 +100,68 @@ Dev seed user: `demo@example.com` / `password`. Sessions persist in SQLite via `
 
 **Production cookies** — `session.CookieOptionsFromConfig(cfg)` sets `Secure` when `cfg.CookieSecure()` is true (`ENV=production`).
 
+## Inertia + Svelte (default frontend)
+
+Handlers accept `*inertia.Inertia` and branch on `h.inertia != nil` (Inertia path) vs `httpx.RenderOrError` (legacy HTMX templates still in this repo for chat/admin).
+
+```go
+// GET
+_ = h.inertia.Render(w, r, "Contact", inertia.Props{"site": meta.ForRequest(h.site, r)})
+
+// Validation errors (422) — re-render same component; gonertia fills props.errors
+ve := make(inertia.ValidationErrors)
+ve["email"] = "Invalid email"
+ctx := inertia.SetValidationErrors(r.Context(), ve)
+_ = h.inertia.Render(w, r.WithContext(ctx), "Contact", inertia.Props{})
+
+// Flash on redirect
+ctx := inertia.SetFlash(r.Context(), inertia.Flash{"notice": "Saved!"})
+h.inertia.Redirect(w, r.WithContext(ctx), "/dashboard", http.StatusSeeOther)
+```
+
+Svelte pages use `@inertiajs/svelte`:
+
+```svelte
+<script>
+  import { useForm } from '@inertiajs/svelte'
+  export let errors = {}
+  let form = useForm({ name: '', email: '' })
+  function submit() { $form.post('/contact') }
+</script>
+```
+
+Vite builds to `web/static/build/` (`npm run build`). `app.html` loads `/static/build/assets/main.js`.
+
+**Frontend TDD** — Vitest + Testing Library in `web/src/pages/*.test.js`:
+
+```bash
+npm run test:fe   # or make js-test in framework repo (also runs pkg/cais/js/*.test.mjs)
+```
+
 ## New page (scaffolded app)
 
-1. Test in `internal/handlers/foo_test.go` — use `setupTestInertia` + `assertInertiaComponent` (see `inertia_test.go`)
-2. Svelte page in `web/src/pages/Foo.svelte`
-3. Handler — `h.inertia.Render(w, r, "Foo", inertia.Props{"site": meta.ForRequest(h.site, r)})`
-4. Register the route in `internal/app/routes.go`
+1. Go test in `internal/handlers/foo_test.go` — `setupTestInertia` + `inertiaRequest` + `assertInertiaComponent` (see `inertia_test.go`)
+2. Optional Svelte test in `web/src/pages/Foo.test.js`
+3. Svelte page in `web/src/pages/Foo.svelte`
+4. Handler — `h.inertia.Render(w, r, "Foo", inertia.Props{"site": meta.ForRequest(h.site, r)})`
+5. Register the route in `internal/app/routes.go`
 
-Or use `cais g handler foo` (creates handler + `web/src/pages/Foo.svelte` + route patch).
+Or use `cais g handler foo` (creates handler + test + `web/src/pages/Foo.svelte` + route patch).
 
 Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap for OG/Twitter props in Inertia pages.
+
+**Inertia integration tests** (`internal/app/app_test.go`) — set `X-Inertia: true` on requests; successful POSTs return `303` redirects; validation returns `200` with `props.errors`.
 
 ## CSRF
 
 - `middleware.CSRF(cfg)` on the router (validates POST/PUT/DELETE/PATCH)
-- Pass `meta.ForRequest(site, r)` in page data (CSRF + flash) — layout renders `<meta name="csrf-token">` + HTMX header script
-- HTML forms: `{{ csrfField .CSRFToken }}` (`pkg/cais/forms`, registered on the renderer) or `<input type="hidden" name="csrf_token" value="{{ .CSRFToken }}" />`
-- Field errors: `{{ fieldError .Errors "email" }}` or full field markup: `{{ fieldInput (makeField "email" "Email" .Email "email" true .Errors) }}`
-- Integration tests: GET page first (cookie), then POST with matching token
+- Double-submit cookie (`cais_csrf`) — token in cookie + form field or `X-CSRF-Token` header; no server-side token store
+
+**HTMX templates** — pass `meta.ForRequest(site, r)` in page data; layout renders `<meta name="csrf-token">` + `cais.js` sends `X-CSRF-Token` on HTMX requests. HTML forms: `{{ csrfField .CSRFToken }}` or hidden `csrf_token` input.
+
+**Inertia + Svelte** — `@inertiajs/svelte` `useForm` posts include the CSRF cookie automatically; middleware still validates cookie + body/header.
+
+**Integration tests** — GET page first (read `csrf` cookie), then POST with matching `csrf_token` field + cookie (and `X-Inertia: true` for Inertia routes).
 
 ## Flash messages
 
@@ -155,14 +212,17 @@ Cais ships `sse-ext.min.js` (HTMX SSE extension). Long-lived streams need server
 | Flush          | N/A             | `stream.Flush(w)` — never assert `http.Flusher` on `w` |
 
 ```go
-import "github.com/puppe1990/cais/pkg/cais/stream"
+import (
+    "github.com/puppe1990/cais/pkg/cais/chat"
+    "github.com/puppe1990/cais/pkg/cais/stream"
+)
 
 func streamHandler(w http.ResponseWriter, r *http.Request) {
     stream.RelaySSE(w)
-    for ev := range events {
-        fmt.Fprintf(w, "event: message\ndata: %s\n\n", ev)
-        _ = stream.Flush(w) // never w.(http.Flusher) — middleware may hide Flusher
-    }
+    _ = chat.WriteStream(w, chat.LiveBubble("token…"))   // event: stream
+    _ = chat.WriteMessage(w, chat.MessageBubble(chat.RoleAssistant, "done", time.Now().UTC()))
+    _ = stream.WriteEvent(w, "thinking", chat.ThinkingHTML("…")) // prefer over manual fmt.Fprintf
+    _ = stream.Flush(w) // never w.(http.Flusher) — middleware may hide Flusher
 }
 
 // Proxy upstream SSE (e.g. OpenCode /event) to the browser:
@@ -191,7 +251,7 @@ Agent mode — `chat_sse_agent.html`: opt-in with `data-cais-chat="true"`. SSE e
 
 **Ordering pitfall** — `hxChatForm` posts user bubbles to `#chat-history` with `beforeend`. If agent SSE writes to sibling containers (`#chat-stream`, `#chat-live`) without merging first, the user input appears above in-flight assistant output. Agent mode requires `cais.js` `finalizeChatStream()` (runs automatically when `data-cais-chat` is present; also exposed as `window.caisFinalizeChatStream`).
 
-**Server helpers** — `pkg/cais/chat`: `LiveBubble`, `MessageBubble` (UTC `<time class="cais-msg-time">` for device-local formatting in `cais.js`), `WriteStream`, `WriteMessage`.
+**Server helpers** — `pkg/cais/chat`: `LiveBubble`, `MessageBubble`, `SafeMessageBubble`, `ToolCallBubble`, `ToolResultBubble`, `DetailBubble`, `Truncate`, `SelectWindowWithLastUser`, `UnsafeLiveHTML` / `UnsafeMessageHTML` (caller sanitizes HTML), `WriteStream`, `WriteMessage` (wrap `stream.WriteEvent`).
 
 **Chat form** — `{{ hxChatForm "/chat/{id}/messages" "#chat-thinking" }}` on the `<form>`: `cais.js` `bindChatEnterSubmit` sends on Enter, Shift+Enter newline. Input clears on submit; use `data-cais-chat-optimistic="true"` only when the POST partial does **not** return a user bubble (otherwise `dedupOptimisticUserBubble` drops the duplicate). Optional `data-cais-poll-url` on `#chat-sse` enables history refresh fallback when SSE fails (poll is skipped while stream slots are active).
 
@@ -209,18 +269,22 @@ if err != nil {
 
 ## HTMX interactions
 
+Used by `cais g resource` / `cais g stream chat` admin and chat UIs until ported to Svelte.
+
 - Partial in `web/templates/partials/` — each file has `{{ define "name" }}` matching the filename
 - Partials are parsed into full pages too, so `{{ template "name" . }}` works in pages and layouts
 - For HTMX swaps, handler returns the partial via `RenderPartial` (not a full layout)
 - Template attributes: `hx-post`, `hx-target`, `hx-swap`
-- Handler: use `httpx.RenderPageOrPartial` for forms that return partial on HTMX and full page otherwise
+- Handler: prefer `httpx.WritePage` (thin wrapper over `RenderPageOrPartial`) for forms that return partial on HTMX and full page otherwise
 - Test with `req.Header.Set("HX-Request", "true")`
 
 ```go
-httpx.RenderPageOrPartial(w, r, renderer, httpx.RenderOptions{
+httpx.WritePage(w, r, renderer, httpx.PageConfig{
   Layout: "base", Page: "contact", Partial: "contact_errors", Data: data, Status: 422,
-})
+}, cfg)
 ```
+
+**List caching** — combine `cache.Key(...)` + `cache.Hash(version)` with `httpx.NotModified` / `httpx.SetETag` for 304 responses on stable list pages.
 
 ## Form validation
 
@@ -265,17 +329,17 @@ Generate the parent resource first (`cais g resource category --fields name:stri
 
 ## Integration tests (auth + contact)
 
-Multi-step flows belong in `internal/app/app_test.go` (full router + CSRF + session):
+Multi-step flows belong in `internal/app/app_test.go` (full router + CSRF + session + Inertia):
 
 1. `GET /login` or `/contact` — read `csrf` cookie
-2. `POST` with matching `csrf_token` field + cookie
+2. `POST` with matching `csrf_token` field + cookie; set `X-Inertia: true` for Inertia routes
 3. Follow session/flash cookies on subsequent requests
 
-See `TestApp_LoginPost_withCSRF_redirects`, `TestApp_AuthFlow_loginDashboardLogout`, `TestApp_ContactPost_validationWithCSRF_returns422`.
+See `TestApp_LoginPost_withCSRF_redirects`, `TestApp_AuthFlow_loginDashboardLogout`, `TestApp_ContactPost_validationWithCSRF_returns422`, `TestApp_Smoke_contactInertia_loginDashboardLogout`.
 
 ## HTMX UX (app-like feel)
 
-Layout loads `cais.js` after `htmx.min.js` — CSRF header, focus restore, optimistic toggles, nav tab sync.
+HTMX layouts load `cais-core.js` (or full `cais.js`) after `htmx.min.js` — CSRF header, focus restore, optimistic toggles, nav tab sync. Chat pages add `cais-chat.js` (testable logic in `cais-chat-logic.mjs`).
 
 - **App shell** — `#cais-main` + `#cais-nav`; `navTab` links use `hx-boost` (swap main only, no full reload)
 - **Small targets** — swap `#form-errors` or `this`, not whole lists
@@ -348,9 +412,13 @@ cais g [--dry-run] auth       # login/logout + protected dashboard
 cais g [--dry-run] console    # scaffold cmd/console/main.go
 cais g [--dry-run] ci         # add CI/pre-commit to existing apps
 cais g [--dry-run] job send_welcome --cron "0 3 * * *"
-cais doctor                   # verify htmx, air, go.mod
+cais doctor [--mobile]        # verify setup (Inertia/Vite, htmx, air, go.mod, PWA/mobile)
+cais pwa [--bump]             # write/refresh PWA assets; --bump invalidates SW cache
+cais link [path] [--unlink]   # go.mod replace for local Cais dev
 cais routes                   # list routes from internal/app/routes.go
 ```
+
+**Aliases:** `cais g` → generate, `cais i` → install, `cais b` → build, `cais s` → server, `cais c` → console.
 
 Field types: `string`, `text`, `url`, `bool`, `int`, `date`, `references` (or `name:belongs_to`). Suffix `?` for optional.
 
@@ -373,7 +441,9 @@ cais dev      # hot reload + tailwind watch
 cais build    # bin/server
 cais server   # go run ./cmd/server
 cais test     # go test ./...
-cais doctor   # verify htmx, air, go.mod
+npm run test:fe           # vitest (Svelte pages; also in scaffold package.json)
+cais doctor [--mobile]  # verify Inertia/Vite, htmx, air, go.mod, PWA/mobile
+cais pwa [--bump]       # write/refresh PWA assets
 cais console  # Rails-style REPL (store, cfg, db + sql)
 cais routes   # list HTTP routes from internal/app/routes.go
 cais link [../Cais] [--unlink]  # go.mod replace for local framework dev
@@ -418,24 +488,32 @@ Console bindings: `store`, `cfg`, `db`, plus any custom keys in `Bindings`. Comm
 
 The `cais` CLI lives in `internal/cli/`. Scaffold templates are split by responsibility so agents can grep a single file instead of loading a 2400-line monolith.
 
-| Path                                      | Responsibility                                                 |
-| ----------------------------------------- | -------------------------------------------------------------- |
-| `internal/cli/cli.go`                     | Command routing (`new`, `g`, `destroy`, `db`, …)               |
-| `internal/cli/scaffold.go`                | `cais new` orchestration and `writeTemplate`                   |
-| `internal/cli/resource.go`                | `cais g resource` orchestration (writes files, calls patches)  |
-| `internal/cli/resource_patch.go`          | Patches store, routes, layout nav, seeds, main for resources   |
-| `internal/cli/resource_gen_*.go`          | Resource code generation (store, admin, public, HTML, fields)  |
-| `internal/cli/tpl_scaffold_*.go`          | Embedded `const tpl*` for `cais new` scaffolding               |
-| `internal/cli/tpl_scaffold_main.go`       | `cmd/server/main.go` (full + blank)                            |
-| `internal/cli/tpl_scaffold_app_core.go`   | `internal/app/app.go` (full + blank)                           |
-| `internal/cli/tpl_scaffold_routes.go`     | `internal/app/routes.go` (full, minimal, blank)                |
-| `internal/cli/tpl_scaffold_console.go`    | `cmd/console/main.go`                                          |
-| `internal/cli/tpl_scaffold_auth.go`       | Auth Go templates (handler, store, model, migration, tests)    |
-| `internal/cli/tpl_scaffold_auth_pages.go` | Auth HTML page templates (`login`, `signup`, reset)            |
-| `internal/cli/scaffold_auth.go`           | `cais g auth` orchestration and store/app/route patches        |
-| `internal/cli/patch.go`                   | AST-safe patches into generated apps (`routes.go`, `store.go`) |
-| `internal/cli/patch/`                     | `go/ast` helpers — regex patches break nested `cais.IntParam`  |
-| `internal/cli/destroy.go`                 | `cais destroy` — reverses generators                           |
+| Path                                            | Responsibility                                                 |
+| ----------------------------------------------- | -------------------------------------------------------------- |
+| `internal/cli/cli.go`                           | Command routing (`new`, `g`, `destroy`, `db`, …)               |
+| `internal/cli/scaffold.go`                      | `cais new` orchestration and `writeTemplate`                   |
+| `internal/cli/resource.go`                      | `cais g resource` orchestration (writes files, calls patches)  |
+| `internal/cli/resource_patch.go`                | Patches store, routes, layout nav, seeds, main for resources   |
+| `internal/cli/resource_gen_*.go`                | Resource code generation (store, admin, public, HTML, fields)  |
+| `internal/cli/tpl_scaffold_*.go`                | Embedded `const tpl*` for `cais new` scaffolding               |
+| `internal/cli/tpl_scaffold_main.go`             | `cmd/server/main.go` (full + blank)                            |
+| `internal/cli/tpl_scaffold_app_core.go`         | `internal/app/app.go` (full + blank)                           |
+| `internal/cli/tpl_scaffold_routes.go`           | `internal/app/routes.go` (full, minimal, blank)                |
+| `internal/cli/tpl_scaffold_console.go`          | `cmd/console/main.go`                                          |
+| `internal/cli/tpl_scaffold_auth.go`             | Auth Go templates (handler, store, model, migration, tests)    |
+| `internal/cli/tpl_scaffold_auth_pages.go`       | Auth HTML page templates (`login`, `signup`, reset)            |
+| `internal/cli/tpl_scaffold_inertia.go`          | Vite, Svelte, `app.html`, `web/src/main.js`                    |
+| `internal/cli/tpl_scaffold_handlers_inertia.go` | Inertia handler scaffolds (home, contact, auth, dashboard)     |
+| `internal/cli/tpl_scaffold_web.go`              | Legacy HTMX layout fragments (resource/chat generators)        |
+| `internal/cli/tpl_stream_chat.go`               | `cais g stream chat` templates and handlers                    |
+| `internal/cli/stream.go`                        | `cais g stream chat` orchestration                             |
+| `internal/cli/scaffold_auth.go`                 | `cais g auth` orchestration and store/app/route patches        |
+| `internal/cli/patch.go`                         | AST-safe patches into generated apps (`routes.go`, `store.go`) |
+| `internal/cli/patch/`                           | `go/ast` helpers — regex patches break nested `cais.IntParam`  |
+| `internal/cli/doctor.go`                        | `cais doctor` checks (Inertia, Vite, HTMX, PWA, mobile)        |
+| `internal/cli/pwa_cmd.go`                       | `cais pwa` asset writer                                        |
+| `internal/cli/commands.go`                      | `cais install`, `cais css`, `cais dev`                         |
+| `internal/cli/destroy.go`                       | `cais destroy` — reverses generators                           |
 
 **Generator tests** (split by domain — run focused suites while editing generators):
 
@@ -461,22 +539,27 @@ go test ./internal/cli/... -count=1
 ## Framework commands (Cais repo)
 
 ```bash
-make test-v   # TDD: watch RED/GREEN
-make test     # validation with -race
-make lint     # golangci-lint
-make format   # prettier --write
-make ci       # test + lint + format-check
-make dev      # hot reload + tailwind watch
-make build    # bin/cais
-make pwa      # regenerate PWA assets (manifest fullscreen, icons, og.png)
-make docker   # ~15-20MB image
+make test-v         # TDD: watch RED/GREEN
+make test           # Go validation with -race
+make js-test        # Vitest Svelte + cais-chat-logic .mjs tests
+make lint           # golangci-lint
+make format         # prettier --write
+make ci             # test + js-test + lint + format-check
+make dev            # hot reload + tailwind watch
+make build          # bin/cais
+make install-cli    # go install ./cmd/cais
+make pwa            # regenerate PWA assets (manifest fullscreen, icons, og.png)
+make docker         # ~15-20MB image
 ```
+
+CI builds Vite assets (`npm ci && npm run build`) before `go test`.
 
 ## Production deploy (Lightsail / systemd)
 
 Cross-compile and ship static assets beside the binary:
 
 ```bash
+npm run build   # Vite → web/static/build/
 cais build --os linux --arch amd64 -o bin/server-linux
 tar czf release.tar.gz bin/server-linux web/static
 ```

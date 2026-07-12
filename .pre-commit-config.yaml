@@ -31,6 +31,13 @@ repos:
         pass_filenames: false
         types: [go]
 
+      - id: js-test
+        name: vitest + cais js tests
+        entry: npm run test:fe && npm run js:test
+        language: system
+        pass_filenames: false
+        files: \.(js|mjs|svelte)$
+
       - id: golangci-lint
         name: golangci-lint
         entry: golangci-lint run ./...

@@ -43,7 +43,7 @@ var ptMessages = map[string]string{
 	"home.default_name":   "Desenvolvedor",
 	"home.rails_heading":  "Você está no Cais!",
 	"home.rails_subtitle": "%s está pronto para navegar.",
-	"home.stack":          "Go · HTMX · Tailwind · SQLite",
+	"home.stack":          "Go · Inertia · Svelte · SQLite",
 	"home.next_steps":     "Próximos passos",
 	"home.step_resource":  "Gere seu primeiro resource",
 	"home.step_dev":       "Suba o servidor de desenvolvimento",

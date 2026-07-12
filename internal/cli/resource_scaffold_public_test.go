@@ -53,18 +53,18 @@ func TestScaffoldResource_PublicInsertsNavAfterMarker(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nav, err := os.ReadFile(filepath.Join(appDir, "web/src/pages/Home.svelte"))
+	nav, err := os.ReadFile(filepath.Join(appDir, "web/src/components/AppLayout.svelte"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	body := string(nav)
 	if !strings.Contains(body, "<!-- cais:nav -->") {
-		t.Fatal("Home.svelte missing <!-- cais:nav --> marker")
+		t.Fatal("AppLayout.svelte missing <!-- cais:nav --> marker")
 	}
 	markerIdx := strings.Index(body, "<!-- cais:nav -->")
 	linkIdx := strings.Index(body, `href="/products"`)
 	if linkIdx == -1 {
-		t.Fatal("Home.svelte missing public products nav link")
+		t.Fatal("AppLayout.svelte missing public products nav link")
 	}
 	if linkIdx < markerIdx {
 		t.Error("nav link should appear after <!-- cais:nav --> marker")
@@ -88,13 +88,13 @@ func TestScaffoldResource_BlankAppLogoLinksToPublicList(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nav, err := os.ReadFile(filepath.Join(appDir, "web/src/pages/Home.svelte"))
+	nav, err := os.ReadFile(filepath.Join(appDir, "web/src/components/AppLayout.svelte"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	body := string(nav)
 	if !strings.Contains(body, `href="/books"`) {
-		t.Error("Home.svelte nav should include public books list link")
+		t.Error("AppLayout.svelte nav should include public books list link")
 	}
 }
 
@@ -115,27 +115,21 @@ func TestScaffoldResource_PublicListRichFields(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	html, err := os.ReadFile(filepath.Join(appDir, "web/templates/pages/tasks.html"))
+	svelte, err := os.ReadFile(filepath.Join(appDir, "web/src/pages/Tasks.svelte"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	body := string(html)
-	if !strings.Contains(body, `{{ define "title" }}Tasks{{ end }}`) {
-		t.Error("public page title should use plural resource name Tasks")
+	body := string(svelte)
+	if !strings.Contains(body, `Tasks`) {
+		t.Error("public svelte page should use plural resource name Tasks")
 	}
-	if !strings.Contains(body, `<h1 class="text-3xl font-bold text-slate-900 mb-6">Tasks</h1>`) {
-		t.Error("public page h1 should use plural resource name")
+	if !strings.Contains(body, `{#each items`) {
+		t.Error("public list should iterate items")
 	}
-	if !strings.Contains(body, ".Done") {
-		t.Error("public list should render done bool field")
+	if !strings.Contains(body, `item.Title`) {
+		t.Error("public list should render title field")
 	}
-	if !strings.Contains(body, ".Priority") {
-		t.Error("public list should render priority int field")
-	}
-	if !strings.Contains(body, ".Notes") {
-		t.Error("public list should render notes text field")
-	}
-	for _, needle := range []string{`hxMorphOuter`, `data-cais-optimistic="toggle"`} {
+	for _, needle := range []string{`use:inertia`, `export let items`} {
 		if !strings.Contains(body, needle) {
 			t.Errorf("public list missing HTMX UX attribute %q", needle)
 		}

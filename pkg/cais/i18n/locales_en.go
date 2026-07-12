@@ -43,7 +43,7 @@ var enMessages = map[string]string{
 	"home.default_name":   "Developer",
 	"home.rails_heading":  "You're on Cais!",
 	"home.rails_subtitle": "%s is ready to sail.",
-	"home.stack":          "Go · HTMX · Tailwind · SQLite",
+	"home.stack":          "Go · Inertia · Svelte · SQLite",
 	"home.next_steps":     "Next steps",
 	"home.step_resource":  "Generate your first resource",
 	"home.step_dev":       "Start the dev server",
