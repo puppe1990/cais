@@ -5,6 +5,10 @@
   function submit() { form.post('/signup') }
 </script>
 
+<svelte:head>
+  <title>Sign up · Cais</title>
+</svelte:head>
+
 <div class="max-w-sm mx-auto p-6">
   <h1>Sign up</h1>
   <form on:submit|preventDefault={submit}>

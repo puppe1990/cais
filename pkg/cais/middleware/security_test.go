@@ -35,6 +35,7 @@ func TestSecurityHeaders_customPolicy(t *testing.T) {
 		Env:               "development",
 		PermissionsPolicy: "camera=(self), geolocation=(self)",
 		CSPStyleSrc:       "https://fonts.googleapis.com",
+		CSPFontSrc:        "https://fonts.gstatic.com",
 	}
 	h := SecurityHeaders(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 
@@ -47,6 +48,22 @@ func TestSecurityHeaders_customPolicy(t *testing.T) {
 	csp := rr.Header().Get("Content-Security-Policy")
 	if !strings.Contains(csp, "https://fonts.googleapis.com") {
 		t.Errorf("CSP missing style src extra: %q", csp)
+	}
+	if !strings.Contains(csp, "font-src 'self' data: https://fonts.gstatic.com") {
+		t.Errorf("CSP missing font-src extra: %q", csp)
+	}
+}
+
+func TestSecurityHeaders_defaultFontSrc(t *testing.T) {
+	cfg := cais.Config{Env: "production"}
+	h := SecurityHeaders(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	csp := rr.Header().Get("Content-Security-Policy")
+	if !strings.Contains(csp, "font-src 'self' data:") {
+		t.Errorf("CSP missing default font-src: %q", csp)
 	}
 }
 

@@ -9,6 +9,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Contact · Cais</title>
+</svelte:head>
+
 <div class="max-w-md mx-auto p-6">
   <h1 class="text-2xl font-semibold mb-4">Contact</h1>
   {#if flash.success}

@@ -51,10 +51,9 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 		return nil, fmt.Errorf("store is required")
 	}
 
-	inertiaI := deps.Inertia
-	if inertiaI == nil {
+	if deps.Inertia == nil {
 		var err error
-		inertiaI, err = inertia.New(defaultInertiaRoot)
+		deps.Inertia, err = inertia.New(defaultInertiaRoot)
 		if err != nil {
 			return nil, fmt.Errorf("inertia: %w", err)
 		}
