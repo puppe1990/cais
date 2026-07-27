@@ -46,9 +46,7 @@ function networkFirst(request) {
       }
       return response;
     })
-    .catch(() =>
-      caches.match(request).then((cached) => cached || Response.error())
-    );
+    .catch(() => caches.match(request).then((cached) => cached || Response.error()));
 }
 
 function cacheFirst(request) {
@@ -72,10 +70,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (
-    url.pathname.startsWith("/static/build/") ||
-    url.pathname.startsWith("/static/css/")
-  ) {
+  if (url.pathname.startsWith("/static/build/") || url.pathname.startsWith("/static/css/")) {
     event.respondWith(networkFirst(request));
     return;
   }
