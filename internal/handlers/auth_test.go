@@ -71,3 +71,30 @@ func TestAuth_LoginPost_validCredentials_redirects(t *testing.T) {
 		t.Errorf("Location = %q, want /dashboard", rr.Header().Get("Location"))
 	}
 }
+
+func TestAuth_LoginPost_jsonBody_redirects(t *testing.T) {
+	// Inertia useForm posts application/json by default.
+	s, err := store.NewSQLiteStore(":memory:", "development")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	h := NewAuthHandler(setupTestRenderer(t), s, testSite(), s.Sessions(), cais.Config{}, i18n.DefaultCatalog(), setupTestInertia(t))
+
+	body := `{"email":"demo@example.com","password":"password"}`
+	req := inertiaRequest(http.MethodPost, "/login", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	// CSRF middleware parses form before the handler; body must still be readable.
+	if err := req.ParseForm(); err != nil {
+		t.Fatal(err)
+	}
+	rr := httptest.NewRecorder()
+	h.LoginPost(rr, req)
+
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("status = %d, want 303, body: %s", rr.Code, rr.Body.String())
+	}
+	if rr.Header().Get("Location") != "/dashboard" {
+		t.Errorf("Location = %q, want /dashboard", rr.Header().Get("Location"))
+	}
+}

@@ -125,8 +125,9 @@ Svelte pages use `@inertiajs/svelte`:
 <script>
   import { useForm } from '@inertiajs/svelte'
   export let errors = {}
+  // Inertia 3 + Svelte 5: useForm returns a reactive object, not a store — no $form
   let form = useForm({ name: '', email: '' })
-  function submit() { $form.post('/contact') }
+  function submit() { form.post('/contact') }
 </script>
 ```
 

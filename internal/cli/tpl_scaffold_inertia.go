@@ -20,14 +20,22 @@ const tplAppHTML = `<!DOCTYPE html>
 `
 
 const tplMainJS = `import { createInertiaApp } from '@inertiajs/svelte'
+import { mount } from 'svelte'
 
 createInertiaApp({
   resolve: (name) => {
     const pages = import.meta.glob('./pages/**/*.svelte', { eager: true })
-    return pages[` + "`" + `./pages/${name}.svelte` + "`" + `]
+    const page = pages[` + "`" + `./pages/${name}.svelte` + "`" + `]
+    if (!page) throw new Error(` + "`" + `Inertia page not found: ${name}` + "`" + `)
+    return page
   },
   setup({ el, App, props }) {
-    new App({ target: el, props })
+    mount(App, { target: el, props })
+  },
+  // Match pkg/cais/csrf double-submit cookie (not Laravel XSRF defaults).
+  http: {
+    xsrfCookieName: 'cais_csrf',
+    xsrfHeaderName: 'X-CSRF-Token',
   },
 })
 `
@@ -92,7 +100,7 @@ const tplSvelteContact = `<script>
   export let site = {}
   let form = useForm({ name: '', email: '' })
   function submit() {
-    $form.post('/contact')
+    form.post('/contact')
   }
 </script>
 
@@ -102,9 +110,9 @@ const tplSvelteContact = `<script>
     <p class="mb-4 text-green-700" data-testid="contact-success">{flash.success}</p>
   {/if}
   <form on:submit|preventDefault={submit}>
-    <input type="text" bind:value={$form.name} placeholder="Name" class="block w-full border p-2" />
+    <input type="text" bind:value={form.name} placeholder="Name" class="block w-full border p-2" />
     {#if errors.name}<p class="text-red-600 text-sm">{errors.name}</p>{/if}
-    <input type="email" bind:value={$form.email} placeholder="Email" class="block w-full border p-2 mt-2" />
+    <input type="email" bind:value={form.email} placeholder="Email" class="block w-full border p-2 mt-2" />
     {#if errors.email}<p class="text-red-600 text-sm">{errors.email}</p>{/if}
     <button type="submit" class="mt-4 px-4 py-2 bg-amber-800 text-white">Send</button>
   </form>
@@ -134,15 +142,15 @@ const tplSvelteLogin = `<script>
   export let errors = {}
   export let site = {}
   let form = useForm({ email: 'demo@example.com', password: 'password' })
-  function submit() { $form.post('/login') }
+  function submit() { form.post('/login') }
 </script>
 
 <div class="max-w-sm mx-auto mt-10 p-6 border rounded">
   <h1 class="text-xl mb-4">Login</h1>
   <form on:submit|preventDefault={submit}>
-    <input type="email" bind:value={$form.email} class="block w-full p-2 border" />
+    <input type="email" bind:value={form.email} class="block w-full p-2 border" />
     {#if errors.email}<div class="text-red-600 text-xs">{errors.email}</div>{/if}
-    <input type="password" bind:value={$form.password} class="block w-full p-2 border mt-2" />
+    <input type="password" bind:value={form.password} class="block w-full p-2 border mt-2" />
     <button class="mt-4 bg-stone-800 text-white px-4 py-2">Log in</button>
   </form>
 </div>
@@ -152,16 +160,16 @@ const tplSvelteSignup = `<script>
   import { useForm } from '@inertiajs/svelte'
   export let errors = {}
   let form = useForm({ email: '', password: '', password_confirmation: '' })
-  function submit() { $form.post('/signup') }
+  function submit() { form.post('/signup') }
 </script>
 
 <div class="max-w-sm mx-auto p-6">
   <h1>Sign up</h1>
   <form on:submit|preventDefault={submit}>
-    <input bind:value={$form.email} type="email" placeholder="email" class="block w-full border p-2" />
+    <input bind:value={form.email} type="email" placeholder="email" class="block w-full border p-2" />
     {#if errors.email}<p class="text-red-600">{errors.email}</p>{/if}
-    <input bind:value={$form.password} type="password" class="block w-full border p-2 mt-2" />
-    <input bind:value={$form.password_confirmation} type="password" class="block w-full border p-2 mt-2" />
+    <input bind:value={form.password} type="password" class="block w-full border p-2 mt-2" />
+    <input bind:value={form.password_confirmation} type="password" class="block w-full border p-2 mt-2" />
     <button class="mt-4 px-4 py-2 bg-black text-white">Create account</button>
   </form>
 </div>
@@ -171,12 +179,12 @@ const tplSvelteForgotPassword = `<script>
   import { useForm } from '@inertiajs/svelte'
   export let errors = {}
   let form = useForm({ email: '' })
-  function submit() { $form.post('/forgot-password') }
+  function submit() { form.post('/forgot-password') }
 </script>
 
 <h1>Forgot password</h1>
 <form on:submit|preventDefault={submit}>
-  <input bind:value={$form.email} type="email" />
+  <input bind:value={form.email} type="email" />
   {#if errors.email}<p>{errors.email}</p>{/if}
   <button>Send reset</button>
 </form>
@@ -187,17 +195,17 @@ const tplSvelteResetPassword = `<script>
   export let errors = {}
   export let token = ''
   let form = useForm({ token, password: '', password_confirmation: '' })
-  function submit() { $form.post('/reset-password') }
+  function submit() { form.post('/reset-password') }
 </script>
 
 <div class="max-w-sm mx-auto p-6">
   <h1 class="text-xl mb-4">Reset password</h1>
   {#if errors.token}<p class="text-red-600 text-sm mb-2">{errors.token}</p>{/if}
   <form on:submit|preventDefault={submit}>
-    <input type="hidden" bind:value={$form.token} />
-    <input bind:value={$form.password} type="password" class="block w-full border p-2" placeholder="New password" />
+    <input type="hidden" bind:value={form.token} />
+    <input bind:value={form.password} type="password" class="block w-full border p-2" placeholder="New password" />
     {#if errors.password}<p class="text-red-600 text-sm">{errors.password}</p>{/if}
-    <input bind:value={$form.password_confirmation} type="password" class="block w-full border p-2 mt-2" placeholder="Confirm password" />
+    <input bind:value={form.password_confirmation} type="password" class="block w-full border p-2 mt-2" placeholder="Confirm password" />
     {#if errors.password_confirmation}<p class="text-red-600 text-sm">{errors.password_confirmation}</p>{/if}
     <button class="mt-4 px-4 py-2 bg-stone-800 text-white">Reset</button>
   </form>

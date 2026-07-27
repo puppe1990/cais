@@ -154,8 +154,9 @@ func (c *CLI) cmdNew(args []string) error {
 		module = moduleName(opts.name)
 	}
 	if err := scaffoldNewApp(abs, scaffoldData{
-		AppName:    opts.name,
-		ModulePath: module,
+		AppName:     opts.name,
+		ModulePath:  module,
+		CaisVersion: scaffoldModuleVersion(),
 	}, opts.minimal, opts.blank); err != nil {
 		return err
 	}

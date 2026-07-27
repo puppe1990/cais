@@ -71,7 +71,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
+	if err := httpx.ParseFormOrJSON(r); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -130,7 +130,7 @@ func (h *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) SignUpPost(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
+	if err := httpx.ParseFormOrJSON(r); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -227,7 +227,7 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) ForgotPasswordPost(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
+	if err := httpx.ParseFormOrJSON(r); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -325,7 +325,7 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
+	if err := httpx.ParseFormOrJSON(r); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

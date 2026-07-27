@@ -100,8 +100,58 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(gomod), "gonertia") {
+	gomodBody := string(gomod)
+	if !strings.Contains(gomodBody, "gonertia") {
 		t.Error("go.mod should require gonertia")
+	}
+	if strings.Contains(gomodBody, "v0.1.0") {
+		t.Error("go.mod must not pin broken cais@v0.1.0")
+	}
+	if !strings.Contains(gomodBody, "github.com/puppe1990/cais v"+defaultScaffoldCaisVersion) &&
+		!strings.Contains(gomodBody, "github.com/puppe1990/cais v") {
+		t.Errorf("go.mod should require a current cais version, got:\n%s", gomodBody)
+	}
+
+	mainJS, err := os.ReadFile(filepath.Join(appDir, "web/src/main.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mainBody := string(mainJS)
+	for _, needle := range []string{
+		`import { mount } from 'svelte'`,
+		`mount(App, { target: el, props })`,
+		`xsrfCookieName: 'cais_csrf'`,
+		`xsrfHeaderName: 'X-CSRF-Token'`,
+	} {
+		if !strings.Contains(mainBody, needle) {
+			t.Errorf("web/src/main.js missing %q", needle)
+		}
+	}
+	if strings.Contains(mainBody, "new App(") {
+		t.Error("web/src/main.js must not use Svelte 4 new App() constructor")
+	}
+
+	login, err := os.ReadFile(filepath.Join(appDir, "web/src/pages/Login.svelte"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	loginBody := string(login)
+	if strings.Contains(loginBody, "$form") {
+		t.Error("Login.svelte must not use $form store syntax (Inertia 3 useForm is not a store)")
+	}
+	if !strings.Contains(loginBody, "form.post('/login')") || !strings.Contains(loginBody, "bind:value={form.email}") {
+		t.Error("Login.svelte should bind form fields without $ prefix")
+	}
+
+	auth, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/auth.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(auth), "httpx.ParseFormOrJSON") {
+		t.Error("auth handler should use httpx.ParseFormOrJSON for Inertia JSON posts")
+	}
+	if strings.Contains(string(auth), "r.ParseForm()") {
+		t.Error("auth handler must not call r.ParseForm() alone (breaks JSON bodies)")
 	}
 
 	pkg, err := os.ReadFile(filepath.Join(appDir, "package.json"))

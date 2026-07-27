@@ -13,7 +13,7 @@ func buildAdminParseForm(data scaffoldData) string {
 	for _, f := range data.Fields {
 		switch f.GoType {
 		case "bool":
-			literal = append(literal, fmt.Sprintf("%s: r.FormValue(%q) == \"on\"", f.Pascal, f.Name))
+			literal = append(literal, fmt.Sprintf("%s: httpx.FormTruthy(r.FormValue(%q))", f.Pascal, f.Name))
 		case "int64":
 			after = append(after, fmt.Sprintf(`raw%s := strings.TrimSpace(r.FormValue(%q))
 	if raw%s == "" {
@@ -82,7 +82,7 @@ func buildAdminParseForm(data scaffoldData) string {
 		afterBlock = "\n\t" + strings.Join(after, "\n\t") + "\n"
 	}
 	return fmt.Sprintf(`var errs validate.FieldErrors
-	if err := r.ParseForm(); err != nil {
+	if err := httpx.ParseFormOrJSON(r); err != nil {
 		errs.Add("_form", err.Error())
 		return models.%s{}, errs
 	}

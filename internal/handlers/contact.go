@@ -46,7 +46,7 @@ func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
+	if err := httpx.ParseFormOrJSON(r); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
