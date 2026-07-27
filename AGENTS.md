@@ -35,16 +35,17 @@ Imperative. Prefer these when trading off effort.
 
 ### Repo red flags (split when you touch them)
 
-| Path                                            | Lines (approx) | Split hint                                       |
-| ----------------------------------------------- | -------------- | ------------------------------------------------ |
-| `internal/cli/tpl_scaffold_handlers_inertia.go` | ~1300          | Split by handler domain (auth / contact / home)  |
-| `internal/app/app_test.go`                      | ~1000          | Split by flow (auth / contact / smoke)           |
-| `internal/cli/doctor.go`                        | ~700           | Split mobile checks vs core checks               |
-| `internal/cli/tpl_scaffold_tooling.go`          | ~600           | CI vs package.json vs Makefile templates         |
-| `internal/cli/resource_gen_inertia.go`          | ~600           | Form gen vs handler gen                          |
-| `pkg/cais/pwa/assets/cais*.js`                  | ~900+          | Already split core/chat; avoid growing monoliths |
+| Path                                          | Notes                                                         |
+| --------------------------------------------- | ------------------------------------------------------------- |
+| `internal/cli/tpl_scaffold_handlers_*.go`     | Split done: home/contact/dashboard/auth + tests + testhelpers |
+| `internal/app/app_*_test.go`                  | Split done: helpers / health / contact / auth / smoke         |
+| `internal/cli/doctor.go` + `_env` + `_mobile` | Split done: core / env production / mobile checks             |
+| `internal/cli/tpl_scaffold_handlers_auth.go`  | ~420 — split login vs signup/reset if it grows further        |
+| `internal/cli/tpl_scaffold_tooling.go`        | ~600 — CI vs package.json vs Makefile templates               |
+| `internal/cli/resource_gen_inertia.go`        | ~600 — form gen vs handler gen                                |
+| `pkg/cais/pwa/assets/cais*.js`                | Already split core/chat; avoid growing monoliths              |
 
-Scaffold `const tpl*` blobs are large by nature — still prefer one const per responsibility file (`tpl_scaffold_*.go`), never a single mega template file.
+Scaffold `const tpl*` blobs: one family per file (`tpl_scaffold_handlers_auth.go`), never a mega template dump.
 
 ## Structure
 
@@ -524,32 +525,34 @@ Console bindings: `store`, `cfg`, `db`, plus any custom keys in `Bindings`. Comm
 
 The `cais` CLI lives in `internal/cli/`. Scaffold templates are split by responsibility so agents can grep a single file instead of loading a 2400-line monolith.
 
-| Path                                            | Responsibility                                                 |
-| ----------------------------------------------- | -------------------------------------------------------------- |
-| `internal/cli/cli.go`                           | Command routing (`new`, `g`, `destroy`, `db`, …)               |
-| `internal/cli/scaffold.go`                      | `cais new` orchestration and `writeTemplate`                   |
-| `internal/cli/resource.go`                      | `cais g resource` orchestration (writes files, calls patches)  |
-| `internal/cli/resource_patch.go`                | Patches store, routes, layout nav, seeds, main for resources   |
-| `internal/cli/resource_gen_*.go`                | Resource code generation (store, admin, public, HTML, fields)  |
-| `internal/cli/tpl_scaffold_*.go`                | Embedded `const tpl*` for `cais new` scaffolding               |
-| `internal/cli/tpl_scaffold_main.go`             | `cmd/server/main.go` (full + blank)                            |
-| `internal/cli/tpl_scaffold_app_core.go`         | `internal/app/app.go` (full + blank)                           |
-| `internal/cli/tpl_scaffold_routes.go`           | `internal/app/routes.go` (full, minimal, blank)                |
-| `internal/cli/tpl_scaffold_console.go`          | `cmd/console/main.go`                                          |
-| `internal/cli/tpl_scaffold_auth.go`             | Auth Go templates (handler, store, model, migration, tests)    |
-| `internal/cli/tpl_scaffold_auth_pages.go`       | Auth HTML page templates (`login`, `signup`, reset)            |
-| `internal/cli/tpl_scaffold_inertia.go`          | Vite, Svelte, `app.html`, `web/src/main.js`                    |
-| `internal/cli/tpl_scaffold_handlers_inertia.go` | Inertia handler scaffolds (home, contact, auth, dashboard)     |
-| `internal/cli/tpl_scaffold_web.go`              | Legacy HTMX layout fragments (resource/chat generators)        |
-| `internal/cli/tpl_stream_chat.go`               | `cais g stream chat` templates and handlers                    |
-| `internal/cli/stream.go`                        | `cais g stream chat` orchestration                             |
-| `internal/cli/scaffold_auth.go`                 | `cais g auth` orchestration and store/app/route patches        |
-| `internal/cli/patch.go`                         | AST-safe patches into generated apps (`routes.go`, `store.go`) |
-| `internal/cli/patch/`                           | `go/ast` helpers — regex patches break nested `cais.IntParam`  |
-| `internal/cli/doctor.go`                        | `cais doctor` checks (Inertia, Vite, HTMX, PWA, mobile)        |
-| `internal/cli/pwa_cmd.go`                       | `cais pwa` asset writer                                        |
-| `internal/cli/commands.go`                      | `cais install`, `cais css`, `cais dev`                         |
-| `internal/cli/destroy.go`                       | `cais destroy` — reverses generators                           |
+| Path                                                            | Responsibility                                                 |
+| --------------------------------------------------------------- | -------------------------------------------------------------- |
+| `internal/cli/cli.go`                                           | Command routing (`new`, `g`, `destroy`, `db`, …)               |
+| `internal/cli/tpl_scaffold_handlers_*.go`                       | Inertia handler templates (home/contact/auth; not `*_test.go`) |
+| `internal/cli/doctor.go` / `doctor_env.go` / `doctor_mobile.go` | `cais doctor` checks (core / env / mobile)                     |
+| `internal/cli/scaffold.go`                                      | `cais new` orchestration and `writeTemplate`                   |
+| `internal/cli/resource.go`                                      | `cais g resource` orchestration (writes files, calls patches)  |
+| `internal/cli/resource_patch.go`                                | Patches store, routes, layout nav, seeds, main for resources   |
+| `internal/cli/resource_gen_*.go`                                | Resource code generation (store, admin, public, HTML, fields)  |
+| `internal/cli/tpl_scaffold_*.go`                                | Embedded `const tpl*` for `cais new` scaffolding               |
+| `internal/cli/tpl_scaffold_main.go`                             | `cmd/server/main.go` (full + blank)                            |
+| `internal/cli/tpl_scaffold_app_core.go`                         | `internal/app/app.go` (full + blank)                           |
+| `internal/cli/tpl_scaffold_routes.go`                           | `internal/app/routes.go` (full, minimal, blank)                |
+| `internal/cli/tpl_scaffold_console.go`                          | `cmd/console/main.go`                                          |
+| `internal/cli/tpl_scaffold_auth.go`                             | Auth Go templates (handler, store, model, migration, tests)    |
+| `internal/cli/tpl_scaffold_auth_pages.go`                       | Auth HTML page templates (`login`, `signup`, reset)            |
+| `internal/cli/tpl_scaffold_inertia.go`                          | Vite, Svelte, `app.html`, `web/src/main.js`                    |
+| `internal/cli/tpl_scaffold_handlers_{home,contact,auth,...}.go` | Inertia handler scaffolds (one domain per file)                |
+| `internal/cli/tpl_scaffold_web.go`                              | Legacy HTMX layout fragments (resource/chat generators)        |
+| `internal/cli/tpl_stream_chat.go`                               | `cais g stream chat` templates and handlers                    |
+| `internal/cli/stream.go`                                        | `cais g stream chat` orchestration                             |
+| `internal/cli/scaffold_auth.go`                                 | `cais g auth` orchestration and store/app/route patches        |
+| `internal/cli/patch.go`                                         | AST-safe patches into generated apps (`routes.go`, `store.go`) |
+| `internal/cli/patch/`                                           | `go/ast` helpers — regex patches break nested `cais.IntParam`  |
+| `internal/cli/doctor.go`                                        | `cais doctor` checks (Inertia, Vite, HTMX, PWA, mobile)        |
+| `internal/cli/pwa_cmd.go`                                       | `cais pwa` asset writer                                        |
+| `internal/cli/commands.go`                                      | `cais install`, `cais css`, `cais dev`                         |
+| `internal/cli/destroy.go`                                       | `cais destroy` — reverses generators                           |
 
 **Generator tests** (split by domain — run focused suites while editing generators):
 
