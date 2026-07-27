@@ -38,7 +38,7 @@ func parseJSONForm(r *http.Request) error {
 	if r.Body == nil {
 		return nil
 	}
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 
 	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20)) // 1 MiB
 	if err != nil {
