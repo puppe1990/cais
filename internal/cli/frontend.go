@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,11 +34,21 @@ func runViteBuild(dir string) error {
 	return runCmd(dir, "npm", "run", "build")
 }
 
+// viteWatchArgs is the npm invocation used by cais dev to rebuild SPA assets
+// when web/src/** changes. Uses the project's package.json "build" script so the
+// local vite version is always used (not a global/npx mismatch).
+func viteWatchArgs() []string {
+	return []string{"run", "build", "--", "--watch"}
+}
+
 func startViteWatch(dir string) (*exec.Cmd, error) {
 	if !hasViteApp(dir) {
 		return nil, nil
 	}
-	cmd := exec.Command("npx", "vite", "build", "--watch")
+	if _, err := os.Stat(filepath.Join(dir, "node_modules")); err != nil {
+		return nil, fmt.Errorf("node_modules missing — run cais install before cais dev")
+	}
+	cmd := exec.Command("npm", viteWatchArgs()...)
 	cmd.Dir = dir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

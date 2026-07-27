@@ -448,15 +448,25 @@ func checkPWACacheVersion(dir string) doctorCheck {
 	if err != nil {
 		return doctorCheck{Name: "PWA cache version", OK: true, Detail: "skipped (no sw.js)"}
 	}
-	if cacheVersionDoctor.Match(data) {
-		return doctorCheck{Name: "PWA cache version", OK: true, Detail: "CACHE_VERSION present — run cais pwa --bump after template changes"}
+	body := string(data)
+	if !cacheVersionDoctor.Match(data) {
+		return doctorCheck{
+			Name:     "PWA cache version",
+			Optional: true,
+			Detail:   "legacy sw.js without CACHE_VERSION",
+			FixHint:  "run cais pwa to refresh assets, then cais pwa --bump before phone testing",
+		}
 	}
-	return doctorCheck{
-		Name:     "PWA cache version",
-		Optional: true,
-		Detail:   "legacy sw.js without CACHE_VERSION",
-		FixHint:  "run cais pwa to refresh assets, then cais pwa --bump before phone testing",
+	// SPA + Tailwind use stable paths; cache-first for /static/build keeps stale main.js.
+	if !strings.Contains(body, "/static/build/") {
+		return doctorCheck{
+			Name:     "PWA cache version",
+			Optional: true,
+			Detail:   "sw.js missing network-first for /static/build/ (stale SPA after vite rebuild)",
+			FixHint:  "run cais pwa to refresh sw.js, or set network-first for /static/build/ and /static/css/",
+		}
 	}
+	return doctorCheck{Name: "PWA cache version", OK: true, Detail: "CACHE_VERSION + network-first /static/build — bump after HTML/template changes"}
 }
 
 func checkChatSSEPattern(dir string) doctorCheck {

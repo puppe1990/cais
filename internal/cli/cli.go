@@ -91,7 +91,7 @@ Usage:
   cais g [--dry-run] ci                  Add GitHub Actions CI, pre-commit, lint, Prettier
   cais install               npm install + go mod tidy
   cais css                   Build Tailwind CSS
-  cais dev                   Hot reload (air + tailwind watch)
+  cais dev                   Hot reload (air + tailwind + vite build --watch)
   cais build [--os linux] [--arch amd64] [-o path]
                                Build bin/server (cross-compile for deploy)
   cais server                Run the app (go run ./cmd/server)

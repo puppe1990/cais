@@ -34,6 +34,36 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Network-first for SPA bundles and Tailwind CSS: stable paths like
+// /static/build/assets/main.js must pick up vite/tailwind rebuilds without
+// requiring a CACHE_VERSION bump or hard refresh.
+function networkFirst(request) {
+  return fetch(request)
+    .then((response) => {
+      if (response && response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE).then((cache) => cache.put(request, copy));
+      }
+      return response;
+    })
+    .catch(() =>
+      caches.match(request).then((cached) => cached || Response.error())
+    );
+}
+
+function cacheFirst(request) {
+  return caches.match(request).then((cached) => {
+    if (cached) return cached;
+    return fetch(request).then((response) => {
+      if (response && response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE).then((cache) => cache.put(request, copy));
+      }
+      return response;
+    });
+  });
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -42,10 +72,16 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (
+    url.pathname.startsWith("/static/build/") ||
+    url.pathname.startsWith("/static/css/")
+  ) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
   if (url.pathname.startsWith("/static/")) {
-    event.respondWith(
-      caches.match(request).then((cached) => cached || fetch(request).then((response) => response))
-    );
+    event.respondWith(cacheFirst(request));
     return;
   }
 
