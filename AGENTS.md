@@ -17,32 +17,32 @@ Before writing production code:
 
 Imperative. Prefer these when trading off effort.
 
-| Priority | Rule |
-| -------- | ---- |
-| 1 | **Small units** — functions ~4–20 lines; files target 200–300 lines, hard cap ~500. Split god files before adding more logic. |
-| 2 | **SRP** — one reason to change per file/package. Prefer three focused modules over one multi-concern dump. |
-| 3 | **Greppable names** — unique domain nouns. Avoid `data`, `handler`, `Manager`, `Service`, `util`, `helper` as primary names. If `rg Name` floods, rename. |
-| 4 | **Comments = WHY / provenance** — security tradeoffs, SQLite limits, issue IDs (`#123`), upstream constraints. Never strip intent comments on refactor. No `// increment i` noise. |
-| 5 | **Explicit contracts** — Go public APIs fully typed; Svelte props named; no silent `interface{}`/`any` on boundaries. |
-| 6 | **DRY** — extract shared logic (generators, handlers, scaffold templates). No copy-variant drift. |
-| 7 | **Headless tests** — one command: `make ci` (or focused `go test ./pkg/... -run X`). SQLite `:memory:`; no manual seed for unit tests. Bug fix → regression test. |
-| 8 | **Predictable layout** — table below + generator patch markers. Mirror `foo.go` ↔ `foo_test.go`. |
-| 9 | **Inject deps** — handlers take `Store`, `*inertia.Inertia`, `cais.Config` via constructor; no hidden globals. |
-| 10 | **Early returns** — max ~2 nesting levels for control flow. |
-| 11 | **Errors with values** — `fmt.Errorf("vite watch: %w", err)` not bare `"failed"`. |
-| 12 | **Format without debate** — `gofmt` / `make format` (Prettier). |
-| 13 | **Structured logs** — JSON request/SQL in dev via `devlog`/`sqllog`; plain text only for CLI UX. |
+| Priority | Rule                                                                                                                                                                               |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1        | **Small units** — functions ~4–20 lines; files target 200–300 lines, hard cap ~500. Split god files before adding more logic.                                                      |
+| 2        | **SRP** — one reason to change per file/package. Prefer three focused modules over one multi-concern dump.                                                                         |
+| 3        | **Greppable names** — unique domain nouns. Avoid `data`, `handler`, `Manager`, `Service`, `util`, `helper` as primary names. If `rg Name` floods, rename.                          |
+| 4        | **Comments = WHY / provenance** — security tradeoffs, SQLite limits, issue IDs (`#123`), upstream constraints. Never strip intent comments on refactor. No `// increment i` noise. |
+| 5        | **Explicit contracts** — Go public APIs fully typed; Svelte props named; no silent `interface{}`/`any` on boundaries.                                                              |
+| 6        | **DRY** — extract shared logic (generators, handlers, scaffold templates). No copy-variant drift.                                                                                  |
+| 7        | **Headless tests** — one command: `make ci` (or focused `go test ./pkg/... -run X`). SQLite `:memory:`; no manual seed for unit tests. Bug fix → regression test.                  |
+| 8        | **Predictable layout** — table below + generator patch markers. Mirror `foo.go` ↔ `foo_test.go`.                                                                                   |
+| 9        | **Inject deps** — handlers take `Store`, `*inertia.Inertia`, `cais.Config` via constructor; no hidden globals.                                                                     |
+| 10       | **Early returns** — max ~2 nesting levels for control flow.                                                                                                                        |
+| 11       | **Errors with values** — `fmt.Errorf("vite watch: %w", err)` not bare `"failed"`.                                                                                                  |
+| 12       | **Format without debate** — `gofmt` / `make format` (Prettier).                                                                                                                    |
+| 13       | **Structured logs** — JSON request/SQL in dev via `devlog`/`sqllog`; plain text only for CLI UX.                                                                                   |
 
 ### Repo red flags (split when you touch them)
 
-| Path | Lines (approx) | Split hint |
-| ---- | -------------- | ---------- |
-| `internal/cli/tpl_scaffold_handlers_inertia.go` | ~1300 | Split by handler domain (auth / contact / home) |
-| `internal/app/app_test.go` | ~1000 | Split by flow (auth / contact / smoke) |
-| `internal/cli/doctor.go` | ~700 | Split mobile checks vs core checks |
-| `internal/cli/tpl_scaffold_tooling.go` | ~600 | CI vs package.json vs Makefile templates |
-| `internal/cli/resource_gen_inertia.go` | ~600 | Form gen vs handler gen |
-| `pkg/cais/pwa/assets/cais*.js` | ~900+ | Already split core/chat; avoid growing monoliths |
+| Path                                            | Lines (approx) | Split hint                                       |
+| ----------------------------------------------- | -------------- | ------------------------------------------------ |
+| `internal/cli/tpl_scaffold_handlers_inertia.go` | ~1300          | Split by handler domain (auth / contact / home)  |
+| `internal/app/app_test.go`                      | ~1000          | Split by flow (auth / contact / smoke)           |
+| `internal/cli/doctor.go`                        | ~700           | Split mobile checks vs core checks               |
+| `internal/cli/tpl_scaffold_tooling.go`          | ~600           | CI vs package.json vs Makefile templates         |
+| `internal/cli/resource_gen_inertia.go`          | ~600           | Form gen vs handler gen                          |
+| `pkg/cais/pwa/assets/cais*.js`                  | ~900+          | Already split core/chat; avoid growing monoliths |
 
 Scaffold `const tpl*` blobs are large by nature — still prefer one const per responsibility file (`tpl_scaffold_*.go`), never a single mega template file.
 
