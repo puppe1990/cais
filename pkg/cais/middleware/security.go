@@ -36,9 +36,15 @@ func SecurityHeaders(cfg cais.Config) func(http.Handler) http.Handler {
 			if cfg.CSPImgSrc != "" {
 				imgSrc += " " + cfg.CSPImgSrc
 			}
+			// font-src defaults to 'self' data: so hosted webfonts need CSP_FONT_SRC
+			// (e.g. https://fonts.gstatic.com) alongside CSP_STYLE_SRC for stylesheets.
+			fontSrc := "'self' data:"
+			if cfg.CSPFontSrc != "" {
+				fontSrc += " " + cfg.CSPFontSrc
+			}
 			w.Header().Set("Content-Security-Policy", fmt.Sprintf(
-				"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src %s; img-src %s; connect-src %s; media-src %s; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
-				styleSrc, imgSrc, connectSrc, mediaSrc,
+				"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src %s; img-src %s; font-src %s; connect-src %s; media-src %s; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+				styleSrc, imgSrc, fontSrc, connectSrc, mediaSrc,
 			))
 			if cfg.Env == "production" {
 				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")

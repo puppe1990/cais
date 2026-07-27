@@ -92,8 +92,12 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(appGo), "Inertia   *inertia.Inertia") {
+	appGoBody := string(appGo)
+	if !strings.Contains(appGoBody, "Inertia   *inertia.Inertia") {
 		t.Error("app.go should wire gonertia Inertia in Deps")
+	}
+	if !strings.Contains(appGoBody, "deps.Inertia, err = inertia.New") {
+		t.Error("app.New must assign fallback Inertia onto deps.Inertia before registerRoutes")
 	}
 
 	gomod, err := os.ReadFile(filepath.Join(appDir, "go.mod"))
@@ -152,6 +156,29 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 	}
 	if strings.Contains(string(auth), "r.ParseForm()") {
 		t.Error("auth handler must not call r.ParseForm() alone (breaks JSON bodies)")
+	}
+
+	appHTML, err := os.ReadFile(filepath.Join(appDir, "web/templates/app.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(appHTML), "<title>myapp</title>") {
+		t.Error("app.html should include a default <title>")
+	}
+
+	dash, err := os.ReadFile(filepath.Join(appDir, "web/src/pages/Dashboard.svelte"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dashBody := string(dash)
+	if strings.Contains(dashBody, `action="/logout" use:inertia`) || strings.Contains(dashBody, `use:inertia>\n    <button`) {
+		t.Error("Dashboard logout must not use use:inertia on a POST form")
+	}
+	if !strings.Contains(dashBody, `router.post('/logout')`) {
+		t.Error("Dashboard logout should call router.post('/logout')")
+	}
+	if !strings.Contains(dashBody, "<svelte:head>") {
+		t.Error("Dashboard should set document title via svelte:head")
 	}
 
 	pkg, err := os.ReadFile(filepath.Join(appDir, "package.json"))

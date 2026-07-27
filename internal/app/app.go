@@ -58,14 +58,13 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 		return nil, fmt.Errorf("store is required")
 	}
 
-	inertiaI := deps.Inertia
-	if inertiaI == nil {
+	if deps.Inertia == nil {
 		var err error
-		inertiaI, err = inertia.New(defaultInertiaRoot)
+		// Fallback root for tests / bootstrap until Vite app.html is wired.
+		deps.Inertia, err = inertia.New(defaultInertiaRoot)
 		if err != nil {
 			return nil, fmt.Errorf("inertia: %w", err)
 		}
-		// version defaults to empty; real asset version (for cache bust) set via options in bootstrap later
 	}
 
 	site := deps.Site
@@ -73,6 +72,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 		site = meta.SiteFrom("Cais", cfg.AppURL)
 	}
 	site.Env = cfg.Env
+	deps.Site = site
 
 	r := cais.NewRouter()
 	r.Use(middleware.CSRF(cfg))
@@ -88,15 +88,7 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 	r.Use(middleware.SecurityHeaders(cfg))
 	r.StaticForEnv("/static", deps.StaticDir, cfg)
 
-	// pass possibly defaulted inertia down (deps.Inertia may be nil, register will see updated? use local)
-	registerRoutes(r, Deps{
-		Renderer:  deps.Renderer,
-		Store:     deps.Store,
-		StaticDir: deps.StaticDir,
-		Site:      site,
-		Catalog:   deps.Catalog,
-		Inertia:   inertiaI,
-	}, cfg, site)
+	registerRoutes(r, deps, cfg, site)
 	devlog.Register(r, cfg.Env, buf)
 	r.Get("/health", healthHandler(deps.Store, cfg))
 

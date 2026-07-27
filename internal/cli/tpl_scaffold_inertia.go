@@ -6,6 +6,7 @@ const tplAppHTML = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>{{.AppName}}</title>
   {{"{{ .inertiaHead }}"}}
   <link rel="stylesheet" href="/static/css/styles.css" />
   <link rel="manifest" href="/static/manifest.webmanifest" />
@@ -81,6 +82,10 @@ const tplSvelteHome = `<script>
   export let labels = {}
 </script>
 
+<svelte:head>
+  <title>{title} · {{.AppName}}</title>
+</svelte:head>
+
 <AppLayout {site} {flash} {labels}>
   <div class="flex flex-col items-center justify-center px-6 py-14 text-center">
     <h1 class="mt-10 font-serif text-4xl font-semibold tracking-tight text-stone-800 md:text-5xl">
@@ -104,6 +109,10 @@ const tplSvelteContact = `<script>
   }
 </script>
 
+<svelte:head>
+  <title>Contact · {{.AppName}}</title>
+</svelte:head>
+
 <div class="max-w-md mx-auto p-6">
   <h1 class="text-2xl font-semibold mb-4">Contact</h1>
   {#if flash.success}
@@ -120,20 +129,24 @@ const tplSvelteContact = `<script>
 `
 
 const tplSvelteDashboard = `<script>
-  import { inertia } from '@inertiajs/svelte'
+  import { router } from '@inertiajs/svelte'
   export let totalContacts = 0
   export let env = ''
   export let site = {}
+  // use:inertia is for GET navigation; mutations need router.post / useForm.
+  function logout() { router.post('/logout') }
 </script>
+
+<svelte:head>
+  <title>Dashboard · {{.AppName}}</title>
+</svelte:head>
 
 <div class="p-8">
   <h1 class="text-3xl">Dashboard</h1>
   <p>Welcome! (Inertia/Svelte)</p>
   <p>Contacts: {totalContacts}</p>
   <p>Env: {env}</p>
-  <form method="post" action="/logout" use:inertia>
-    <button class="mt-4">Logout</button>
-  </form>
+  <button type="button" class="mt-4" on:click={logout}>Logout</button>
 </div>
 `
 
@@ -144,6 +157,10 @@ const tplSvelteLogin = `<script>
   let form = useForm({ email: 'demo@example.com', password: 'password' })
   function submit() { form.post('/login') }
 </script>
+
+<svelte:head>
+  <title>Login · {{.AppName}}</title>
+</svelte:head>
 
 <div class="max-w-sm mx-auto mt-10 p-6 border rounded">
   <h1 class="text-xl mb-4">Login</h1>
@@ -162,6 +179,10 @@ const tplSvelteSignup = `<script>
   let form = useForm({ email: '', password: '', password_confirmation: '' })
   function submit() { form.post('/signup') }
 </script>
+
+<svelte:head>
+  <title>Sign up · {{.AppName}}</title>
+</svelte:head>
 
 <div class="max-w-sm mx-auto p-6">
   <h1>Sign up</h1>
@@ -182,6 +203,10 @@ const tplSvelteForgotPassword = `<script>
   function submit() { form.post('/forgot-password') }
 </script>
 
+<svelte:head>
+  <title>Forgot password · {{.AppName}}</title>
+</svelte:head>
+
 <h1>Forgot password</h1>
 <form on:submit|preventDefault={submit}>
   <input bind:value={form.email} type="email" />
@@ -197,6 +222,10 @@ const tplSvelteResetPassword = `<script>
   let form = useForm({ token, password: '', password_confirmation: '' })
   function submit() { form.post('/reset-password') }
 </script>
+
+<svelte:head>
+  <title>Reset password · {{.AppName}}</title>
+</svelte:head>
 
 <div class="max-w-sm mx-auto p-6">
   <h1 class="text-xl mb-4">Reset password</h1>

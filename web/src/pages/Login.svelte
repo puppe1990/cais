@@ -6,6 +6,10 @@
   function submit() { form.post('/login') }
 </script>
 
+<svelte:head>
+  <title>Login · Cais</title>
+</svelte:head>
+
 <div class="max-w-sm mx-auto mt-10 p-6 border rounded">
   <h1 class="text-xl mb-4">Login</h1>
   <form on:submit|preventDefault={submit}>

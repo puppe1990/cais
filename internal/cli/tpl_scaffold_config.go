@@ -61,6 +61,13 @@ ADMIN_TOKEN=
 # Reverse proxy (comma-separated IPs; trust X-Forwarded-For for client IP)
 TRUSTED_PROXIES=
 
+# CSP extras (optional; space-separated hosts appended to defaults)
+# CSP_STYLE_SRC=https://fonts.googleapis.com
+# CSP_FONT_SRC=https://fonts.gstatic.com
+# CSP_CONNECT_SRC=
+# CSP_MEDIA_SRC=
+# CSP_IMG_SRC=
+
 # SMTP (optional; password reset emails — logs to stdout when unset)
 SMTP_HOST=
 SMTP_PORT=587

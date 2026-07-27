@@ -6,6 +6,10 @@
   function submit() { form.post('/reset-password') }
 </script>
 
+<svelte:head>
+  <title>Reset password · Cais</title>
+</svelte:head>
+
 <div class="max-w-sm mx-auto p-6">
   <h1 class="text-xl mb-4">Reset password</h1>
   {#if errors.token}<p class="text-red-600 text-sm mb-2">{errors.token}</p>{/if}

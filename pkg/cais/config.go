@@ -22,6 +22,7 @@ type Config struct {
 	CSPConnectSrc     string
 	CSPMediaSrc       string
 	CSPImgSrc         string
+	CSPFontSrc        string
 }
 
 func Load() Config {
@@ -89,6 +90,9 @@ func Load() Config {
 		cfg.CSPImgSrc = v
 	} else if cfg.Env == "development" {
 		cfg.CSPImgSrc = "https://images.openfoodfacts.org"
+	}
+	if v := os.Getenv("CSP_FONT_SRC"); v != "" {
+		cfg.CSPFontSrc = v
 	}
 
 	return cfg

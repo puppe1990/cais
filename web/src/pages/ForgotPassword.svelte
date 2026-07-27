@@ -5,6 +5,10 @@
   function submit() { form.post('/forgot-password') }
 </script>
 
+<svelte:head>
+  <title>Forgot password · Cais</title>
+</svelte:head>
+
 <h1>Forgot password</h1>
 <form on:submit|preventDefault={submit}>
   <input bind:value={form.email} type="email" />

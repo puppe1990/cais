@@ -6,6 +6,10 @@
   export let labels = {}
 </script>
 
+<svelte:head>
+  <title>{title} · Cais</title>
+</svelte:head>
+
 <AppLayout {site} {flash} {labels}>
   <div class="flex flex-col items-center justify-center px-6 py-14 text-center">
     <h1 class="mt-10 font-serif text-4xl font-semibold tracking-tight text-stone-800 md:text-5xl">
