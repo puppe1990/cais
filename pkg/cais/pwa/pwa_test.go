@@ -21,6 +21,30 @@ func TestDefaultConfig(t *testing.T) {
 	}
 }
 
+func TestServiceWorker_networkFirstForSPABuild(t *testing.T) {
+	data, err := assets.ReadFile("assets/sw.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	for _, want := range []string{
+		`/static/build/`,
+		`/static/css/`,
+		`function networkFirst`,
+		`function cacheFirst`,
+		`const CACHE_VERSION`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("sw.js missing %q", want)
+		}
+	}
+	// Must not treat all /static/ as pure cache-first without build exception.
+	if !strings.Contains(content, "startsWith(\"/static/build/\")") &&
+		!strings.Contains(content, `startsWith("/static/build/")`) {
+		t.Error("sw.js should network-first /static/build/ paths")
+	}
+}
+
 func TestCaisJS_hasSSEReconnect(t *testing.T) {
 	data, err := assets.ReadFile("assets/cais-core.js")
 	if err != nil {

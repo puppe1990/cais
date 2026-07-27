@@ -109,9 +109,9 @@ func (c *CLI) cmdDev() error {
 		return err
 	}
 	if hasViteApp(dir) {
-		_, _ = fmt.Fprintln(c.Out, "→ vite build (initial)")
+		_, _ = fmt.Fprintln(c.Out, "→ vite build (initial) — Svelte/Inertia → web/static/build/")
 		if err := runViteBuild(dir); err != nil {
-			return fmt.Errorf("vite build: %w", err)
+			return fmt.Errorf("vite build: %w (run cais install if node_modules is missing)", err)
 		}
 	}
 
@@ -133,7 +133,7 @@ func (c *CLI) cmdDev() error {
 	if viteWatch, err := startViteWatch(dir); err != nil {
 		return fmt.Errorf("vite watch: %w", err)
 	} else if viteWatch != nil {
-		_, _ = fmt.Fprintln(c.Out, "→ vite build --watch")
+		_, _ = fmt.Fprintln(c.Out, "→ vite build --watch (rebuilds on web/src/** changes)")
 		defer func() { _ = viteWatch.Process.Kill() }()
 	}
 

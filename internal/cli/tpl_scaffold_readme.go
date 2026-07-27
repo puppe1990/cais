@@ -19,7 +19,7 @@ const tplREADME = "# {{.AppName}}\n\n" +
 	"```bash\n" +
 	"cais install               # npm install + go mod tidy\n" +
 	"cais css                   # build Tailwind\n" +
-	"cais dev                   # hot reload + tailwind watch\n" +
+	"cais dev                   # air + tailwind + vite build --watch (Svelte)\n" +
 	"cais server                # go run ./cmd/server\n" +
 	"cais console               # interactive Go REPL + SQL\n" +
 	"cais g handler <name>      # handler + test + page template\n" +

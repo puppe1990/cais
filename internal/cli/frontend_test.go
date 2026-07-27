@@ -58,3 +58,37 @@ func TestRunViteBuild_runsNpmBuildWhenVitePresent(t *testing.T) {
 		t.Fatalf("expected build output: %v", err)
 	}
 }
+
+func TestViteWatchArgs_usesNpmBuildWatch(t *testing.T) {
+	args := viteWatchArgs()
+	want := []string{"run", "build", "--", "--watch"}
+	if len(args) != len(want) {
+		t.Fatalf("viteWatchArgs = %v, want %v", args, want)
+	}
+	for i := range want {
+		if args[i] != want[i] {
+			t.Fatalf("viteWatchArgs = %v, want %v", args, want)
+		}
+	}
+}
+
+func TestStartViteWatch_skipsWithoutVite(t *testing.T) {
+	dir := t.TempDir()
+	writeMinimalCaisApp(t, dir, false)
+	cmd, err := startViteWatch(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cmd != nil {
+		t.Fatal("expected nil cmd without vite app")
+	}
+}
+
+func TestStartViteWatch_errorsWithoutNodeModules(t *testing.T) {
+	dir := t.TempDir()
+	writeMinimalCaisApp(t, dir, true)
+	_, err := startViteWatch(dir)
+	if err == nil {
+		t.Fatal("expected error when node_modules missing")
+	}
+}
