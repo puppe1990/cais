@@ -1,15 +1,50 @@
 # Cais — AI Conventions
 
+Primary reader of this repo is often an LLM agent: cheap `rg`, expensive full reads, file truncation ~2k lines. Optimize for grep-unique names, small modules, and headless tests.
+
 ## Rule #1: TDD is mandatory
 
 Before writing production code:
 
-1. Write the test in `*_test.go`
-2. Run: `go test ./... -v -run TestName`
+1. Write the test in `*_test.go` (or Vitest for Svelte pages)
+2. Run: `go test ./... -v -run TestName` (or `npm run test:fe -- path`)
 3. Confirm it **fails** for the right reason (missing feature, not a typo)
 4. Write the **minimal** code to make it pass
-5. Run: `make test`
+5. Run: `make test` (Go) and/or `make js-test` / `npm run test:fe` when frontend changed
 6. Only then refactor
+
+## Clean Code for Agents (Akita / ranked)
+
+Imperative. Prefer these when trading off effort.
+
+| Priority | Rule                                                                                                                                                                               |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1        | **Small units** — functions ~4–20 lines; files target 200–300 lines, hard cap ~500. Split god files before adding more logic.                                                      |
+| 2        | **SRP** — one reason to change per file/package. Prefer three focused modules over one multi-concern dump.                                                                         |
+| 3        | **Greppable names** — unique domain nouns. Avoid `data`, `handler`, `Manager`, `Service`, `util`, `helper` as primary names. If `rg Name` floods, rename.                          |
+| 4        | **Comments = WHY / provenance** — security tradeoffs, SQLite limits, issue IDs (`#123`), upstream constraints. Never strip intent comments on refactor. No `// increment i` noise. |
+| 5        | **Explicit contracts** — Go public APIs fully typed; Svelte props named; no silent `interface{}`/`any` on boundaries.                                                              |
+| 6        | **DRY** — extract shared logic (generators, handlers, scaffold templates). No copy-variant drift.                                                                                  |
+| 7        | **Headless tests** — one command: `make ci` (or focused `go test ./pkg/... -run X`). SQLite `:memory:`; no manual seed for unit tests. Bug fix → regression test.                  |
+| 8        | **Predictable layout** — table below + generator patch markers. Mirror `foo.go` ↔ `foo_test.go`.                                                                                   |
+| 9        | **Inject deps** — handlers take `Store`, `*inertia.Inertia`, `cais.Config` via constructor; no hidden globals.                                                                     |
+| 10       | **Early returns** — max ~2 nesting levels for control flow.                                                                                                                        |
+| 11       | **Errors with values** — `fmt.Errorf("vite watch: %w", err)` not bare `"failed"`.                                                                                                  |
+| 12       | **Format without debate** — `gofmt` / `make format` (Prettier).                                                                                                                    |
+| 13       | **Structured logs** — JSON request/SQL in dev via `devlog`/`sqllog`; plain text only for CLI UX.                                                                                   |
+
+### Repo red flags (split when you touch them)
+
+| Path                                            | Lines (approx) | Split hint                                       |
+| ----------------------------------------------- | -------------- | ------------------------------------------------ |
+| `internal/cli/tpl_scaffold_handlers_inertia.go` | ~1300          | Split by handler domain (auth / contact / home)  |
+| `internal/app/app_test.go`                      | ~1000          | Split by flow (auth / contact / smoke)           |
+| `internal/cli/doctor.go`                        | ~700           | Split mobile checks vs core checks               |
+| `internal/cli/tpl_scaffold_tooling.go`          | ~600           | CI vs package.json vs Makefile templates         |
+| `internal/cli/resource_gen_inertia.go`          | ~600           | Form gen vs handler gen                          |
+| `pkg/cais/pwa/assets/cais*.js`                  | ~900+          | Already split core/chat; avoid growing monoliths |
+
+Scaffold `const tpl*` blobs are large by nature — still prefer one const per responsibility file (`tpl_scaffold_*.go`), never a single mega template file.
 
 ## Structure
 
@@ -540,19 +575,21 @@ go test ./internal/cli/... -count=1
 ## Framework commands (Cais repo)
 
 ```bash
-make test-v         # TDD: watch RED/GREEN
-make test           # Go validation with -race
+make test-v         # TDD: verbose Go tests
+make test           # Go validation with -race (agent default for backend)
 make js-test        # Vitest Svelte + cais-chat-logic .mjs tests
 make lint           # golangci-lint
 make format         # prettier --write
-make ci             # test + js-test + lint + format-check
-make dev            # hot reload + tailwind watch
+make ci             # test + js-test + lint + format-check (full gate)
+make dev            # air + tailwind watch + vite build --watch
 make build          # bin/cais
 make install-cli    # go install ./cmd/cais
 make pwa            # regenerate PWA assets (manifest fullscreen, icons, og.png)
 make docker         # ~15-20MB image
 ```
 
+**One-shot validation:** `make ci`  
+**Focused TDD:** `go test ./pkg/cais/httpx/ -run TestParseFormOrJSON -count=1 -v`  
 CI builds Vite assets (`npm ci && npm run build`) before `go test`.
 
 ## Production deploy (Lightsail / systemd)
@@ -575,9 +612,25 @@ Pre-commit (tests, lint, prettier): `make pre-commit-install` once, then hooks r
 
 ## Agent code style
 
-- Comment **why** on non-obvious constraints (security tradeoffs, SQLite limits, boot-time vs per-request).
-- Do not narrate what the code does — names and tests already cover that.
-- Prefer file- or func-level provenance over inline noise; agents load whole files, not single lines.
+See **Clean Code for Agents** above. Project extras:
+
+- Comment **why** on security, SQLite concurrency, CSRF/cookie, Inertia JSON vs form, boot-time vs per-request.
+- Do not narrate WHAT the code does — names and tests already cover that.
+- Prefer file- or func-level provenance over inline noise; agents load whole files.
+- Keep generator templates and dogfood app in sync (scaffold `tpl_*` + `web/src` + handlers).
+- Inertia + Svelte 5: `mount()`, `form.*` (not `$form`), `router.post` for mutations, `httpx.ParseFormOrJSON`, CSRF `cais_csrf` / `X-CSRF-Token`.
+
+## Defensive categories (implement only these)
+
+Agents implement the categories listed — do not invent extra ops policy.
+
+- [x] **Rate limits** — `middleware.NewRateLimiter` on login/contact (and sensitive POSTs)
+- [x] **Timeouts** — HTTP server Read/Write/Idle; SSE uses `WriteTimeout: 0` + stream package
+- [x] **SQLite busy** — `sqlite.Configure` WAL + `busy_timeout`; short writes during SSE
+- [x] **CSRF** — double-submit cookie on state-changing methods
+- [x] **Production gate** — `cfg.Validate()` requires `ADMIN_TOKEN` + `APP_URL`
+- [ ] **Retries with backoff** — only if adding outbound HTTP clients (mail, webhooks); not for request handlers
+- [ ] **Circuit breaker** — not required unless proxying flaky upstreams
 
 ## Do not
 
@@ -585,3 +638,7 @@ Pre-commit (tests, lint, prettier): `make pre-commit-install` once, then hooks r
 - Use inline CSS (use Tailwind classes in templates)
 - Mock the database (use SQLite `:memory:`)
 - Import `internal/` from `pkg/cais/` (avoids import cycles)
+- Grow files past ~500 lines without splitting
+- Ship features without a test the agent can run headless
+- Strip WHY/provenance comments “to clean up”
+- Use `$form` store syntax or Svelte 4 `new App()` in scaffolds
