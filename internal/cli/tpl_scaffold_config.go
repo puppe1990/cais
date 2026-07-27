@@ -5,7 +5,7 @@ const tplGoMod = `module {{.ModulePath}}
 go 1.26
 
 require (
-	github.com/puppe1990/cais v0.1.0
+	github.com/puppe1990/cais v{{.CaisVersion}}
 	github.com/romsar/gonertia/v3 v3.0.0
 	modernc.org/sqlite v1.53.0
 )

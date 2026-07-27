@@ -94,19 +94,19 @@ func buildSvelteFormField(f FieldDef) string {
 	switch f.Widget {
 	case "textarea":
 		return fmt.Sprintf(`    <label class="block text-sm font-medium">%s</label>
-    <textarea bind:value={$form.%s} class="block w-full border rounded p-2"></textarea>
+    <textarea bind:value={form.%s} class="block w-full border rounded p-2"></textarea>
     %s
 `, label, f.Pascal, errBlock)
 	case "checkbox":
 		return fmt.Sprintf(`    <label class="flex items-center gap-2 text-sm">
-      <input type="checkbox" bind:checked={$form.%s} class="rounded" /> %s
+      <input type="checkbox" bind:checked={form.%s} class="rounded" /> %s
     </label>
     %s
 `, f.Pascal, label, errBlock)
 	case "select":
 		optVar := f.RefPascal + "Options"
 		return fmt.Sprintf(`    <label class="block text-sm font-medium">%s</label>
-    <select bind:value={$form.%s} class="block w-full border rounded p-2">
+    <select bind:value={form.%s} class="block w-full border rounded p-2">
       {#each %s as opt}<option value={opt.value}>{opt.label}</option>{/each}
     </select>
     %s
@@ -117,7 +117,7 @@ func buildSvelteFormField(f FieldDef) string {
 			inputType = "text"
 		}
 		return fmt.Sprintf(`    <label class="block text-sm font-medium">%s</label>
-    <input type="%s" bind:value={$form.%s} class="block w-full border rounded p-2" />
+    <input type="%s" bind:value={form.%s} class="block w-full border rounded p-2" />
     %s
 `, label, inputType, f.Pascal, errBlock)
 	}
@@ -154,8 +154,8 @@ func buildAdminFormSvelte(data scaffoldData) string {
 %s
   })
   function submit() {
-    if (isNew) $form.post('/admin/%s')
-    else $form.post('/admin/%s/' + item.id)
+    if (isNew) form.post('/admin/%s')
+    else form.post('/admin/%s/' + item.id)
   }
 </script>
 
@@ -319,6 +319,7 @@ import (
 %s	"strings"
 
 	inertia "github.com/romsar/gonertia/v3"
+	"%s/pkg/cais/httpx"
 	"%s/pkg/cais/validate"
 %s
 	"%s/pkg/cais/meta"
@@ -397,9 +398,10 @@ func (h *Admin%sHandler) parseForm(r *http.Request) (models.%s, validate.FieldEr
 }
 `,
 		strconvImport,
-		frameworkModule,
+		frameworkModule, // httpx
+		frameworkModule, // validate
 		paginationImport,
-		frameworkModule,
+		frameworkModule, // meta
 		data.ModulePath, data.ModulePath,
 		data.PluralPascal,
 		data.PluralPascal, data.PluralPascal, data.PluralPascal,

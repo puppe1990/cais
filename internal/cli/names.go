@@ -6,8 +6,11 @@ import (
 )
 
 type scaffoldData struct {
-	AppName      string
-	ModulePath   string
+	AppName    string
+	ModulePath string
+	// CaisVersion is the framework module version written into go.mod (no "v" prefix).
+	// Empty means scaffoldNewApp fills it from the running CLI.
+	CaisVersion  string
 	Handler      string
 	Pascal       string
 	Camel        string

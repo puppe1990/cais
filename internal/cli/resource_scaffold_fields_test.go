@@ -154,10 +154,10 @@ func TestScaffoldResource_FloatFields(t *testing.T) {
 		t.Fatal(err)
 	}
 	formBody := string(form)
-	if !strings.Contains(formBody, `bind:value={$form.Lat}`) || !strings.Contains(formBody, `type="float"`) {
+	if !strings.Contains(formBody, `bind:value={form.Lat}`) || !strings.Contains(formBody, `type="float"`) {
 		t.Error("admin svelte form should include lat float field")
 	}
-	if !strings.Contains(formBody, `$form.Lng`) {
+	if !strings.Contains(formBody, `form.Lng`) {
 		t.Error("admin svelte form should include lng float field")
 	}
 }
