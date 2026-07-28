@@ -69,6 +69,7 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		"web/templates/app.html":                     tplAppHTML,
 		"web/src/main.js":                            tplMainJS,
 		"web/src/components/AppLayout.svelte":        tplAppLayout,
+		"web/src/components/PasswordInput.svelte":    tplPasswordInput,
 		"web/src/pages/Home.svelte":                  tplSvelteHome,
 		"web/src/pages/Contact.svelte":               tplSvelteContact,
 		"web/src/pages/Dashboard.svelte":             tplSvelteDashboard,

@@ -31,7 +31,11 @@ func MakeField(name, label, value, htmlType string, required bool, errors map[st
 }
 
 // FieldInput renders a labeled input, textarea, or checkbox with optional error text.
+// Type "password" always includes the show/hide eye toggle (same as fieldPassword).
 func FieldInput(f FieldData) template.HTML {
+	if f.Type == "password" {
+		return FieldPassword(f)
+	}
 	var b strings.Builder
 	switch f.Type {
 	case "textarea":

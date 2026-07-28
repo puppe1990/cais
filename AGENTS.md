@@ -645,6 +645,7 @@ See **Clean Code for Agents** above. Project extras:
 - Prefer file- or func-level provenance over inline noise; agents load whole files.
 - Keep generator templates and dogfood app in sync (scaffold `tpl_*` + `web/src` + handlers).
 - Inertia + Svelte 5: `mount()`, `form.*` (not `$form`), `router.post` for mutations, `httpx.ParseFormOrJSON`, CSRF `cais_csrf` / `X-CSRF-Token`.
+- Password fields: always use `PasswordInput.svelte` (Svelte) or `fieldPassword` / `fieldInput` with type `password` (HTML) — eye show/hide is default.
 - Do not reactive-assign Inertia props into `useForm` fields (`$: form.x = prop`) — prefer local state + assign on submit (blank page footgun).
 
 ## Defensive categories (implement only these)

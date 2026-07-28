@@ -1,5 +1,6 @@
 <script>
   import { useForm } from '@inertiajs/svelte'
+  import PasswordInput from '../components/PasswordInput.svelte'
   export let errors = {}
   export let site = {}
   let form = useForm({ email: 'demo@example.com', password: 'password' })
@@ -15,7 +16,9 @@
   <form on:submit|preventDefault={submit}>
     <input type="email" bind:value={form.email} class="block w-full p-2 border" />
     {#if errors.email}<div class="text-red-600 text-xs">{errors.email}</div>{/if}
-    <input type="password" bind:value={form.password} class="block w-full p-2 border mt-2" />
+    <div class="mt-2">
+      <PasswordInput bind:value={form.password} name="password" autocomplete="current-password" className="block w-full p-2 border" />
+    </div>
     <button class="mt-4 bg-stone-800 text-white px-4 py-2">Log in</button>
   </form>
 </div>

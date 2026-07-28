@@ -1,5 +1,6 @@
 <script>
   import { useForm } from '@inertiajs/svelte'
+  import PasswordInput from '../components/PasswordInput.svelte'
   export let errors = {}
   export let token = ''
   let form = useForm({ token, password: '', password_confirmation: '' })
@@ -15,9 +16,11 @@
   {#if errors.token}<p class="text-red-600 text-sm mb-2">{errors.token}</p>{/if}
   <form on:submit|preventDefault={submit}>
     <input type="hidden" bind:value={form.token} />
-    <input bind:value={form.password} type="password" class="block w-full border p-2" placeholder="New password" />
+    <PasswordInput bind:value={form.password} name="password" autocomplete="new-password" placeholder="New password" className="block w-full border p-2" />
     {#if errors.password}<p class="text-red-600 text-sm">{errors.password}</p>{/if}
-    <input bind:value={form.password_confirmation} type="password" class="block w-full border p-2 mt-2" placeholder="Confirm password" />
+    <div class="mt-2">
+      <PasswordInput bind:value={form.password_confirmation} name="password_confirmation" autocomplete="new-password" placeholder="Confirm password" className="block w-full border p-2" />
+    </div>
     {#if errors.password_confirmation}<p class="text-red-600 text-sm">{errors.password_confirmation}</p>{/if}
     <button class="mt-4 px-4 py-2 bg-stone-800 text-white">Reset</button>
   </form>

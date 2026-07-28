@@ -146,6 +146,12 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 	if !strings.Contains(loginBody, "form.post('/login')") || !strings.Contains(loginBody, "bind:value={form.email}") {
 		t.Error("Login.svelte should bind form fields without $ prefix")
 	}
+	if !strings.Contains(loginBody, "PasswordInput") {
+		t.Error("Login.svelte should use PasswordInput with eye toggle")
+	}
+	if _, err := os.Stat(filepath.Join(appDir, "web/src/components/PasswordInput.svelte")); err != nil {
+		t.Error("scaffold should include web/src/components/PasswordInput.svelte")
+	}
 
 	auth, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/auth.go"))
 	if err != nil {
