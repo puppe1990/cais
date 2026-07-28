@@ -20,19 +20,31 @@ func scaffoldAuth(dir string, data scaffoldData, dryRun bool) error {
 	}
 
 	files := map[string]string{
-		"internal/models/user.go":                  tplUserModel,
-		"internal/handlers/auth.go":                tplAuthHandler,
-		"internal/handlers/auth_test.go":           tplAuthTest,
-		"internal/store/password_reset.go":         tplStorePasswordReset,
-		migrationPath:                              tplMigration002Auth,
-		"web/templates/pages/login.html":           tplPageLogin,
-		"web/templates/pages/signup.html":          tplPageSignup,
-		"web/templates/pages/forgot_password.html": tplPageForgotPassword,
-		"web/templates/pages/reset_password.html":  tplPageResetPassword,
+		"internal/models/user.go":          tplUserModel,
+		"internal/handlers/auth.go":        tplAuthHandler,
+		"internal/handlers/auth_test.go":   tplAuthTest,
+		"internal/store/password_reset.go": tplStorePasswordReset,
+		migrationPath:                      tplMigration002Auth,
+		// Inertia + Svelte pages (default stack; no HTMX login templates)
+		"web/src/pages/Login.svelte":              tplSvelteLogin,
+		"web/src/pages/Signup.svelte":             tplSvelteSignup,
+		"web/src/pages/ForgotPassword.svelte":     tplSvelteForgotPassword,
+		"web/src/pages/ResetPassword.svelte":      tplSvelteResetPassword,
+		"web/src/pages/Dashboard.svelte":          tplSvelteDashboard,
+		"web/src/components/PasswordInput.svelte": tplPasswordInput,
 	}
 
 	for path, content := range files {
 		full := filepath.Join(dir, path)
+		// Skip overwriting existing Svelte pages (e.g. Dashboard from full scaffold).
+		if strings.HasSuffix(path, ".svelte") {
+			if _, err := os.Stat(full); err == nil {
+				if dryRun {
+					printfScaffold("skip", path+" (exists)")
+				}
+				continue
+			}
+		}
 		if err := writeScaffoldTemplate(full, content, data, path, dryRun); err != nil {
 			return fmt.Errorf("%s: %w", path, err)
 		}

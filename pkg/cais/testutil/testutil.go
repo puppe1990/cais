@@ -29,31 +29,24 @@ func ProjectRoot(t *testing.T) string {
 	}
 }
 
-// TemplatesDir returns web/templates when HTMX layouts exist, else pkg/cais/testdata/templates.
+// TemplatesDir returns pkg/cais/testdata/templates (framework fixtures for HTMX partial tests).
 func TemplatesDir(t *testing.T) string {
 	t.Helper()
 	root := ProjectRoot(t)
-	web := filepath.Join(root, "web", "templates")
-	if _, err := os.Stat(filepath.Join(web, "layouts", "base.html")); err == nil {
-		return web
-	}
 	testdata := filepath.Join(root, "pkg", "cais", "testdata", "templates")
 	if _, err := os.Stat(testdata); err == nil {
 		return testdata
 	}
-	return web
+	t.Fatal("pkg/cais/testdata/templates missing")
+	return ""
 }
 
-// NewRenderer loads templates from TemplatesDir, or a stub when only Inertia app.html exists.
+// NewRenderer loads templates from TemplatesDir.
 func NewRenderer(t *testing.T) *cais.Renderer {
 	t.Helper()
 	dir := TemplatesDir(t)
 	r, err := cais.NewRendererFromDir(dir, nil)
 	if err != nil {
-		root := ProjectRoot(t)
-		if _, statErr := os.Stat(filepath.Join(root, "web", "templates", "app.html")); statErr == nil {
-			return cais.NewRendererStub(nil)
-		}
 		t.Fatal(err)
 	}
 	return r

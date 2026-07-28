@@ -6,6 +6,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ## Unreleased
 
+### Changed
+
+- Scaffold handlers are **Inertia-only** (no HTMX HTML fallbacks in home/contact/auth/dashboard templates)
+- `cais g auth` writes Svelte pages (`Login`/`Signup`/…) instead of `web/templates/pages/*.html`
+- `cais destroy auth` removes Svelte auth pages (and leftover HTMX login HTML if present)
+- Framework repo is CLI + `pkg/cais` only — smoke production boots a scaffolded app via `cais new`
+
+### Removed
+
+- **Dogfood app** from this repository (`cmd/server`, `internal/app|handlers|store|models|db`, `web/` SPA)
+- Root Vite/Svelte/Tailwind dogfood tooling (apps bring their own via `cais new`)
+
 ## [0.8.1] - 2026-07-27
 
 ### Added
