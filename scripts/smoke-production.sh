@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Boot a freshly scaffolded app in production mode (replaces dogfood server smoke).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -7,6 +8,15 @@ PORT_NUM=$((18000 + RANDOM % 8000))
 trap 'kill "${PID:-}" 2>/dev/null || true; rm -rf "$TMP"' EXIT
 
 cd "$ROOT"
+go build -o "$TMP/cais" ./cmd/cais
+
+export CAIS_REPLACE="$ROOT"
+export CAIS_SKIP_TIDY=1
+
+APP="$TMP/smokeprod"
+"$TMP/cais" new smokeprod "$APP"
+cd "$APP"
+go mod tidy
 go build -o "$TMP/server" ./cmd/server
 
 export ENV=production

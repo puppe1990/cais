@@ -4,7 +4,6 @@ go 1.26.4
 
 require (
 	github.com/peterh/liner v1.2.2
-	github.com/romsar/gonertia/v3 v3.0.0
 	github.com/traefik/yaegi v0.15.1
 	golang.org/x/crypto v0.53.0
 	modernc.org/sqlite v1.53.0

@@ -6,11 +6,11 @@ Primary reader of this repo is often an LLM agent: cheap `rg`, expensive full re
 
 Before writing production code:
 
-1. Write the test in `*_test.go` (or Vitest for Svelte pages)
-2. Run: `go test ./... -v -run TestName` (or `npm run test:fe -- path`)
+1. Write the test in `*_test.go` (scaffold Svelte: `web/src/pages/*.test.js` in generated apps)
+2. Run: `go test ./... -v -run TestName` (framework JS: `npm run js:test`)
 3. Confirm it **fails** for the right reason (missing feature, not a typo)
 4. Write the **minimal** code to make it pass
-5. Run: `make test` (Go) and/or `make js-test` / `npm run test:fe` when frontend changed
+5. Run: `make test` and/or `make js-test` when JS changed
 6. Only then refactor
 
 ## Clean Code for Agents (Akita / ranked)
@@ -38,7 +38,6 @@ Imperative. Prefer these when trading off effort.
 | Path                                          | Notes                                                         |
 | --------------------------------------------- | ------------------------------------------------------------- |
 | `internal/cli/tpl_scaffold_handlers_*.go`     | Split done: home/contact/dashboard/auth + tests + testhelpers |
-| `internal/app/app_*_test.go`                  | Split done: helpers / health / contact / auth / smoke         |
 | `internal/cli/doctor.go` + `_env` + `_mobile` | Split done: core / env production / mobile checks             |
 | `internal/cli/tpl_scaffold_handlers_auth.go`  | ~420 — split login vs signup/reset if it grows further        |
 | `internal/cli/tpl_scaffold_tooling.go`        | ~600 — CI vs package.json vs Makefile templates               |
@@ -76,24 +75,20 @@ Scaffold `const tpl*` blobs: one family per file (`tpl_scaffold_handlers_auth.go
 | `pkg/cais/migrate/`       | `schema_migrations` runner (idempotent on boot)                                       |
 | `pkg/cais/flash/`         | One-shot flash cookies                                                                |
 | `pkg/cais/jobs/`          | SQLite background job queue                                                           |
+| `pkg/cais/testdata/`      | Fixture HTML (HTMX layouts + chat_sse partials for framework tests)                   |
 | `internal/cli/`           | Generators (`cais new`, `cais g`, `cais destroy`) — **Inertia + Svelte scaffolds**    |
-| `internal/app/`           | This repo's dogfood app bootstrap (`deps.Inertia`)                                    |
-| `internal/handlers/`      | HTTP handlers (gonertia + optional httpx fallback)                                    |
-| `internal/store/`         | SQLite persistence                                                                    |
-| `web/templates/app.html`  | Inertia root shell (loads Vite bundle)                                                |
-| `web/src/pages/`          | Svelte 5 pages (`@inertiajs/svelte`)                                                  |
-| `web/static/build/`       | Vite production output (`npm run build`)                                              |
-| `web/static/`             | Tailwind CSS, PWA assets, legacy HTMX JS                                              |
-| `web/embed.go`            | `embed.FS` for templates in production                                                |
-| `cmd/server/`             | Entry point                                                                           |
+| `cmd/cais/`               | CLI entry point                                                                       |
+| `cmd/pwagen/`             | Write PWA assets into a target directory                                              |
+
+This repo is **framework + CLI only** (no dogfood app). Apps live outside; create with `cais new`.
 
 ### Generated apps (`cais new`)
 
-Same layout as this repo's demo: `app.html` + `web/src/pages/*.svelte` + gonertia + Vite → `web/static/build/`. Default scaffold uses `pwa.InstallForInertia` (no HTMX JS bundles).
+Layout: `app.html` + `web/src/pages/*.svelte` + gonertia + Vite → `web/static/build/`. Default scaffold uses `pwa.InstallForInertia` (no HTMX JS bundles).
 
 `cais g handler` / `cais g page` generate **Svelte** pages in `web/src/pages/`.
 
-`cais g resource` / `cais g stream chat` still generate **HTMX/html** admin and chat templates until ported to Svelte.
+`cais g resource` on Inertia apps → Svelte admin. `cais g stream chat` still uses HTMX partials until ported.
 
 ## Router path params and groups
 
@@ -138,7 +133,7 @@ Dev seed user: `demo@example.com` / `password`. Sessions persist in SQLite via `
 
 ## Inertia + Svelte (default frontend)
 
-Handlers render **Inertia + Svelte** only (no HTMX HTML fallbacks in dogfood or `cais new` scaffolds).
+Handlers in generated apps render **Inertia + Svelte** only (no HTMX HTML fallbacks in `cais new` scaffolds).
 
 ```go
 // GET
@@ -157,14 +152,14 @@ h.inertia.Redirect(w, r.WithContext(ctx), "/dashboard", http.StatusSeeOther)
 
 **Where HTMX remains (on purpose):**
 
-| Area | Why |
-| ---- | --- |
-| `cais g stream chat` | SSE agent UI still uses HTMX partials + `cais.js` until ported |
-| `cais g resource` on non-Inertia apps | HTML admin CRUD when `Home.svelte` is missing |
-| `pkg/cais` htmx helpers / `web/static/js/htmx*.js` | Framework support for the above |
-| `web/templates/partials/chat_sse*.html` | Chat SSE contract tests + generator templates |
+| Area                                           | Why                                                            |
+| ---------------------------------------------- | -------------------------------------------------------------- |
+| `cais g stream chat`                           | SSE agent UI still uses HTMX partials + `cais.js` until ported |
+| `cais g resource` on non-Inertia apps          | HTML admin CRUD when `Home.svelte` is missing                  |
+| `pkg/cais` htmx helpers / `pwa/assets` HTMX JS | Framework support for the above                                |
+| `pkg/cais/testdata/.../chat_sse*.html`         | Chat SSE contract tests                                        |
 
-Default apps (`cais new`, dogfood) use `pwa.InstallForInertia` — no HTMX JS bundles.
+Default apps (`cais new`) use `pwa.InstallForInertia` — no HTMX JS bundles.
 
 Svelte pages use `@inertiajs/svelte`:
 
@@ -609,27 +604,24 @@ go test ./internal/cli/... -count=1
 
 **Patch markers** — generated apps must keep `registerRoutes`, `Close() error`, and `<!-- cais:nav -->` (or `</nav>`) for destroy/generator patches to work.
 
-## Framework commands (Cais repo)
+## Framework commands (this repo)
 
 ```bash
 make test-v         # TDD: verbose Go tests
 make test           # Go validation with -race (agent default for backend)
-make js-test        # Vitest Svelte + cais-chat-logic .mjs tests
+make js-test        # pkg/cais/js unit tests
 make lint           # golangci-lint
 make format         # prettier --write
 make ci             # test + js-test + lint + format-check (full gate)
-make dev            # air + tailwind watch + vite build --watch
 make build          # bin/cais
 make install-cli    # go install ./cmd/cais
-make pwa            # regenerate PWA assets (manifest fullscreen, icons, og.png)
-make docker         # ~15-20MB image
 ```
 
 **One-shot validation:** `make ci`  
 **Focused TDD:** `go test ./pkg/cais/httpx/ -run TestParseFormOrJSON -count=1 -v`  
-CI builds Vite assets (`npm ci && npm run build`) before `go test`.
+CI runs Go tests + `npm run js:test` + lint + Prettier + smoke (`cais new`).
 
-## Production deploy (Lightsail / systemd)
+## Production deploy (generated apps)
 
 Cross-compile and ship static assets beside the binary:
 
@@ -654,7 +646,7 @@ See **Clean Code for Agents** above. Project extras:
 - Comment **why** on security, SQLite concurrency, CSRF/cookie, Inertia JSON vs form, boot-time vs per-request.
 - Do not narrate WHAT the code does — names and tests already cover that.
 - Prefer file- or func-level provenance over inline noise; agents load whole files.
-- Keep generator templates and dogfood app in sync (scaffold `tpl_*` + `web/src` + handlers).
+- Keep generator templates (`tpl_*`) accurate — there is no dogfood app to drift against; rely on CLI scaffold tests.
 - Inertia + Svelte 5: `mount()`, `form.*` (not `$form`), `router.post` for mutations, `httpx.ParseFormOrJSON`, CSRF `cais_csrf` / `X-CSRF-Token`.
 - Password fields: always use `PasswordInput.svelte` (Svelte) or `fieldPassword` / `fieldInput` with type `password` (HTML) — eye show/hide is default.
 - Do not reactive-assign Inertia props into `useForm` fields (`$: form.x = prop`) — prefer local state + assign on submit (blank page footgun).
