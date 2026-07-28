@@ -151,8 +151,35 @@ const tplSvelteDashboard = `<script>
 </div>
 `
 
+const tplPasswordInput = `<script>
+  /** Shared password field with eye show/hide — use for every password input. */
+  export let value = ''
+  export let name = 'password'
+  export let id = ''
+  export let placeholder = ''
+  export let required = false
+  export let autocomplete = 'current-password'
+  export let className = 'block w-full border p-2'
+  let visible = false
+  $: inputId = id || name
+  function toggle() { visible = !visible }
+</script>
+
+<div class="cais-password-wrap">
+  <input type={visible ? 'text' : 'password'} {name} id={inputId} {placeholder} {required} {autocomplete} class={className} bind:value />
+  <button type="button" class="cais-password-toggle" data-cais-password-toggle aria-label={visible ? 'Hide password' : 'Show password'} aria-pressed={visible} on:click={toggle}>
+    {#if visible}
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+    {:else}
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+    {/if}
+  </button>
+</div>
+`
+
 const tplSvelteLogin = `<script>
   import { useForm } from '@inertiajs/svelte'
+  import PasswordInput from '../components/PasswordInput.svelte'
   export let errors = {}
   export let site = {}
   let form = useForm({ email: 'demo@example.com', password: 'password' })
@@ -168,7 +195,9 @@ const tplSvelteLogin = `<script>
   <form on:submit|preventDefault={submit}>
     <input type="email" bind:value={form.email} class="block w-full p-2 border" />
     {#if errors.email}<div class="text-red-600 text-xs">{errors.email}</div>{/if}
-    <input type="password" bind:value={form.password} class="block w-full p-2 border mt-2" />
+    <div class="mt-2">
+      <PasswordInput bind:value={form.password} name="password" autocomplete="current-password" className="block w-full p-2 border" />
+    </div>
     <button class="mt-4 bg-stone-800 text-white px-4 py-2">Log in</button>
   </form>
 </div>
@@ -176,6 +205,7 @@ const tplSvelteLogin = `<script>
 
 const tplSvelteSignup = `<script>
   import { useForm } from '@inertiajs/svelte'
+  import PasswordInput from '../components/PasswordInput.svelte'
   export let errors = {}
   let form = useForm({ email: '', password: '', password_confirmation: '' })
   function submit() { form.post('/signup') }
@@ -190,8 +220,12 @@ const tplSvelteSignup = `<script>
   <form on:submit|preventDefault={submit}>
     <input bind:value={form.email} type="email" placeholder="email" class="block w-full border p-2" />
     {#if errors.email}<p class="text-red-600">{errors.email}</p>{/if}
-    <input bind:value={form.password} type="password" class="block w-full border p-2 mt-2" />
-    <input bind:value={form.password_confirmation} type="password" class="block w-full border p-2 mt-2" />
+    <div class="mt-2">
+      <PasswordInput bind:value={form.password} name="password" autocomplete="new-password" className="block w-full border p-2" />
+    </div>
+    <div class="mt-2">
+      <PasswordInput bind:value={form.password_confirmation} name="password_confirmation" autocomplete="new-password" className="block w-full border p-2" />
+    </div>
     <button class="mt-4 px-4 py-2 bg-black text-white">Create account</button>
   </form>
 </div>
@@ -218,6 +252,7 @@ const tplSvelteForgotPassword = `<script>
 
 const tplSvelteResetPassword = `<script>
   import { useForm } from '@inertiajs/svelte'
+  import PasswordInput from '../components/PasswordInput.svelte'
   export let errors = {}
   export let token = ''
   let form = useForm({ token, password: '', password_confirmation: '' })
@@ -233,9 +268,11 @@ const tplSvelteResetPassword = `<script>
   {#if errors.token}<p class="text-red-600 text-sm mb-2">{errors.token}</p>{/if}
   <form on:submit|preventDefault={submit}>
     <input type="hidden" bind:value={form.token} />
-    <input bind:value={form.password} type="password" class="block w-full border p-2" placeholder="New password" />
+    <PasswordInput bind:value={form.password} name="password" autocomplete="new-password" placeholder="New password" className="block w-full border p-2" />
     {#if errors.password}<p class="text-red-600 text-sm">{errors.password}</p>{/if}
-    <input bind:value={form.password_confirmation} type="password" class="block w-full border p-2 mt-2" placeholder="Confirm password" />
+    <div class="mt-2">
+      <PasswordInput bind:value={form.password_confirmation} name="password_confirmation" autocomplete="new-password" placeholder="Confirm password" className="block w-full border p-2" />
+    </div>
     {#if errors.password_confirmation}<p class="text-red-600 text-sm">{errors.password_confirmation}</p>{/if}
     <button class="mt-4 px-4 py-2 bg-stone-800 text-white">Reset</button>
   </form>

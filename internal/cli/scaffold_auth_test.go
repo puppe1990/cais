@@ -92,9 +92,9 @@ func TestScaffoldNewApp_includesAuth(t *testing.T) {
 		file   string
 		needle string
 	}{
-		{"Login.svelte", `type="password"`},
+		{"Login.svelte", "PasswordInput"},
 		{"Signup.svelte", "password_confirmation"},
-		{"ResetPassword.svelte", "password_confirmation"},
+		{"ResetPassword.svelte", "PasswordInput"},
 	} {
 		body, err := os.ReadFile(filepath.Join(appDir, "web/src/pages", tc.file))
 		if err != nil {
@@ -103,6 +103,13 @@ func TestScaffoldNewApp_includesAuth(t *testing.T) {
 		if !strings.Contains(string(body), tc.needle) {
 			t.Errorf("%s missing %q", tc.file, tc.needle)
 		}
+	}
+	pw, err := os.ReadFile(filepath.Join(appDir, "web/src/components/PasswordInput.svelte"))
+	if err != nil {
+		t.Fatal("PasswordInput.svelte missing from scaffold")
+	}
+	if !strings.Contains(string(pw), "cais-password-toggle") {
+		t.Error("PasswordInput.svelte should include show/hide toggle")
 	}
 }
 

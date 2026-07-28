@@ -84,6 +84,20 @@ func TestFieldPassword_rendersToggleButton(t *testing.T) {
 	}
 }
 
+func TestFieldInput_passwordUsesToggle(t *testing.T) {
+	// Default: any fieldInput with type password gets the eye toggle (no need for fieldPassword).
+	html := string(FieldInput(MakeField("password", "Password", "", "password", true, nil)))
+	for _, needle := range []string{
+		`type="password"`,
+		`cais-password-wrap`,
+		`data-cais-password-toggle`,
+	} {
+		if !strings.Contains(html, needle) {
+			t.Errorf("FieldInput(password) missing %q:\n%s", needle, html)
+		}
+	}
+}
+
 func TestFieldPassword_rendersFieldError(t *testing.T) {
 	html := string(FieldPassword(MakeField("password", "Password", "", "password", true, map[string]string{
 		"password": "too short",
