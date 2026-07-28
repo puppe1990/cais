@@ -26,12 +26,12 @@ func scaffoldAuth(dir string, data scaffoldData, dryRun bool) error {
 		"internal/store/password_reset.go": tplStorePasswordReset,
 		migrationPath:                      tplMigration002Auth,
 		// Inertia + Svelte pages (default stack; no HTMX login templates)
-		"web/src/pages/Login.svelte":                 tplSvelteLogin,
-		"web/src/pages/Signup.svelte":                tplSvelteSignup,
-		"web/src/pages/ForgotPassword.svelte":        tplSvelteForgotPassword,
-		"web/src/pages/ResetPassword.svelte":         tplSvelteResetPassword,
-		"web/src/pages/Dashboard.svelte":             tplSvelteDashboard,
-		"web/src/components/PasswordInput.svelte":    tplPasswordInput,
+		"web/src/pages/Login.svelte":              tplSvelteLogin,
+		"web/src/pages/Signup.svelte":             tplSvelteSignup,
+		"web/src/pages/ForgotPassword.svelte":     tplSvelteForgotPassword,
+		"web/src/pages/ResetPassword.svelte":      tplSvelteResetPassword,
+		"web/src/pages/Dashboard.svelte":          tplSvelteDashboard,
+		"web/src/components/PasswordInput.svelte": tplPasswordInput,
 	}
 
 	for path, content := range files {
