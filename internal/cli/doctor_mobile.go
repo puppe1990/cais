@@ -60,15 +60,20 @@ func checkPWACacheVersion(dir string) doctorCheck {
 		}
 	}
 	// SPA + Tailwind use stable paths; cache-first for /static/build keeps stale main.js.
-	if !strings.Contains(body, "/static/build/") {
+	if !pwaHasNetworkFirstSPA(body) {
 		return doctorCheck{
 			Name:     "PWA cache version",
 			Optional: true,
 			Detail:   "sw.js missing network-first for /static/build/ (stale SPA after vite rebuild)",
-			FixHint:  "run cais pwa to refresh sw.js, or set network-first for /static/build/ and /static/css/",
+			FixHint:  "cais pwa  # migrates sw.js; then cais pwa --bump on phones",
 		}
 	}
 	return doctorCheck{Name: "PWA cache version", OK: true, Detail: "CACHE_VERSION + network-first /static/build — bump after HTML/template changes"}
+}
+
+func pwaHasNetworkFirstSPA(body string) bool {
+	return strings.Contains(body, "/static/build/") &&
+		(strings.Contains(body, "networkFirst") || strings.Contains(body, "network-first"))
 }
 
 func checkChatSSEPattern(dir string) doctorCheck {

@@ -109,7 +109,6 @@ func WriteStatic(appDir string, cfg Config) error {
 	}
 
 	for _, pair := range []struct{ src, dst string }{
-		{"assets/sw.js", "js/sw.js"},
 		{"assets/htmx.min.js", "js/htmx.min.js"},
 		{"assets/idiomorph-ext.min.js", "js/idiomorph-ext.min.js"},
 		{"assets/sse-ext.min.js", "js/sse-ext.min.js"},
@@ -123,6 +122,10 @@ func WriteStatic(appDir string, cfg Config) error {
 		if err := copyAsset(pair.src, filepath.Join(staticDir, pair.dst)); err != nil {
 			return err
 		}
+	}
+	// SW via SyncServiceWorker so CACHE_VERSION is preserved on upgrades.
+	if _, _, err := SyncServiceWorker(appDir); err != nil {
+		return err
 	}
 
 	if err := writeOGImage(filepath.Join(staticDir, "og.png")); err != nil {
@@ -164,7 +167,6 @@ func WriteStaticInertia(appDir string, cfg Config) error {
 	}
 
 	for _, pair := range []struct{ src, dst string }{
-		{"assets/sw.js", "js/sw.js"},
 		{"assets/offline.html", "offline.html"},
 		{"assets/icon.png", "icons/icon.png"},
 		{"assets/go-on-cais.jpg", "img/go-on-cais.jpg"},
@@ -172,6 +174,9 @@ func WriteStaticInertia(appDir string, cfg Config) error {
 		if err := copyAsset(pair.src, filepath.Join(staticDir, pair.dst)); err != nil {
 			return err
 		}
+	}
+	if _, _, err := SyncServiceWorker(appDir); err != nil {
+		return err
 	}
 
 	if err := writeOGImage(filepath.Join(staticDir, "og.png")); err != nil {

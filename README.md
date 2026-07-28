@@ -57,7 +57,7 @@ export PATH="$HOME/go/bin:$PATH"
 | `cais db migrate\|status\|rollback\|prune-sessions\|seed`                                      | Migrations & seeds                                                                       |
 | `cais jobs work\|status`                                                                       | SQLite background jobs                                                                   |
 | `cais doctor [--mobile]`                                                                       | Verify Inertia/Vite, PWA, mobile SSE, SW cache strategy                                  |
-| `cais pwa [--bump]`                                                                            | Write/refresh PWA assets; bump SW `CACHE_VERSION`                                        |
+| `cais pwa [--bump]`                                                                            | Write/refresh PWA assets; **migrates** `sw.js` to network-first SPA; `--bump` cache      |
 | `cais link [path] [--unlink]`                                                                  | Local `go.mod replace` for framework dev                                                 |
 | `cais version`                                                                                 | Framework version                                                                        |
 
@@ -152,6 +152,8 @@ Svelte pages use `useForm` as a **reactive object** (not a store — no `$form`)
 </script>
 ```
 
+**Svelte 5 footgun:** do not push Inertia props into the form via reactive statements (`$: form.item_id = items[0].id`). That can blank the page. Prefer local state for derived UI and set form fields on submit (or `bind:value` for fields the user edits). Never re-create `useForm(...)` inside a reactive block.
+
 Entry (`web/src/main.js`): Svelte 5 `mount()`, CSRF wired to Cais cookies:
 
 ```js
@@ -245,6 +247,21 @@ Docker:
 make docker
 docker run -p 8080:8080 -v cais-data:/app/data cais:latest
 ```
+
+## Upgrade CLI (agents & global install)
+
+Published tags matter: `go install …@latest` follows **tags**, not `main`.
+
+```bash
+go install github.com/puppe1990/cais/cmd/cais@v0.8.1
+# or after newer releases:
+# go install github.com/puppe1990/cais/cmd/cais@latest
+cais version
+cais doctor          # warns if CLI is older than go.mod
+cais pwa             # migrate legacy cache-first SW on existing apps
+```
+
+If `cais version` is older than your app’s `go.mod` require (or predates Vite watch), `cais doctor` / `cais dev` print a fix hint.
 
 ## AI-assisted development
 

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -130,14 +131,20 @@ func (c *CLI) cmdDev() error {
 	}
 	defer func() { _ = watch.Process.Kill() }()
 
+	viteWatching := false
 	if viteWatch, err := startViteWatch(dir); err != nil {
 		return fmt.Errorf("vite watch: %w", err)
 	} else if viteWatch != nil {
+		viteWatching = true
 		_, _ = fmt.Fprintln(c.Out, "→ vite build --watch (rebuilds on web/src/** changes)")
 		defer func() { _ = viteWatch.Process.Kill() }()
 	}
 
 	warnPortInUse(c.Out, dir)
+	warnCLIVersionMismatch(c.Out, dir)
+	if hasViteApp(dir) && !viteWatching {
+		_, _ = fmt.Fprintln(c.Out, "⚠ SPA not watched — upgrade cais CLI or run: npx vite build --watch")
+	}
 
 	if air := findAir(); air != "" {
 		boot.PrintDevBanner(c.Out, boot.CaisVersion())
@@ -146,6 +153,19 @@ func (c *CLI) cmdDev() error {
 
 	_, _ = fmt.Fprintln(c.Out, "=> Starting dev server (go run; install air for hot reload)")
 	return runCmd(dir, "go", "run", "./cmd/server")
+}
+
+// warnCLIVersionMismatch prints when the installed CLI is older than go.mod
+// or predates vite watch (see checkCLIVersion / issue #133).
+func warnCLIVersionMismatch(w io.Writer, dir string) {
+	c := checkCLIVersion(dir)
+	if c.OK || c.Info {
+		return
+	}
+	_, _ = fmt.Fprintf(w, "⚠ %s — %s\n", c.Name, c.Detail)
+	if c.FixHint != "" {
+		_, _ = fmt.Fprintf(w, "  fix: %s\n", c.FixHint)
+	}
 }
 
 func runTailwindBuild(dir string, watch bool) error {

@@ -6,6 +6,27 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ## Unreleased
 
+## [0.8.1] - 2026-07-27
+
+### Added
+
+- `cais doctor` — **cais CLI version** check: warn when installed binary is older than `go.mod` or predates Vite watch (`≥ 0.8.0`)
+- `cais dev` — warn on CLI/module version mismatch; explicit SPA-not-watched message if Vite watch did not start
+- `pkg/cais/pwa.SyncServiceWorker` — migrate existing apps to network-first `/static/build/` + `/static/css/`
+- `cais pwa` — always re-syncs `sw.js` (Inertia apps use `InstallForInertia`); prints migration message
+- Docs: Svelte 5 + `useForm` reactive-write footgun (local state + assign on submit)
+- README: reinstall CLI after tag (`go install …@v0.8.1`)
+
+### Changed
+
+- Dev banner lists Vite (`build --watch`) alongside air/Tailwind so stale CLIs are obvious
+- Scaffold `go.mod` default pin when CLI is `dev`: `v0.8.1`
+
+### Fixed
+
+- Packaging gap after #128: vite watch + network-first SW were on `main` only until this tag (#132)
+- Existing apps stuck on cache-first SW can upgrade with `cais pwa` without hand-editing (#135)
+
 ## [0.8.0] - 2026-07-12
 
 ### Added

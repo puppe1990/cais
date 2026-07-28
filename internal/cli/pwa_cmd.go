@@ -36,8 +36,35 @@ func (c *CLI) cmdPWA(args []string) error {
 	if name == "." || name == "/" || name == string(os.PathSeparator) {
 		name = "Cais"
 	}
+	// Detect legacy cache-first SW before Install overwrites (for messaging).
+	legacySW := false
+	if data, rerr := os.ReadFile(filepath.Join(dir, "web", "static", "js", "sw.js")); rerr == nil {
+		legacySW = !pwa.HasNetworkFirstSPA(string(data))
+	}
+
 	_, _ = fmt.Fprintln(c.Out, "→ writing PWA assets")
-	return pwa.InstallTo(dir, name)
+	// Inertia apps: icons/manifest/SW without HTMX JS dump. HTMX apps: full InstallTo.
+	// Install* uses SyncServiceWorker so CACHE_VERSION is preserved and strategy migrates (#135).
+	if isInertiaApp(dir) {
+		err = pwa.InstallForInertia(dir, name)
+	} else {
+		err = pwa.InstallTo(dir, name)
+	}
+	if err != nil {
+		return err
+	}
+	// Sync again is cheap/idempotent; returns preserved CACHE_VERSION for the log line.
+	_, ver, err := pwa.SyncServiceWorker(dir)
+	if err != nil {
+		return err
+	}
+	if legacySW {
+		_, _ = fmt.Fprintf(c.Out, "→ sw.js updated (network-first /static/build/ + /static/css/, CACHE_VERSION=%d)\n", ver)
+		_, _ = fmt.Fprintln(c.Out, "  tip: cais pwa --bump after deploy so installed PWAs drop old caches")
+	} else {
+		_, _ = fmt.Fprintf(c.Out, "→ sw.js network-first for SPA (CACHE_VERSION=%d)\n", ver)
+	}
+	return nil
 }
 
 func mustCwd() string {
