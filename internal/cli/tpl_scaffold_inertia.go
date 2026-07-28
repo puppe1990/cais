@@ -103,6 +103,7 @@ const tplSvelteContact = `<script>
   export let errors = {}
   export let flash = {}
   export let site = {}
+  // useForm is not a store (no $form). Avoid $: form.x = prop — can blank the page under Svelte 5.
   let form = useForm({ name: '', email: '' })
   function submit() {
     form.post('/contact')

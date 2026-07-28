@@ -167,6 +167,29 @@ Svelte pages use `@inertiajs/svelte`:
 </script>
 ```
 
+**useForm + Svelte 5 — do not reactive-write props into the form object** (can blank the page):
+
+```svelte
+<script>
+  import { useForm } from '@inertiajs/svelte'
+  export let items = []
+
+  // ❌ Easy to break under Svelte 5
+  // let form = useForm({ item_id: '' })
+  // $: if (items.length) form.item_id = items[0].id
+
+  // ✅ Local state for derived UI; assign into form only on submit
+  let itemId = items[0]?.id ?? ''
+  let form = useForm({ item_id: '', note: '' })
+  function submit() {
+    form.item_id = itemId
+    form.post('/sales')
+  }
+</script>
+```
+
+Also: prefer `bind:value` on user-edited fields; never re-create `useForm(...)` inside `$:` / `$derived` blocks; defend array props with `Array.isArray` before feeding the form.
+
 Vite builds to `web/static/build/` (`npm run build`). `app.html` loads `/static/build/assets/main.js`.
 
 **Frontend TDD** — Vitest + Testing Library in `web/src/pages/*.test.js`:
@@ -622,6 +645,7 @@ See **Clean Code for Agents** above. Project extras:
 - Prefer file- or func-level provenance over inline noise; agents load whole files.
 - Keep generator templates and dogfood app in sync (scaffold `tpl_*` + `web/src` + handlers).
 - Inertia + Svelte 5: `mount()`, `form.*` (not `$form`), `router.post` for mutations, `httpx.ParseFormOrJSON`, CSRF `cais_csrf` / `X-CSRF-Token`.
+- Do not reactive-assign Inertia props into `useForm` fields (`$: form.x = prop`) — prefer local state + assign on submit (blank page footgun).
 
 ## Defensive categories (implement only these)
 
@@ -645,3 +669,4 @@ Agents implement the categories listed — do not invent extra ops policy.
 - Ship features without a test the agent can run headless
 - Strip WHY/provenance comments “to clean up”
 - Use `$form` store syntax or Svelte 4 `new App()` in scaffolds
+- Reactive writes into `useForm` from `$:` / derived props on multi-field pages

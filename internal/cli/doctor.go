@@ -27,6 +27,7 @@ func runDoctor(w io.Writer, dir string, opts doctorOptions) error {
 	checks := []doctorCheck{
 		checkGoMod(dir),
 		checkCaisDep(dir),
+		checkCLIVersion(dir),
 	}
 	if isInertiaApp(dir) {
 		checks = append(checks, checkInertiaFrontend(dir), checkViteConfig(dir))
@@ -119,6 +120,11 @@ func checkCaisDep(dir string) doctorCheck {
 
 func extractCaisVersion(content string) string {
 	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		// Prefer require line, skip replace.
+		if strings.HasPrefix(line, "replace ") {
+			continue
+		}
 		if strings.Contains(line, frameworkModule) && strings.Contains(line, "v") {
 			parts := strings.Fields(line)
 			for _, p := range parts {
@@ -129,6 +135,65 @@ func extractCaisVersion(content string) string {
 		}
 	}
 	return "?"
+}
+
+// checkCLIVersion warns when the installed cais binary is older than go.mod
+// (or too old for Vite watch). Optional: does not fail doctor.
+func checkCLIVersion(dir string) doctorCheck {
+	const name = "cais CLI version"
+	data, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+	if err != nil {
+		return doctorCheck{Name: name, OK: true, Detail: "skipped (no go.mod)"}
+	}
+	content := string(data)
+	cliRaw := frameworkVersion()
+	cli := parseSemverCore(cliRaw)
+	if !cli.OK {
+		// Source/dev build — assume current.
+		return doctorCheck{Name: name, OK: true, Detail: "CLI " + cliRaw + " (dev build)"}
+	}
+
+	if strings.Contains(content, "replace "+frameworkModule) {
+		return doctorCheck{
+			Name:   name,
+			OK:     true,
+			Detail: "CLI v" + formatSemver(cli) + " (go.mod has local replace)",
+		}
+	}
+
+	modRaw := extractCaisVersion(content)
+	mod := parseSemverCore(modRaw)
+	if mod.OK && compareSemverCore(cli, mod) < 0 {
+		return doctorCheck{
+			Name:     name,
+			Optional: true,
+			Detail:   fmt.Sprintf("CLI v%s is older than go.mod v%s — generators and cais dev may lack features", formatSemver(cli), formatSemver(mod)),
+			FixHint:  fmt.Sprintf("go install %s/cmd/cais@v%s", frameworkModule, formatSemver(mod)),
+		}
+	}
+
+	// Vite apps need CLI ≥ 0.8.0 for cais dev vite build --watch (#128).
+	if hasViteApp(dir) {
+		floor := parseSemverCore(minViteWatchVersion)
+		if compareSemverCore(cli, floor) < 0 {
+			return doctorCheck{
+				Name:     name,
+				Optional: true,
+				Detail:   fmt.Sprintf("CLI v%s predates vite build --watch (need ≥ v%s) — SPA will not rebuild on web/src changes", formatSemver(cli), minViteWatchVersion),
+				FixHint:  fmt.Sprintf("go install %s/cmd/cais@v%s  # or @latest after release", frameworkModule, minViteWatchVersion),
+			}
+		}
+	}
+
+	detail := "CLI v" + formatSemver(cli)
+	if mod.OK {
+		detail += " · go.mod v" + formatSemver(mod)
+	}
+	return doctorCheck{Name: name, OK: true, Detail: detail}
+}
+
+func formatSemver(s semverCore) string {
+	return fmt.Sprintf("%d.%d.%d", s.Major, s.Minor, s.Patch)
 }
 
 func isInertiaApp(dir string) bool {

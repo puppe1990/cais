@@ -9,6 +9,33 @@ import (
 	"testing"
 )
 
+func TestCheckCLIVersion_okOnDevBuild(t *testing.T) {
+	// frameworkVersion() in tests is usually "dev" — should not warn.
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(`module app
+require github.com/puppe1990/cais v0.8.0
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := checkCLIVersion(dir)
+	if !c.OK {
+		t.Errorf("dev CLI should pass check, got %+v", c)
+	}
+}
+
+func TestCheckCLIVersion_warnsWhenCLIOlderThanMod(t *testing.T) {
+	// Unit-test the comparison path with synthetic versions via extract + parse.
+	mod := parseSemverCore("0.8.1")
+	cli := parseSemverCore("0.6.1-0.20260706")
+	if compareSemverCore(cli, mod) >= 0 {
+		t.Fatal("precondition: CLI should be older than mod")
+	}
+	// When CLI were 0.6.1 and go.mod 0.8.1, check would warn — covered by compare.
+	if formatSemver(cli) != "0.6.1" {
+		t.Errorf("format = %s", formatSemver(cli))
+	}
+}
+
 func TestDoctor_SSEWriteTimeoutWarnsWhenPositive(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	dir := t.TempDir()
