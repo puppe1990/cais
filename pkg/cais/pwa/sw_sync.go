@@ -30,10 +30,7 @@ func SyncServiceWorker(appDir string) (updated bool, version int, err error) {
 				prevVersion = v
 			}
 		}
-		if HasNetworkFirstSPA(prevBody) {
-			// Already current strategy; still rewrite so apps pick up other SW fixes.
-			// Keep version unchanged.
-		}
+		// Already network-first: still rewrite so apps pick up other SW fixes; version kept.
 	}
 
 	tpl, err := assets.ReadFile("assets/sw.js")
