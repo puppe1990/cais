@@ -6,6 +6,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ## Unreleased
 
+### Changed
+
+- Dogfood + scaffold handlers are **Inertia-only** (removed HTMX HTML fallbacks from home/contact/auth/dashboard)
+- `cais g auth` writes Svelte pages (`Login`/`Signup`/…) instead of `web/templates/pages/*.html`
+- `cais destroy auth` removes Svelte auth pages (and leftover HTMX login HTML if present)
+
+### Removed
+
+- Dead dogfood partials `contact_errors.html` / `contact_success.html` (contact is Inertia)
+
 ## [0.8.1] - 2026-07-27
 
 ### Added

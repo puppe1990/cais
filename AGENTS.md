@@ -138,13 +138,13 @@ Dev seed user: `demo@example.com` / `password`. Sessions persist in SQLite via `
 
 ## Inertia + Svelte (default frontend)
 
-Handlers accept `*inertia.Inertia` and branch on `h.inertia != nil` (Inertia path) vs `httpx.RenderOrError` (legacy HTMX templates still in this repo for chat/admin).
+Handlers render **Inertia + Svelte** only (no HTMX HTML fallbacks in dogfood or `cais new` scaffolds).
 
 ```go
 // GET
 _ = h.inertia.Render(w, r, "Contact", inertia.Props{"site": meta.ForRequest(h.site, r)})
 
-// Validation errors (422) — re-render same component; gonertia fills props.errors
+// Validation errors — re-render same component; gonertia fills props.errors
 ve := make(inertia.ValidationErrors)
 ve["email"] = "Invalid email"
 ctx := inertia.SetValidationErrors(r.Context(), ve)
@@ -154,6 +154,17 @@ _ = h.inertia.Render(w, r.WithContext(ctx), "Contact", inertia.Props{})
 ctx := inertia.SetFlash(r.Context(), inertia.Flash{"notice": "Saved!"})
 h.inertia.Redirect(w, r.WithContext(ctx), "/dashboard", http.StatusSeeOther)
 ```
+
+**Where HTMX remains (on purpose):**
+
+| Area | Why |
+| ---- | --- |
+| `cais g stream chat` | SSE agent UI still uses HTMX partials + `cais.js` until ported |
+| `cais g resource` on non-Inertia apps | HTML admin CRUD when `Home.svelte` is missing |
+| `pkg/cais` htmx helpers / `web/static/js/htmx*.js` | Framework support for the above |
+| `web/templates/partials/chat_sse*.html` | Chat SSE contract tests + generator templates |
+
+Default apps (`cais new`, dogfood) use `pwa.InstallForInertia` — no HTMX JS bundles.
 
 Svelte pages use `@inertiajs/svelte`:
 

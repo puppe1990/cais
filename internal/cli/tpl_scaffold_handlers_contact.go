@@ -31,20 +31,12 @@ func NewContactHandler(renderer *cais.Renderer, s store.Store, site meta.Site, c
 	return &ContactHandler{renderer: renderer, store: s, site: site, catalog: catalog, cfg: cfg, inertia: i}
 }
 
-type contactErrorData struct {
-	Message string
-}
-
 func (h *ContactHandler) Get(w http.ResponseWriter, r *http.Request) {
-	if h.inertia != nil {
-		props := inertia.Props{"site": meta.ForRequest(h.site, r)}
-		if msg, ok := flash.MessageFromRequest(r); ok {
-			props["flash"] = inertia.Flash{msg.Kind: msg.Message}
-		}
-		_ = h.inertia.Render(w, r, "Contact", props)
-		return
+	props := inertia.Props{"site": meta.ForRequest(h.site, r)}
+	if msg, ok := flash.MessageFromRequest(r); ok {
+		props["flash"] = inertia.Flash{msg.Kind: msg.Message}
 	}
-	httpx.RenderOrError(w, h.renderer, "base", "contact", meta.ForRequest(h.site, r), h.cfg)
+	_ = h.inertia.Render(w, r, "Contact", props)
 }
 
 func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
@@ -68,41 +60,21 @@ func (h *ContactHandler) Post(w http.ResponseWriter, r *http.Request) {
 		errs.Add("email", msg)
 	}
 	if errs.Any() {
-		if h.inertia != nil {
-			ve := make(inertia.ValidationErrors)
-			for k, v := range errs {
-				ve[k] = v
-			}
-			ctx := inertia.SetValidationErrors(r.Context(), ve)
-			// render same component so props.errors populated by gonertia
-			_ = h.inertia.Render(w, r.WithContext(ctx), "Contact", inertia.Props{})
-			return
+		ve := make(inertia.ValidationErrors)
+		for k, v := range errs {
+			ve[k] = v
 		}
-		h.renderContactResponse(w, r, http.StatusUnprocessableEntity, "contact_errors", contactErrorData{Message: errs.First()})
+		ctx := inertia.SetValidationErrors(r.Context(), ve)
+		_ = h.inertia.Render(w, r.WithContext(ctx), "Contact", inertia.Props{})
 		return
 	}
 
-	_, err := h.store.InsertContact(models.Contact{Name: name, Email: email})
-	if err != nil {
+	if _, err := h.store.InsertContact(models.Contact{Name: name, Email: email}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if h.inertia != nil {
-		flash.Set(w, "success", "Message sent successfully.", h.cfg.CookieSecure())
-		h.inertia.Redirect(w, r, "/contact", http.StatusSeeOther)
-		return
-	}
-	h.renderContactResponse(w, r, http.StatusOK, "contact_success", nil)
-}
-
-func (h *ContactHandler) renderContactResponse(w http.ResponseWriter, r *http.Request, status int, partial string, data any) {
-	httpx.RenderPageOrPartial(w, r, h.renderer, httpx.RenderOptions{
-		Layout:  "base",
-		Page:    "contact",
-		Partial: partial,
-		Data:    data,
-		Status:  status,
-	}, h.cfg)
+	flash.Set(w, "success", "Message sent successfully.", h.cfg.CookieSecure())
+	h.inertia.Redirect(w, r, "/contact", http.StatusSeeOther)
 }
 `

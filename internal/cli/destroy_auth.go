@@ -13,7 +13,15 @@ func destroyAuth(dir string, dryRun bool) error {
 		"internal/models/user.go",
 		"internal/handlers/auth.go",
 		"internal/handlers/auth_test.go",
+		"web/src/pages/Login.svelte",
+		"web/src/pages/Signup.svelte",
+		"web/src/pages/ForgotPassword.svelte",
+		"web/src/pages/ResetPassword.svelte",
+		// Legacy HTMX pages (pre-Inertia auth generator)
 		"web/templates/pages/login.html",
+		"web/templates/pages/signup.html",
+		"web/templates/pages/forgot_password.html",
+		"web/templates/pages/reset_password.html",
 	}
 
 	migrationsDir := filepath.Join(dir, "internal/store/migrations")

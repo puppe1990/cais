@@ -9,15 +9,8 @@ import (
 	inertia "github.com/romsar/gonertia/v3"
 	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
-	"github.com/puppe1990/cais/pkg/cais/httpx"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 )
-
-type DashboardData struct {
-	meta.Site
-	TotalContacts int64
-	Env           string
-}
 
 type DashboardHandler struct {
 	renderer *cais.Renderer
@@ -38,18 +31,10 @@ func (h *DashboardHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.inertia != nil {
-		_ = h.inertia.Render(w, r, "Dashboard", inertia.Props{
-			"site":          meta.ForRequest(h.site, r),
-			"totalContacts": count,
-			"env":           h.cfg.Env,
-		})
-		return
-	}
-	httpx.RenderOrError(w, h.renderer, "base", "dashboard", DashboardData{
-		Site:          meta.ForRequest(h.site, r),
-		TotalContacts: count,
-		Env:           h.cfg.Env,
-	}, h.cfg)
+	_ = h.inertia.Render(w, r, "Dashboard", inertia.Props{
+		"site":          meta.ForRequest(h.site, r),
+		"totalContacts": count,
+		"env":           h.cfg.Env,
+	})
 }
 `
