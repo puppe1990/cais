@@ -1,4 +1,6 @@
-# Cais
+# Go on Cais
+
+![Go on Cais](pkg/cais/pwa/assets/go-on-cais.jpg)
 
 Full-stack Go framework for mini apps (Lightsail-friendly): **Inertia.js + Svelte 5**, Tailwind, and SQLite — with a Rails-style CLI.
 
