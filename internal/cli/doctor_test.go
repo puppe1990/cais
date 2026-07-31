@@ -63,6 +63,7 @@ func TestDoctor_SSEWriteTimeoutWarnsWhenPositive(t *testing.T) {
 	if err := os.WriteFile(appGo, []byte(patched), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	writeBuiltStylesCSS(t, dir)
 
 	var buf bytes.Buffer
 	if err := runDoctor(&buf, dir, doctorOptions{}); err != nil {
@@ -145,6 +146,7 @@ func TestDoctor_MobileWarnsMultiSlotWithoutFinalize(t *testing.T) {
 
 func runDoctorOutputMobile(t *testing.T, dir string) string {
 	t.Helper()
+	writeBuiltStylesCSS(t, dir)
 	var buf bytes.Buffer
 	if err := runDoctor(&buf, dir, doctorOptions{Mobile: true}); err != nil {
 		t.Fatalf("doctor --mobile failed: %v\n%s", err, buf.String())
@@ -161,6 +163,7 @@ func TestDoctor_AllOK(t *testing.T) {
 	}, true, false); err != nil {
 		t.Fatal(err)
 	}
+	writeBuiltStylesCSS(t, dir)
 
 	var buf bytes.Buffer
 	if err := runDoctor(&buf, dir, doctorOptions{}); err != nil {
@@ -171,6 +174,26 @@ func TestDoctor_AllOK(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "vite.config.js") {
 		t.Error("missing vite.config.js check")
+	}
+}
+
+func TestDoctor_FailsWhenStylesCSSNotBuilt(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	dir := t.TempDir()
+	if err := scaffoldNewApp(dir, scaffoldData{
+		AppName:    "nocss",
+		ModulePath: "github.com/puppe1990/nocss",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	// Leave scaffold placeholder as-is.
+	var buf bytes.Buffer
+	err := runDoctor(&buf, dir, doctorOptions{})
+	if err == nil {
+		t.Fatalf("doctor should fail when styles.css not built, output:\n%s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "tailwind css") {
+		t.Errorf("expected tailwind css check, got:\n%s", buf.String())
 	}
 }
 
@@ -186,6 +209,7 @@ func TestDoctor_AirOptionalWhenMissing(t *testing.T) {
 	}, true, false); err != nil {
 		t.Fatal(err)
 	}
+	writeBuiltStylesCSS(t, dir)
 
 	var buf bytes.Buffer
 	if err := runDoctor(&buf, dir, doctorOptions{}); err != nil {
@@ -208,6 +232,7 @@ func TestDoctor_QualityToolingWarnsWhenMissing(t *testing.T) {
 	if err := os.Remove(filepath.Join(dir, ".github/workflows/ci.yml")); err != nil {
 		t.Fatal(err)
 	}
+	writeBuiltStylesCSS(t, dir)
 
 	var buf bytes.Buffer
 	if err := runDoctor(&buf, dir, doctorOptions{}); err != nil {
@@ -352,11 +377,28 @@ func scaffoldDoctorApp(t *testing.T) string {
 	}, true, false); err != nil {
 		t.Fatal(err)
 	}
+	writeBuiltStylesCSS(t, dir)
 	return dir
+}
+
+// writeBuiltStylesCSS marks styles.css as a real Tailwind build so doctor can pass (#141).
+func writeBuiltStylesCSS(t *testing.T, dir string) {
+	t.Helper()
+	path := filepath.Join(dir, "web/static/css/styles.css")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("*,::before{box-sizing:border-box}.text-stone-900{color:#1c1917}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func runDoctorOutput(t *testing.T, dir string) string {
 	t.Helper()
+	// Most doctor tests care about other checks; assume CSS was built unless the test asserts otherwise.
+	if !stylesCSSReady(dir) {
+		writeBuiltStylesCSS(t, dir)
+	}
 	var buf bytes.Buffer
 	if err := runDoctor(&buf, dir, doctorOptions{}); err != nil {
 		t.Fatalf("doctor failed: %v\n%s", err, buf.String())

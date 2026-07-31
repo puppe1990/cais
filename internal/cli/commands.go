@@ -52,7 +52,15 @@ func (c *CLI) cmdInstall() error {
 		return fmt.Errorf("go mod tidy: %w", err)
 	}
 
-	_, _ = fmt.Fprintln(c.Out, "Done. Run: cais css && cais dev")
+	// Build Tailwind so styles.css exists after clone/install (#141).
+	if _, err := os.Stat(filepath.Join(dir, cssInput)); err == nil {
+		_, _ = fmt.Fprintln(c.Out, "→ tailwind build (styles.css)")
+		if err := runTailwindBuild(dir, false); err != nil {
+			_, _ = fmt.Fprintf(c.Out, "⚠ css build failed: %v (run: cais css)\n", err)
+		}
+	}
+
+	_, _ = fmt.Fprintln(c.Out, "Done. Run: cais dev")
 	return nil
 }
 
@@ -179,6 +187,25 @@ func runTailwindBuild(dir string, watch bool) error {
 		args = append(args, "--minify")
 	}
 	return runCmd(dir, "npx", args...)
+}
+
+// ensureStylesCSS builds styles.css once when it is missing or still the scaffold stub (#141).
+// Returns an error only when CSS remains unusable after a build attempt (caller may still start the server).
+func ensureStylesCSS(w io.Writer, dir string) error {
+	if stylesCSSReady(dir) {
+		return nil
+	}
+	if _, err := os.Stat(filepath.Join(dir, cssInput)); err != nil {
+		return fmt.Errorf("%s missing and no %s to build — pages will be unstyled", cssOutput, cssInput)
+	}
+	_, _ = fmt.Fprintln(w, "→ tailwind build (styles.css missing or empty)")
+	if err := runTailwindBuild(dir, false); err != nil {
+		return fmt.Errorf("styles.css not ready: %w — run: cais css", err)
+	}
+	if !stylesCSSReady(dir) {
+		return fmt.Errorf("%s still empty after build — run: cais css", cssOutput)
+	}
+	return nil
 }
 
 func runCmd(dir string, name string, args ...string) error {
