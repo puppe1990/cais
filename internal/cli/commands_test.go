@@ -64,3 +64,33 @@ func TestRunTailwindBuild_missingInput(t *testing.T) {
 		t.Fatal("expected error without input.css")
 	}
 }
+
+func TestEnsureStylesCSS_skipsWhenReady(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, cssOutput)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(".p-4{padding:1rem}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if err := ensureStylesCSS(&buf, dir); err != nil {
+		t.Fatalf("ready CSS should not error: %v", err)
+	}
+	if buf.Len() != 0 {
+		t.Errorf("expected no build log when ready, got %q", buf.String())
+	}
+}
+
+func TestEnsureStylesCSS_errorsWithoutInput(t *testing.T) {
+	dir := t.TempDir()
+	var buf bytes.Buffer
+	err := ensureStylesCSS(&buf, dir)
+	if err == nil {
+		t.Fatal("expected error when styles missing and no input.css")
+	}
+	if !strings.Contains(err.Error(), "unstyled") && !strings.Contains(err.Error(), cssOutput) {
+		t.Errorf("error = %v", err)
+	}
+}

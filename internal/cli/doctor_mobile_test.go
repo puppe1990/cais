@@ -17,6 +17,7 @@ func TestDoctor_MobileOKOnFreshScaffold(t *testing.T) {
 	}, true, false); err != nil {
 		t.Fatal(err)
 	}
+	writeBuiltStylesCSS(t, dir)
 
 	var buf bytes.Buffer
 	if err := runDoctor(&buf, dir, doctorOptions{Mobile: true}); err != nil {
@@ -49,6 +50,7 @@ func TestDoctor_MobileWarnsGoogleFonts(t *testing.T) {
 	if err := os.WriteFile(cssPath, []byte(patched), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	writeBuiltStylesCSS(t, dir)
 
 	var buf bytes.Buffer
 	if err := runDoctor(&buf, dir, doctorOptions{Mobile: true}); err != nil {

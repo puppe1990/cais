@@ -302,7 +302,7 @@ func printGenerateNextSteps(w io.Writer, kind string) {
 	case "resource", "model", "migration", "auth", "stream":
 		_, _ = fmt.Fprintln(w, "=> Next: cais db migrate && cais test")
 	case "app":
-		_, _ = fmt.Fprintln(w, "=> Next: cais css && cais dev")
+		_, _ = fmt.Fprintln(w, "=> Next: cais install && cais dev")
 	default:
 		_, _ = fmt.Fprintln(w, "=> Next: cais test")
 	}
@@ -317,6 +317,10 @@ func (c *CLI) cmdServer() error {
 	dir, err := c.appDir()
 	if err != nil {
 		return err
+	}
+	if err := ensureStylesCSS(c.Out, dir); err != nil {
+		// Soft: still start the server, but leave a clear signal that CSS is missing.
+		_, _ = fmt.Fprintf(c.Out, "⚠ %v\n", err)
 	}
 	_, _ = fmt.Fprintln(c.Out, "→ go run ./cmd/server")
 	return runCmd(dir, "go", "run", "./cmd/server")
