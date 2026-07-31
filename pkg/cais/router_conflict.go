@@ -41,10 +41,7 @@ func patternsConflict(a, b string) bool {
 		}
 	}
 	// ServeMux allows registration when one pattern is strictly more specific.
-	if aMoreSpecific != bMoreSpecific {
-		return false
-	}
-	return true
+	return aMoreSpecific == bMoreSpecific
 }
 
 func pathSegments(pattern string) []string {

@@ -165,10 +165,7 @@ func pathsConflictForServeMux(a, b string) bool {
 			aMore, bMore = false, false
 		}
 	}
-	if aMore != bMore {
-		return false
-	}
-	return true
+	return aMore == bMore
 }
 
 func splitRoutePath(pattern string) []string {
