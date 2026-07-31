@@ -149,6 +149,27 @@ func TestScaffoldNewApp_includesAuth(t *testing.T) {
 	if !strings.Contains(string(pw), "cais-password-toggle") {
 		t.Error("PasswordInput.svelte should include show/hide toggle")
 	}
+
+	// Auth pages must be centered on screen by default (#149).
+	authLayout, err := os.ReadFile(filepath.Join(appDir, "web/src/components/AuthLayout.svelte"))
+	if err != nil {
+		t.Fatal("AuthLayout.svelte missing from scaffold")
+	}
+	layoutBody := string(authLayout)
+	for _, needle := range []string{"min-h-screen", "items-center", "justify-center"} {
+		if !strings.Contains(layoutBody, needle) {
+			t.Errorf("AuthLayout.svelte missing centering class %q", needle)
+		}
+	}
+	for _, page := range []string{"Login.svelte", "Signup.svelte", "ForgotPassword.svelte", "ResetPassword.svelte"} {
+		pageBody, err := os.ReadFile(filepath.Join(appDir, "web/src/pages", page))
+		if err != nil {
+			t.Fatalf("%s: %v", page, err)
+		}
+		if !strings.Contains(string(pageBody), "AuthLayout") {
+			t.Errorf("%s should use AuthLayout for centered auth shell", page)
+		}
+	}
 }
 
 func TestScaffoldAuth_patchesBlankAppStore(t *testing.T) {

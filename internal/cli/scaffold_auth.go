@@ -31,6 +31,7 @@ func scaffoldAuth(dir string, data scaffoldData, dryRun bool) error {
 		"web/src/pages/ForgotPassword.svelte":     tplSvelteForgotPassword,
 		"web/src/pages/ResetPassword.svelte":      tplSvelteResetPassword,
 		"web/src/pages/Dashboard.svelte":          tplSvelteDashboard,
+		"web/src/components/AuthLayout.svelte":    tplAuthLayout,
 		"web/src/components/PasswordInput.svelte": tplPasswordInput,
 	}
 

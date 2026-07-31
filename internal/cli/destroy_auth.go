@@ -17,6 +17,7 @@ func destroyAuth(dir string, dryRun bool) error {
 		"web/src/pages/Signup.svelte",
 		"web/src/pages/ForgotPassword.svelte",
 		"web/src/pages/ResetPassword.svelte",
+		"web/src/components/AuthLayout.svelte",
 		// Legacy HTMX pages (pre-Inertia auth generator)
 		"web/templates/pages/login.html",
 		"web/templates/pages/signup.html",
