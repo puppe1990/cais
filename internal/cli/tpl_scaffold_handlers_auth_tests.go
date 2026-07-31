@@ -73,6 +73,16 @@ func TestAuth_LoginPost_validCredentials_redirects(t *testing.T) {
 	if rr.Header().Get("Location") != "/dashboard" {
 		t.Errorf("Location = %q, want /dashboard", rr.Header().Get("Location"))
 	}
+	foundFlash := false
+	for _, c := range rr.Result().Cookies() {
+		if c.Name == "cais_flash" && c.Value != "" {
+			foundFlash = true
+			break
+		}
+	}
+	if !foundFlash {
+		t.Error("login must set cais_flash cookie via flash.Set (inertia.SetFlash is a no-op without FlashDataProvider)")
+	}
 }`
 
 const tplAuthSignupTest = `package handlers

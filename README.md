@@ -101,7 +101,8 @@ _ = h.inertia.Render(w, r, "Login", inertia.Props{
   "site": meta.ForRequest(h.site, r),
 })
 // Validation: inertia.SetValidationErrors → re-render same component
-// Flash redirect: inertia.SetFlash + h.inertia.Redirect(..., 303)
+// Flash redirect: flash.Set(w, kind, msg, secure) + h.inertia.Redirect(..., 303)
+// (do not use inertia.SetFlash — no FlashDataProvider in the scaffold)
 ```
 
 Svelte pages use `useForm` as a **reactive object** (not a store — no `$form`):
