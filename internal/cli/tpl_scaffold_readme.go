@@ -35,7 +35,8 @@ const tplREADME = "# {{.AppName}}\n\n" +
 	"make pre-commit-install   # once: installs git hooks\n" +
 	"make ci                   # test + lint + format-check locally\n" +
 	"```\n\n" +
-	"Pre-commit hooks run: trailing whitespace, Prettier, `go fmt`, `go test`, `golangci-lint`, and `npm test`.\n\n" +
+	"Pre-commit hooks run: trailing whitespace, Prettier, `goimports`, `go test`, `golangci-lint`, and `npm test`.\n" +
+	"(Install goimports once: `go install golang.org/x/tools/cmd/goimports@latest`.)\n\n" +
 	"## Structure\n\n" +
 	"```\n" +
 	"AGENTS.md          → conventions for LLM/coding agents\n" +

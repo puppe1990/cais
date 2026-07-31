@@ -445,9 +445,9 @@ const tplCIWorkflow = `name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 permissions:
   contents: read
@@ -518,13 +518,17 @@ const tplPreCommitConfig = `repos:
     rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
-        exclude: ^web/static/
+        # web/src is Svelte (no prettier plugin in scaffold); web/static is build output.
+        # Exclude so UI-only commits do not fail with "No files matching" (#146).
+        exclude: ^(web/static/|web/src/|web/templates/)
+        args: [--no-error-on-unmatched-pattern]
 
   - repo: local
     hooks:
-      - id: go-fmt
-        name: go fmt
-        entry: go fmt ./...
+      # goimports matches CI golangci formatters + local-prefixes (#148). Install: go install golang.org/x/tools/cmd/goimports@latest
+      - id: goimports
+        name: goimports
+        entry: bash -c 'goimports -local "$(go list -m)" -w .'
         language: system
         pass_filenames: false
         types: [go]
