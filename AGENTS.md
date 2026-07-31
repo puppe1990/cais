@@ -101,6 +101,20 @@ r.Group(middleware.Protect, func(g *cais.Router) {
 })
 ```
 
+**ServeMux conflicts (Go 1.22+)** — registration panics when two patterns under the same method can match the same path and neither is more specific:
+
+```go
+// ❌ panic: both match /webhooks/kiwify/delete
+r.Post("/webhooks/kiwify/{token}", receiver)
+r.Post("/webhooks/{id}/delete", deleteHandler)
+
+// ✅ prefer REST method or a distinct prefix
+r.Delete("/webhooks/{id}", deleteHandler)
+r.Post("/webhooks/incoming/{token}", receiver)
+```
+
+`cais.Router` rewrites the panic with a short hint. `cais routes` also warns when it can detect this statically from `routes.go`.
+
 ## Admin protection
 
 | Mode                    | Middleware                         | Generator flag            |

@@ -64,6 +64,34 @@ func TestFormatRoutes_matchesExpectedOutput(t *testing.T) {
 	}
 }
 
+func TestRouteConflictWarnings_detectsServeMuxOverlap(t *testing.T) {
+	entries := []RouteEntry{
+		{Method: "POST", Path: "/webhooks/kiwify/{token}"},
+		{Method: "POST", Path: "/webhooks/{id}/delete"},
+		{Method: "GET", Path: "/users/{id}"},
+		{Method: "GET", Path: "/users/me"},
+	}
+	warns := routeConflictWarnings(entries)
+	if len(warns) != 1 {
+		t.Fatalf("got %d warnings, want 1: %#v", len(warns), warns)
+	}
+	if !strings.Contains(warns[0], "/webhooks/{id}/delete") {
+		t.Errorf("warning missing conflicting path: %s", warns[0])
+	}
+	if !strings.Contains(warns[0], "ServeMux conflict") {
+		t.Errorf("warning missing ServeMux conflict label: %s", warns[0])
+	}
+}
+
+func TestPathsConflictForServeMux(t *testing.T) {
+	if !pathsConflictForServeMux("/webhooks/{id}/delete", "/webhooks/kiwify/{token}") {
+		t.Error("expected conflict")
+	}
+	if pathsConflictForServeMux("/users/{id}", "/users/me") {
+		t.Error("literal more specific should not conflict")
+	}
+}
+
 func TestParseRoutesFile_readsFixture(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "routes.go")
