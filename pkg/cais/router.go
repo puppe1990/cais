@@ -58,7 +58,7 @@ func (r *Router) Delete(pattern string, handler http.HandlerFunc) {
 }
 
 func (r *Router) Handle(pattern string, handler http.Handler) {
-	r.mux.Handle(pattern, r.wrap(handler))
+	r.handlePattern(pattern, r.wrap(handler))
 }
 
 func (r *Router) Static(prefix, dir string) {
@@ -72,7 +72,7 @@ func (r *Router) StaticForEnv(prefix, dir string, cfg Config) {
 	if cfg.Env == "development" {
 		handler = noCacheStatic(handler)
 	}
-	r.mux.Handle("GET "+prefix+"/", handler)
+	r.handlePattern("GET "+prefix+"/", handler)
 }
 
 func noCacheStatic(next http.Handler) http.Handler {
@@ -83,7 +83,17 @@ func noCacheStatic(next http.Handler) http.Handler {
 }
 
 func (r *Router) register(method, pattern string, handler http.HandlerFunc) {
-	r.mux.Handle(method+" "+pattern, r.wrap(handler))
+	r.handlePattern(method+" "+pattern, r.wrap(handler))
+}
+
+// handlePattern registers on ServeMux and rewrites conflict panics with a cais-specific hint (#142).
+func (r *Router) handlePattern(pattern string, handler http.Handler) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			panic(formatRouteConflict(pattern, rec))
+		}
+	}()
+	r.mux.Handle(pattern, handler)
 }
 
 func (r *Router) wrap(handler http.Handler) http.Handler {

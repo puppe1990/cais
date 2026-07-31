@@ -114,5 +114,68 @@ func (c *CLI) cmdRoutes(args []string) error {
 			_, _ = fmt.Fprintf(c.Out, "%s\n", formatRouteEntry(e))
 		}
 	}
+	// Static conflict scan — same class of ServeMux panics that hit boot (#142).
+	for _, warn := range routeConflictWarnings(entries) {
+		_, _ = fmt.Fprintf(c.Out, "⚠ %s\n", warn)
+	}
 	return nil
+}
+
+// routeConflictWarnings returns human-readable ServeMux overlap warnings for parsed routes.
+func routeConflictWarnings(entries []RouteEntry) []string {
+	var warns []string
+	for i := 0; i < len(entries); i++ {
+		for j := i + 1; j < len(entries); j++ {
+			a, b := entries[i], entries[j]
+			if a.Method != b.Method {
+				continue
+			}
+			if !pathsConflictForServeMux(a.Path, b.Path) {
+				continue
+			}
+			warns = append(warns, fmt.Sprintf(
+				"possible ServeMux conflict: %s %s vs %s %s — prefer DELETE …/{id} or a distinct prefix (see AGENTS.md)",
+				a.Method, a.Path, b.Method, b.Path,
+			))
+		}
+	}
+	return warns
+}
+
+// pathsConflictForServeMux mirrors pkg/cais patternsConflict (kept in CLI to avoid coupling parse to runtime).
+func pathsConflictForServeMux(a, b string) bool {
+	sa := splitRoutePath(a)
+	sb := splitRoutePath(b)
+	if len(sa) != len(sb) || len(sa) == 0 {
+		return len(sa) == 0 && a == b
+	}
+	aMore, bMore := true, true
+	for i := range sa {
+		wa, wb := isRouteWild(sa[i]), isRouteWild(sb[i])
+		switch {
+		case !wa && !wb:
+			if sa[i] != sb[i] {
+				return false
+			}
+		case wa && !wb:
+			aMore = false
+		case !wa && wb:
+			bMore = false
+		default:
+			aMore, bMore = false, false
+		}
+	}
+	return aMore == bMore
+}
+
+func splitRoutePath(pattern string) []string {
+	pattern = strings.Trim(pattern, "/")
+	if pattern == "" {
+		return nil
+	}
+	return strings.Split(pattern, "/")
+}
+
+func isRouteWild(seg string) bool {
+	return strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}")
 }
