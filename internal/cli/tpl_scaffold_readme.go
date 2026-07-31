@@ -38,6 +38,7 @@ const tplREADME = "# {{.AppName}}\n\n" +
 	"Pre-commit hooks run: trailing whitespace, Prettier, `go fmt`, `go test`, `golangci-lint`, and `npm test`.\n\n" +
 	"## Structure\n\n" +
 	"```\n" +
+	"AGENTS.md          → conventions for LLM/coding agents\n" +
 	"pkg/cais/          → framework (via dependency)\n" +
 	"internal/app/      → bootstrap and routes\n" +
 	"internal/handlers/ → HTTP handlers\n" +
@@ -47,6 +48,7 @@ const tplREADME = "# {{.AppName}}\n\n" +
 	"web/static/          → CSS + Vite build + PWA\n" +
 	"cmd/server/        → entry point\n" +
 	"```\n\n" +
+	"See [AGENTS.md](AGENTS.md) for TDD, Inertia/Svelte, flash/CSRF, and generator conventions.\n\n" +
 	"## Environment variables\n\n" +
 	"| Variable  | Default         | Description      |\n" +
 	"| --------- | --------------- | ---------------- |\n" +

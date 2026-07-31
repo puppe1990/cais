@@ -478,7 +478,7 @@ Set `LOCALE=en` (default) or `LOCALE=pt` for UI strings via `pkg/cais/i18n`. See
 ## CLI generators
 
 ```bash
-cais new myapp              # includes GitHub Actions CI, pre-commit, golangci-lint, Prettier
+cais new myapp              # includes AGENTS.md, GitHub Actions CI, pre-commit, golangci-lint, Prettier
 cais new myapp --minimal
 cais new myapp --blank
 cais new myapp --module github.com/acme/myapp

@@ -39,6 +39,46 @@ func TestCLI_NewMinimalCreatesSlimApp(t *testing.T) {
 	}
 }
 
+func TestScaffoldNewApp_includesAgentsMD(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	for _, tc := range []struct {
+		name           string
+		minimal, blank bool
+	}{
+		{"full", false, false},
+		{"minimal", true, false},
+		{"blank", false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			appDir := filepath.Join(t.TempDir(), tc.name)
+			if err := scaffoldNewApp(appDir, scaffoldData{
+				AppName:    tc.name,
+				ModulePath: "github.com/puppe1990/" + tc.name,
+			}, tc.minimal, tc.blank); err != nil {
+				t.Fatal(err)
+			}
+			body, err := os.ReadFile(filepath.Join(appDir, "AGENTS.md"))
+			if err != nil {
+				t.Fatalf("missing AGENTS.md: %v", err)
+			}
+			text := string(body)
+			for _, needle := range []string{
+				"TDD",
+				"Inertia",
+				"flash.Set",
+				"cais g",
+				"internal/handlers",
+				"web/src/pages",
+				tc.name, // AppName rendered into title
+			} {
+				if !strings.Contains(text, needle) {
+					t.Errorf("AGENTS.md missing %q", needle)
+				}
+			}
+		})
+	}
+}
+
 func TestCLI_NewCreatesApp(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "myapp")
