@@ -155,6 +155,34 @@ const tplSvelteDashboard = `<script>
 </div>
 `
 
+// tplAuthLayout centers auth forms on the viewport (login/signup/reset default shell).
+const tplAuthLayout = `<script>
+  export let site = {}
+  export let flash = {}
+  export let title = ''
+</script>
+
+<div class="flex min-h-screen items-center justify-center bg-stone-50 px-4 py-10 text-stone-900">
+  <div class="w-full max-w-sm">
+    {#if site.appName}
+      <p class="mb-4 text-center text-sm font-semibold tracking-wide text-stone-600">{site.appName}</p>
+    {/if}
+    <div class="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+      {#if title}
+        <h1 class="mb-4 text-center text-xl font-semibold text-stone-800">{title}</h1>
+      {/if}
+      {#if flash.notice}
+        <p class="mb-4 rounded-lg bg-green-50 px-4 py-2 text-sm text-green-800" data-testid="flash-notice">{flash.notice}</p>
+      {/if}
+      {#if flash.success}
+        <p class="mb-4 rounded-lg bg-green-50 px-4 py-2 text-sm text-green-800" data-testid="flash-success">{flash.success}</p>
+      {/if}
+      <slot />
+    </div>
+  </div>
+</div>
+`
+
 const tplPasswordInput = `<script>
   /** Shared password field with eye show/hide — use for every password input. */
   export let value = ''
@@ -183,6 +211,7 @@ const tplPasswordInput = `<script>
 
 const tplSvelteLogin = `<script>
   import { useForm } from '@inertiajs/svelte'
+  import AuthLayout from '../components/AuthLayout.svelte'
   import PasswordInput from '../components/PasswordInput.svelte'
   export let errors = {}
   export let site = {}
@@ -195,26 +224,32 @@ const tplSvelteLogin = `<script>
   <title>Login · {{.AppName}}</title>
 </svelte:head>
 
-<div class="max-w-sm mx-auto mt-10 p-6 border rounded">
-  <h1 class="text-xl mb-4">Login</h1>
-  {#if flash.notice}
-    <p class="mb-4 rounded-lg bg-green-50 px-4 py-2 text-sm text-green-800" data-testid="flash-notice">{flash.notice}</p>
-  {/if}
-  <form on:submit|preventDefault={submit}>
-    <input type="email" bind:value={form.email} class="block w-full p-2 border" />
-    {#if errors.email}<div class="text-red-600 text-xs">{errors.email}</div>{/if}
-    <div class="mt-2">
-      <PasswordInput bind:value={form.password} name="password" autocomplete="current-password" className="block w-full p-2 border" />
+<AuthLayout {site} {flash} title="Log in">
+  <form on:submit|preventDefault={submit} class="space-y-3">
+    <div>
+      <input type="email" bind:value={form.email} placeholder="Email" class="block w-full rounded-lg border border-stone-300 p-2.5 text-sm" />
+      {#if errors.email}<p class="mt-1 text-xs text-red-600">{errors.email}</p>{/if}
     </div>
-    <button class="mt-4 bg-stone-800 text-white px-4 py-2">Log in</button>
+    <div>
+      <PasswordInput bind:value={form.password} name="password" autocomplete="current-password" className="block w-full rounded-lg border border-stone-300 p-2.5 text-sm" />
+    </div>
+    <button type="submit" class="w-full rounded-lg bg-stone-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-900">Log in</button>
+    <p class="pt-1 text-center text-xs text-stone-500">
+      <a href="/signup" class="text-stone-700 underline hover:text-stone-900">Create account</a>
+      ·
+      <a href="/forgot-password" class="text-stone-700 underline hover:text-stone-900">Forgot password</a>
+    </p>
   </form>
-</div>
+</AuthLayout>
 `
 
 const tplSvelteSignup = `<script>
   import { useForm } from '@inertiajs/svelte'
+  import AuthLayout from '../components/AuthLayout.svelte'
   import PasswordInput from '../components/PasswordInput.svelte'
   export let errors = {}
+  export let site = {}
+  export let flash = {}
   let form = useForm({ email: '', password: '', password_confirmation: '' })
   function submit() { form.post('/signup') }
 </script>
@@ -223,25 +258,34 @@ const tplSvelteSignup = `<script>
   <title>Sign up · {{.AppName}}</title>
 </svelte:head>
 
-<div class="max-w-sm mx-auto p-6">
-  <h1>Sign up</h1>
-  <form on:submit|preventDefault={submit}>
-    <input bind:value={form.email} type="email" placeholder="email" class="block w-full border p-2" />
-    {#if errors.email}<p class="text-red-600">{errors.email}</p>{/if}
-    <div class="mt-2">
-      <PasswordInput bind:value={form.password} name="password" autocomplete="new-password" className="block w-full border p-2" />
+<AuthLayout {site} {flash} title="Create account">
+  <form on:submit|preventDefault={submit} class="space-y-3">
+    <div>
+      <input bind:value={form.email} type="email" placeholder="Email" class="block w-full rounded-lg border border-stone-300 p-2.5 text-sm" />
+      {#if errors.email}<p class="mt-1 text-xs text-red-600">{errors.email}</p>{/if}
     </div>
-    <div class="mt-2">
-      <PasswordInput bind:value={form.password_confirmation} name="password_confirmation" autocomplete="new-password" className="block w-full border p-2" />
+    <div>
+      <PasswordInput bind:value={form.password} name="password" autocomplete="new-password" className="block w-full rounded-lg border border-stone-300 p-2.5 text-sm" />
+      {#if errors.password}<p class="mt-1 text-xs text-red-600">{errors.password}</p>{/if}
     </div>
-    <button class="mt-4 px-4 py-2 bg-black text-white">Create account</button>
+    <div>
+      <PasswordInput bind:value={form.password_confirmation} name="password_confirmation" autocomplete="new-password" className="block w-full rounded-lg border border-stone-300 p-2.5 text-sm" />
+      {#if errors.password_confirmation}<p class="mt-1 text-xs text-red-600">{errors.password_confirmation}</p>{/if}
+    </div>
+    <button type="submit" class="w-full rounded-lg bg-stone-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-900">Create account</button>
+    <p class="pt-1 text-center text-xs text-stone-500">
+      <a href="/login" class="text-stone-700 underline hover:text-stone-900">Already have an account?</a>
+    </p>
   </form>
-</div>
+</AuthLayout>
 `
 
 const tplSvelteForgotPassword = `<script>
   import { useForm } from '@inertiajs/svelte'
+  import AuthLayout from '../components/AuthLayout.svelte'
   export let errors = {}
+  export let site = {}
+  export let flash = {}
   let form = useForm({ email: '' })
   function submit() { form.post('/forgot-password') }
 </script>
@@ -250,18 +294,27 @@ const tplSvelteForgotPassword = `<script>
   <title>Forgot password · {{.AppName}}</title>
 </svelte:head>
 
-<h1>Forgot password</h1>
-<form on:submit|preventDefault={submit}>
-  <input bind:value={form.email} type="email" />
-  {#if errors.email}<p>{errors.email}</p>{/if}
-  <button>Send reset</button>
-</form>
+<AuthLayout {site} {flash} title="Forgot password">
+  <form on:submit|preventDefault={submit} class="space-y-3">
+    <div>
+      <input bind:value={form.email} type="email" placeholder="Email" class="block w-full rounded-lg border border-stone-300 p-2.5 text-sm" />
+      {#if errors.email}<p class="mt-1 text-xs text-red-600">{errors.email}</p>{/if}
+    </div>
+    <button type="submit" class="w-full rounded-lg bg-stone-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-900">Send reset link</button>
+    <p class="pt-1 text-center text-xs text-stone-500">
+      <a href="/login" class="text-stone-700 underline hover:text-stone-900">Back to login</a>
+    </p>
+  </form>
+</AuthLayout>
 `
 
 const tplSvelteResetPassword = `<script>
   import { useForm } from '@inertiajs/svelte'
+  import AuthLayout from '../components/AuthLayout.svelte'
   import PasswordInput from '../components/PasswordInput.svelte'
   export let errors = {}
+  export let site = {}
+  export let flash = {}
   export let token = ''
   let form = useForm({ token, password: '', password_confirmation: '' })
   function submit() { form.post('/reset-password') }
@@ -271,20 +324,23 @@ const tplSvelteResetPassword = `<script>
   <title>Reset password · {{.AppName}}</title>
 </svelte:head>
 
-<div class="max-w-sm mx-auto p-6">
-  <h1 class="text-xl mb-4">Reset password</h1>
-  {#if errors.token}<p class="text-red-600 text-sm mb-2">{errors.token}</p>{/if}
-  <form on:submit|preventDefault={submit}>
+<AuthLayout {site} {flash} title="Reset password">
+  {#if errors.token}
+    <p class="mb-3 text-sm text-red-600">{errors.token}</p>
+  {/if}
+  <form on:submit|preventDefault={submit} class="space-y-3">
     <input type="hidden" bind:value={form.token} />
-    <PasswordInput bind:value={form.password} name="password" autocomplete="new-password" placeholder="New password" className="block w-full border p-2" />
-    {#if errors.password}<p class="text-red-600 text-sm">{errors.password}</p>{/if}
-    <div class="mt-2">
-      <PasswordInput bind:value={form.password_confirmation} name="password_confirmation" autocomplete="new-password" placeholder="Confirm password" className="block w-full border p-2" />
+    <div>
+      <PasswordInput bind:value={form.password} name="password" autocomplete="new-password" placeholder="New password" className="block w-full rounded-lg border border-stone-300 p-2.5 text-sm" />
+      {#if errors.password}<p class="mt-1 text-xs text-red-600">{errors.password}</p>{/if}
     </div>
-    {#if errors.password_confirmation}<p class="text-red-600 text-sm">{errors.password_confirmation}</p>{/if}
-    <button class="mt-4 px-4 py-2 bg-stone-800 text-white">Reset</button>
+    <div>
+      <PasswordInput bind:value={form.password_confirmation} name="password_confirmation" autocomplete="new-password" placeholder="Confirm password" className="block w-full rounded-lg border border-stone-300 p-2.5 text-sm" />
+      {#if errors.password_confirmation}<p class="mt-1 text-xs text-red-600">{errors.password_confirmation}</p>{/if}
+    </div>
+    <button type="submit" class="w-full rounded-lg bg-stone-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-900">Reset password</button>
   </form>
-</div>
+</AuthLayout>
 `
 
 const tplViteConfig = `import { defineConfig } from 'vite'

@@ -69,6 +69,7 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		"web/templates/app.html":                     tplAppHTML,
 		"web/src/main.js":                            tplMainJS,
 		"web/src/components/AppLayout.svelte":        tplAppLayout,
+		"web/src/components/AuthLayout.svelte":       tplAuthLayout,
 		"web/src/components/PasswordInput.svelte":    tplPasswordInput,
 		"web/src/pages/Home.svelte":                  tplSvelteHome,
 		"web/src/pages/Contact.svelte":               tplSvelteContact,
@@ -163,6 +164,7 @@ func scaffoldNewApp(dir string, data scaffoldData, minimal bool, blank bool) err
 		delete(files, "web/src/pages/Signup.svelte")
 		delete(files, "web/src/pages/ForgotPassword.svelte")
 		delete(files, "web/src/pages/ResetPassword.svelte")
+		delete(files, "web/src/components/AuthLayout.svelte")
 		files["internal/app/routes.go"] = tplRoutesMinimal
 		files["internal/store/store.go"] = tplStoreMinimal
 		files["internal/store/store_test.go"] = tplStoreTestMinimal
