@@ -69,6 +69,7 @@ func TestScaffoldTemplates_allRequiredPresent(t *testing.T) {
 		TplGitignore           string
 		TplREADME              string
 		TplREADMEBlank         string
+		TplAgentsMD            string
 		TplI18nCatalog         string
 		TplI18nEn              string
 		TplI18nPt              string
@@ -145,6 +146,7 @@ func TestScaffoldTemplates_allRequiredPresent(t *testing.T) {
 		TplGitignore:           tplGitignore,
 		TplREADME:              tplREADME,
 		TplREADMEBlank:         tplREADMEBlank,
+		TplAgentsMD:            tplAgentsMD,
 		TplI18nCatalog:         tplI18nCatalog,
 		TplI18nEn:              tplI18nEn,
 		TplI18nPt:              tplI18nPt,
