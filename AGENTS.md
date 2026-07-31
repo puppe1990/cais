@@ -145,9 +145,13 @@ ve["email"] = "Invalid email"
 ctx := inertia.SetValidationErrors(r.Context(), ve)
 _ = h.inertia.Render(w, r.WithContext(ctx), "Contact", inertia.Props{})
 
-// Flash on redirect
-ctx := inertia.SetFlash(r.Context(), inertia.Flash{"notice": "Saved!"})
-h.inertia.Redirect(w, r.WithContext(ctx), "/dashboard", http.StatusSeeOther)
+// Flash on redirect — use cais flash cookies (not inertia.SetFlash; needs FlashDataProvider)
+flash.Set(w, "notice", "Saved!", cfg.CookieSecure())
+h.inertia.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+// On the next request, middleware.Flash puts the cookie into context; pass into props:
+if msg, ok := flash.MessageFromRequest(r); ok {
+  props["flash"] = inertia.Flash{msg.Kind: msg.Message}
+}
 ```
 
 **Where HTMX remains (on purpose):**
@@ -232,7 +236,8 @@ Pass `meta.SiteFrom(appName, cfg.AppURL)` from bootstrap for OG/Twitter props in
 ## Flash messages
 
 - `middleware.Flash` on the router (after `LoadSession`)
-- Set on redirect: `flash.Set(w, "notice", "Saved!", cfg.CookieSecure())` — read in templates via `meta.ForRequest(site, r)` → `.Flash`
+- **One API:** `flash.Set(w, "notice", "Saved!", cfg.CookieSecure())` then redirect. Do **not** use `inertia.SetFlash` — without a gonertia `FlashDataProvider` it is a silent no-op (#140).
+- Read on the next request: `flash.MessageFromRequest(r)` → put into Inertia `props["flash"]`, or HTMX via `meta.ForRequest(site, r)` → `.Flash`
 - Layouts: `{{ flashMessage .Flash }}` (`pkg/cais/forms`) — never `{{ .Flash }}` (stringifies the struct)
 - One-shot: consumed on the next request
 

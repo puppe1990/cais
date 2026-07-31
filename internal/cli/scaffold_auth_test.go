@@ -69,8 +69,46 @@ func TestScaffoldNewApp_includesAuth(t *testing.T) {
 	if !strings.Contains(authBody, "flash.Set") {
 		t.Error("auth.go missing flash.Set after login")
 	}
+	// #140: gonertia SetFlash is a no-op without FlashDataProvider — scaffold must use cais flash cookies.
+	if strings.Contains(authBody, "inertia.SetFlash(") {
+		t.Error("auth.go must not call inertia.SetFlash; use flash.Set + Redirect instead")
+	}
+	loginFlash := "flash.Set(w, \"notice\", h.catalog.T(\"auth.welcome\")"
+	if !strings.Contains(authBody, loginFlash) {
+		t.Error("auth.go login/signup welcome must call flash.Set(notice, auth.welcome)")
+	}
+	if !strings.Contains(authBody, "h.catalog.T(\"auth.reset_success\")") || !strings.Contains(authBody, "flash.Set") {
+		t.Error("auth.go reset success must call flash.Set")
+	}
 	if !strings.Contains(authBody, "meta.ForRequest") {
 		t.Error("auth.go missing meta.ForRequest")
+	}
+
+	dashboardHandler, err := os.ReadFile(filepath.Join(appDir, "internal/handlers/dashboard.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dashBody := string(dashboardHandler)
+	if !strings.Contains(dashBody, "flash.MessageFromRequest") {
+		t.Error("dashboard.go must pass flash.MessageFromRequest into Inertia props")
+	}
+	if !strings.Contains(dashBody, `"flash"`) {
+		t.Error("dashboard.go must include flash in Inertia props")
+	}
+
+	loginSvelte, err := os.ReadFile(filepath.Join(appDir, "web/src/pages/Login.svelte"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(loginSvelte), "flash") {
+		t.Error("Login.svelte must accept/display flash props")
+	}
+	dashSvelte, err := os.ReadFile(filepath.Join(appDir, "web/src/pages/Dashboard.svelte"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(dashSvelte), "flash") {
+		t.Error("Dashboard.svelte must accept/display flash props")
 	}
 	if !strings.Contains(body, "NewRateLimiter") {
 		t.Error("routes.go missing rate limiter on login")

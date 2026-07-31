@@ -40,9 +40,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		h.inertia.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
-	_ = h.inertia.Render(w, r, "Login", inertia.Props{
-		"site": meta.ForRequest(h.site, r),
-	})
+	props := inertia.Props{"site": meta.ForRequest(h.site, r)}
+	if msg, ok := flash.MessageFromRequest(r); ok {
+		props["flash"] = inertia.Flash{msg.Kind: msg.Message}
+	}
+	_ = h.inertia.Render(w, r, "Login", props)
 }
 
 func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
@@ -66,8 +68,9 @@ func (h *AuthHandler) LoginPost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	ctx := inertia.SetFlash(r.Context(), inertia.Flash{"notice": h.catalog.T("auth.welcome")})
-	h.inertia.Redirect(w, r.WithContext(ctx), "/dashboard", http.StatusSeeOther)
+	// cais flash cookie (gonertia SetFlash needs FlashDataProvider; scaffold uses cookies — #140).
+	flash.Set(w, "notice", h.catalog.T("auth.welcome"), h.cfg.CookieSecure())
+	h.inertia.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 }
 
 func (h *AuthHandler) LogoutPost(w http.ResponseWriter, r *http.Request) {
@@ -135,8 +138,8 @@ func (h *AuthHandler) SignUpPost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	ctx := inertia.SetFlash(r.Context(), inertia.Flash{"notice": h.catalog.T("auth.welcome")})
-	h.inertia.Redirect(w, r.WithContext(ctx), "/dashboard", http.StatusSeeOther)
+	flash.Set(w, "notice", h.catalog.T("auth.welcome"), h.cfg.CookieSecure())
+	h.inertia.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 }
 
 func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
@@ -261,8 +264,8 @@ func (h *AuthHandler) ResetPasswordPost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	ctx := inertia.SetFlash(r.Context(), inertia.Flash{"notice": h.catalog.T("auth.reset_success")})
-	h.inertia.Redirect(w, r.WithContext(ctx), "/login", http.StatusSeeOther)
+	flash.Set(w, "notice", h.catalog.T("auth.reset_success"), h.cfg.CookieSecure())
+	h.inertia.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
 func (h *AuthHandler) resetNotifier() passwordreset.Notifier {

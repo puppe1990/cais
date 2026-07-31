@@ -134,6 +134,7 @@ const tplSvelteDashboard = `<script>
   export let totalContacts = 0
   export let env = ''
   export let site = {}
+  export let flash = {}
   // use:inertia is for GET navigation; mutations need router.post / useForm.
   function logout() { router.post('/logout') }
 </script>
@@ -144,6 +145,9 @@ const tplSvelteDashboard = `<script>
 
 <div class="p-8">
   <h1 class="text-3xl">Dashboard</h1>
+  {#if flash.notice}
+    <p class="mb-4 rounded-lg bg-green-50 px-4 py-2 text-sm text-green-800" data-testid="flash-notice">{flash.notice}</p>
+  {/if}
   <p>Welcome! (Inertia/Svelte)</p>
   <p>Contacts: {totalContacts}</p>
   <p>Env: {env}</p>
@@ -182,6 +186,7 @@ const tplSvelteLogin = `<script>
   import PasswordInput from '../components/PasswordInput.svelte'
   export let errors = {}
   export let site = {}
+  export let flash = {}
   let form = useForm({ email: 'demo@example.com', password: 'password' })
   function submit() { form.post('/login') }
 </script>
@@ -192,6 +197,9 @@ const tplSvelteLogin = `<script>
 
 <div class="max-w-sm mx-auto mt-10 p-6 border rounded">
   <h1 class="text-xl mb-4">Login</h1>
+  {#if flash.notice}
+    <p class="mb-4 rounded-lg bg-green-50 px-4 py-2 text-sm text-green-800" data-testid="flash-notice">{flash.notice}</p>
+  {/if}
   <form on:submit|preventDefault={submit}>
     <input type="email" bind:value={form.email} class="block w-full p-2 border" />
     {#if errors.email}<div class="text-red-600 text-xs">{errors.email}</div>{/if}
