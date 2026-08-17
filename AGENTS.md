@@ -61,6 +61,7 @@ Scaffold `const tpl*` blobs: one family per file (`tpl_scaffold_handlers_auth.go
 | `pkg/cais/csrf/`          | CSRF tokens (double-submit cookie)                                                    |
 | `pkg/cais/validate/`      | Form field validation helpers                                                         |
 | `pkg/cais/forms/`         | Template helpers (`csrfField`, `fieldError`, `makeField`, `fieldInput`)               |
+| `pkg/cais/dotenv/`        | `.env` parser (`Parse`, `LoadFile`) used by `cais.Load()`                             |
 | `pkg/cais/i18n/`          | Locale catalogs (`LOCALE` env, `t` template func)                                     |
 | `pkg/cais/testutil/`      | Test helpers (`NewRenderer`, `NewRequest`, `AssertHTMLContains`, `AssertChatMarkers`) |
 | `pkg/cais/pwa/`           | Default PWA assets generator (manifest, icons, og.png)                                |
@@ -472,6 +473,8 @@ Boot banner via `boot.Print` in `cmd/server/main.go`. Port auto-pick via `cais.R
 Set `APP_URL` for absolute OG image URLs. **`APP_URL` is required when `ENV=production`** — `cfg.Validate()` fails on boot if missing.
 
 Set `TRUSTED_PROXIES` (comma-separated IPs) when behind a reverse proxy so `middleware.ClientIP` trusts `X-Forwarded-For` for rate limiting and logging.
+
+`cais.Load()` applies a local `.env` if present (`pkg/cais/dotenv.LoadFile`). Keys already in the process env win — `t.Setenv`, systemd `Environment=`, and CI secrets are not overwritten. Missing `.env` is a no-op.
 
 Set `LOCALE=en` (default) or `LOCALE=pt` for UI strings via `pkg/cais/i18n`. See [i18n design](docs/superpowers/specs/2026-07-01-i18n-design.md).
 
