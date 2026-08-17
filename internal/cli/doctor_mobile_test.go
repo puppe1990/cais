@@ -9,6 +9,7 @@ import (
 )
 
 func TestDoctor_MobileOKOnFreshScaffold(t *testing.T) {
+	unsetCIEnv(t)
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	dir := t.TempDir()
 	if err := scaffoldNewApp(dir, scaffoldData{
@@ -33,6 +34,7 @@ func TestDoctor_MobileOKOnFreshScaffold(t *testing.T) {
 }
 
 func TestDoctor_MobileWarnsGoogleFonts(t *testing.T) {
+	unsetCIEnv(t)
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	dir := t.TempDir()
 	if err := scaffoldNewApp(dir, scaffoldData{

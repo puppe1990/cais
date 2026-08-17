@@ -9,6 +9,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 ### Added
 
 - `cais.Load()` reads `.env` when present (`pkg/cais/dotenv`); does not override process env (tests, systemd, CI). Doctor shares the same parser (#153).
+- `cais doctor` warns (fails when `CI=true` / `GITHUB_ACTIONS=true`) if `go.mod` still has a local `cais link` replace; `cais link` says not to commit it (#154).
 
 ### Changed
 

@@ -37,6 +37,7 @@ func TestCheckCLIVersion_warnsWhenCLIOlderThanMod(t *testing.T) {
 }
 
 func TestDoctor_SSEWriteTimeoutWarnsWhenPositive(t *testing.T) {
+	unsetCIEnv(t)
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	dir := t.TempDir()
 	if err := scaffoldNewApp(dir, scaffoldData{
@@ -146,6 +147,7 @@ func TestDoctor_MobileWarnsMultiSlotWithoutFinalize(t *testing.T) {
 
 func runDoctorOutputMobile(t *testing.T, dir string) string {
 	t.Helper()
+	unsetCIEnv(t)
 	writeBuiltStylesCSS(t, dir)
 	var buf bytes.Buffer
 	if err := runDoctor(&buf, dir, doctorOptions{Mobile: true}); err != nil {
@@ -155,6 +157,7 @@ func runDoctorOutputMobile(t *testing.T, dir string) string {
 }
 
 func TestDoctor_AllOK(t *testing.T) {
+	unsetCIEnv(t)
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	dir := t.TempDir()
 	if err := scaffoldNewApp(dir, scaffoldData{
@@ -198,6 +201,7 @@ func TestDoctor_FailsWhenStylesCSSNotBuilt(t *testing.T) {
 }
 
 func TestDoctor_AirOptionalWhenMissing(t *testing.T) {
+	unsetCIEnv(t)
 	if _, err := exec.LookPath("air"); err == nil {
 		t.Skip("air installed; optional-missing path not exercised")
 	}
@@ -221,6 +225,7 @@ func TestDoctor_AirOptionalWhenMissing(t *testing.T) {
 }
 
 func TestDoctor_QualityToolingWarnsWhenMissing(t *testing.T) {
+	unsetCIEnv(t)
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	dir := t.TempDir()
 	if err := scaffoldNewApp(dir, scaffoldData{
@@ -393,8 +398,16 @@ func writeBuiltStylesCSS(t *testing.T, dir string) {
 	}
 }
 
+func unsetCIEnv(t *testing.T) {
+	t.Helper()
+	// Scaffolded test apps get a local replace; that must stay a warn here, not a CI FAIL (#154).
+	t.Setenv("CI", "")
+	t.Setenv("GITHUB_ACTIONS", "")
+}
+
 func runDoctorOutput(t *testing.T, dir string) string {
 	t.Helper()
+	unsetCIEnv(t)
 	// Most doctor tests care about other checks; assume CSS was built unless the test asserts otherwise.
 	if !stylesCSSReady(dir) {
 		writeBuiltStylesCSS(t, dir)

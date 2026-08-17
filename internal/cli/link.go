@@ -76,5 +76,6 @@ func (c *CLI) cmdLink(args []string) error {
 
 func printLinkMessage(w io.Writer, replacePath string) {
 	_, _ = fmt.Fprintf(w, "→ linked %s => %s\n", frameworkModule, replacePath)
-	_, _ = fmt.Fprintln(w, "  run cais test to verify; cais link --unlink to restore remote module")
+	_, _ = fmt.Fprintln(w, "  do not commit this replace — CI clones cannot resolve the local path")
+	_, _ = fmt.Fprintln(w, "  run cais test to verify; cais link --unlink to restore remote module before push")
 }

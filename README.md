@@ -35,7 +35,7 @@ make install-cli
 make test                 # go test ./... -race
 make ci                   # test + js-test + lint + format-check
 # Local CLI against this checkout:
-cais link .               # from an app dir, or set CAIS_REPLACE
+cais link .               # from an app dir, or set CAIS_REPLACE; unlink before push
 ```
 
 Demo login in a fresh scaffold (dev seed): `demo@example.com` / `password`.

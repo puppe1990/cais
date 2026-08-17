@@ -50,6 +50,9 @@ func runDoctor(w io.Writer, dir string, opts doctorOptions) error {
 	if c := checkSeedsInfo(dir); c != nil {
 		checks = append(checks, *c)
 	}
+	if c := checkLocalCaisReplace(dir); c != nil {
+		checks = append(checks, *c)
+	}
 	if opts.Mobile {
 		checks = append(checks,
 			checkFlashTemplate(dir),
@@ -116,6 +119,25 @@ func checkCaisDep(dir string) doctorCheck {
 		return doctorCheck{Name: "cais dependency", OK: true, Detail: "local replace active"}
 	}
 	return doctorCheck{Name: "cais dependency", OK: true, Detail: "v" + extractCaisVersion(content)}
+}
+
+func checkLocalCaisReplace(dir string) *doctorCheck {
+	data, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+	if err != nil || !strings.Contains(string(data), "replace "+frameworkModule) {
+		return nil
+	}
+	// cais link is for local work. Committing the replace breaks CI clones (#154).
+	optional := !runningInCI()
+	return &doctorCheck{
+		Name:     "cais replace",
+		Optional: optional,
+		Detail:   "go.mod has a local cais replace — CI clones will not see that path",
+		FixHint:  "cais link --unlink   # before commit/push",
+	}
+}
+
+func runningInCI() bool {
+	return os.Getenv("CI") == "true" || os.Getenv("GITHUB_ACTIONS") == "true"
 }
 
 func extractCaisVersion(content string) string {
