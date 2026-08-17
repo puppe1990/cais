@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -64,5 +66,45 @@ func TestCheckLocalCaisReplace_failsOnGitHubActions(t *testing.T) {
 	c := checkLocalCaisReplace(dir)
 	if c == nil || c.OK || c.Optional {
 		t.Fatalf("want hard FAIL on GITHUB_ACTIONS, got %+v", c)
+	}
+}
+
+func TestRunDoctor_caisReplaceWarnsLocally(t *testing.T) {
+	t.Setenv("CI", "")
+	t.Setenv("GITHUB_ACTIONS", "")
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	dir := scaffoldDoctorApp(t)
+	if err := setGoModReplace(dir, "../cais"); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	if err := runDoctor(&buf, dir, doctorOptions{}); err != nil {
+		t.Fatalf("local doctor should warn, not fail: %v\n%s", err, buf.String())
+	}
+	out := buf.String()
+	if !strings.Contains(out, "[warn] cais replace") {
+		t.Fatalf("expected warn, got:\n%s", out)
+	}
+	if !strings.Contains(out, "cais link --unlink") {
+		t.Fatalf("expected unlink hint, got:\n%s", out)
+	}
+}
+
+func TestRunDoctor_caisReplaceFailsInCI(t *testing.T) {
+	t.Setenv("CI", "true")
+	t.Setenv("GITHUB_ACTIONS", "")
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	dir := scaffoldDoctorApp(t)
+	if err := setGoModReplace(dir, "../cais"); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	if err := runDoctor(&buf, dir, doctorOptions{}); err == nil {
+		t.Fatalf("CI doctor should fail on replace, got:\n%s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "[FAIL] cais replace") {
+		t.Fatalf("expected FAIL, got:\n%s", buf.String())
 	}
 }
