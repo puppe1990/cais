@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/puppe1990/cais/pkg/cais/dotenv"
 )
 
 type Config struct {
@@ -26,6 +28,9 @@ type Config struct {
 }
 
 func Load() Config {
+	// Scaffold .env.example is otherwise dead: doctor parses .env, Load did not (#153).
+	_ = dotenv.LoadFile(".env")
+
 	cfg := Config{
 		Port:   ":8080",
 		DBPath: "./data/app.db",

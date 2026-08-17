@@ -1,6 +1,9 @@
 package cais
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 func TestConfig_DefaultPort(t *testing.T) {
 	t.Setenv("PORT", "")
@@ -264,5 +267,44 @@ func TestConfig_TrustedProxies_loadFromEnv(t *testing.T) {
 		if cfg.TrustedProxies[i] != ip {
 			t.Errorf("TrustedProxies[%d] = %q, want %q", i, cfg.TrustedProxies[i], ip)
 		}
+	}
+}
+
+func TestConfig_Load_readsDotEnvWhenUnset(t *testing.T) {
+	t.Chdir(t.TempDir())
+	unsetForTest(t, "LOCALE", "APP_URL")
+	if err := os.WriteFile(".env", []byte("LOCALE=pt\nAPP_URL=http://127.0.0.1:8081\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := Load()
+
+	if cfg.Locale != "pt" {
+		t.Errorf("Locale = %q, want pt from .env", cfg.Locale)
+	}
+	if cfg.AppURL != "http://127.0.0.1:8081" {
+		t.Errorf("AppURL = %q, want APP_URL from .env", cfg.AppURL)
+	}
+}
+
+func TestConfig_Load_processEnvWinsOverDotEnv(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("LOCALE", "en")
+	if err := os.WriteFile(".env", []byte("LOCALE=pt\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := Load()
+
+	if cfg.Locale != "en" {
+		t.Errorf("Locale = %q, want en from process env", cfg.Locale)
+	}
+}
+
+func unsetForTest(t *testing.T, keys ...string) {
+	t.Helper()
+	for _, key := range keys {
+		_ = os.Unsetenv(key)
+		t.Cleanup(func() { _ = os.Unsetenv(key) })
 	}
 }
