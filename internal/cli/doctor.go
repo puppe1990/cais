@@ -127,12 +127,17 @@ func checkLocalCaisReplace(dir string) *doctorCheck {
 		return nil
 	}
 	// cais link is for local work. Committing the replace breaks CI clones (#154).
+	optional := !runningInCI()
 	return &doctorCheck{
 		Name:     "cais replace",
-		Optional: true,
+		Optional: optional,
 		Detail:   "go.mod has a local cais replace — CI clones will not see that path",
 		FixHint:  "cais link --unlink   # before commit/push",
 	}
+}
+
+func runningInCI() bool {
+	return os.Getenv("CI") == "true" || os.Getenv("GITHUB_ACTIONS") == "true"
 }
 
 func extractCaisVersion(content string) string {

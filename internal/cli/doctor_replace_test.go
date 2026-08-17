@@ -36,3 +36,33 @@ func TestCheckLocalCaisReplace_warnsOutsideCI(t *testing.T) {
 		t.Fatal("expected unlink fix hint")
 	}
 }
+
+func TestCheckLocalCaisReplace_failsInCI(t *testing.T) {
+	t.Setenv("CI", "true")
+	t.Setenv("GITHUB_ACTIONS", "")
+	dir := t.TempDir()
+	mod := "module app\n\nreplace github.com/puppe1990/cais => ../cais\n"
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := checkLocalCaisReplace(dir)
+	if c == nil || c.OK || c.Optional {
+		t.Fatalf("want hard FAIL in CI, got %+v", c)
+	}
+}
+
+func TestCheckLocalCaisReplace_failsOnGitHubActions(t *testing.T) {
+	t.Setenv("CI", "")
+	t.Setenv("GITHUB_ACTIONS", "true")
+	dir := t.TempDir()
+	mod := "module app\n\nreplace github.com/puppe1990/cais => ../cais\n"
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := checkLocalCaisReplace(dir)
+	if c == nil || c.OK || c.Optional {
+		t.Fatalf("want hard FAIL on GITHUB_ACTIONS, got %+v", c)
+	}
+}
