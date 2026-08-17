@@ -502,7 +502,7 @@ cais g [--dry-run] ci         # add CI/pre-commit to existing apps
 cais g [--dry-run] job send_welcome --cron "0 3 * * *"
 cais doctor [--mobile]        # verify setup (Inertia/Vite, htmx, air, go.mod, PWA/mobile)
 cais pwa [--bump]             # write/refresh PWA assets; --bump invalidates SW cache
-cais link [path] [--unlink]   # go.mod replace for local Cais dev
+cais link [path] [--unlink]   # go.mod replace for local Cais dev (do not commit; unlink before push)
 cais routes                   # list routes from internal/app/routes.go
 ```
 
@@ -534,7 +534,7 @@ cais doctor [--mobile]  # verify Inertia/Vite, htmx, air, go.mod, PWA/mobile
 cais pwa [--bump]       # write/refresh PWA assets
 cais console  # Rails-style REPL (store, cfg, db + sql)
 cais routes   # list HTTP routes from internal/app/routes.go
-cais link [../Cais] [--unlink]  # go.mod replace for local framework dev
+cais link [../Cais] [--unlink]  # go.mod replace for local framework dev (unlink before push)
 cais db migrate        # run pending migrations
 cais db status         # list applied/pending migrations
 cais db rollback       # roll back last migration (runs -- down SQL when present)
