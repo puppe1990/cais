@@ -20,8 +20,8 @@ func TestLoadFile_setsUnsetKeysOnly(t *testing.T) {
 	}
 
 	t.Setenv("DOTENV_EXISTING", "from-process")
-	os.Unsetenv("DOTENV_NEW")
-	t.Cleanup(func() { os.Unsetenv("DOTENV_NEW") })
+	_ = os.Unsetenv("DOTENV_NEW")
+	t.Cleanup(func() { _ = os.Unsetenv("DOTENV_NEW") })
 
 	if err := LoadFile(path); err != nil {
 		t.Fatal(err)

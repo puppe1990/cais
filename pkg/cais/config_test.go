@@ -304,7 +304,7 @@ func TestConfig_Load_processEnvWinsOverDotEnv(t *testing.T) {
 func unsetForTest(t *testing.T, keys ...string) {
 	t.Helper()
 	for _, key := range keys {
-		os.Unsetenv(key)
-		t.Cleanup(func() { os.Unsetenv(key) })
+		_ = os.Unsetenv(key)
+		t.Cleanup(func() { _ = os.Unsetenv(key) })
 	}
 }
