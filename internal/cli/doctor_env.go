@@ -3,7 +3,8 @@ package cli
 import (
 	"os"
 	"path/filepath"
-	"strings"
+
+	"github.com/puppe1990/cais/pkg/cais/dotenv"
 )
 
 func isProduction(dir string) bool {
@@ -18,23 +19,7 @@ func resolveEnvVar(dir, key string) string {
 	if err != nil {
 		return ""
 	}
-	return parseDotEnv(data)[key]
-}
-
-func parseDotEnv(data []byte) map[string]string {
-	vars := make(map[string]string)
-	for _, line := range strings.Split(string(data), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		key, val, ok := strings.Cut(line, "=")
-		if !ok {
-			continue
-		}
-		vars[strings.TrimSpace(key)] = strings.TrimSpace(val)
-	}
-	return vars
+	return dotenv.Parse(data)[key]
 }
 
 func checkAdminToken(dir string) doctorCheck {
