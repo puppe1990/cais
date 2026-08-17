@@ -63,3 +63,15 @@ func TestRemoveGoModReplace(t *testing.T) {
 		t.Errorf("go.mod should not contain replace: %s", body)
 	}
 }
+
+func TestPrintLinkMessage_warnsNotToCommit(t *testing.T) {
+	var buf strings.Builder
+	printLinkMessage(&buf, "../Cais")
+	out := buf.String()
+	if !strings.Contains(out, "do not commit this replace") {
+		t.Fatalf("expected commit warning, got:\n%s", out)
+	}
+	if !strings.Contains(out, "cais link --unlink") {
+		t.Fatalf("expected unlink hint, got:\n%s", out)
+	}
+}
