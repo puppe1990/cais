@@ -55,6 +55,10 @@ func normalizeLocale(locale string) string {
 		return "en"
 	case strings.HasPrefix(locale, "pt"):
 		return "pt"
+	case strings.HasPrefix(locale, "es"):
+		return "es"
+	case strings.HasPrefix(locale, "zh"):
+		return "zh"
 	default:
 		return DefaultLocale
 	}
@@ -79,18 +83,30 @@ func (c *Catalog) Locale() string {
 
 // HTMLLang returns the BCP 47 language tag for <html lang>.
 func (c *Catalog) HTMLLang() string {
-	if c.locale == "pt" {
+	switch c.locale {
+	case "pt":
 		return "pt-BR"
+	case "es":
+		return "es-419"
+	case "zh":
+		return "zh-CN"
+	default:
+		return "en"
 	}
-	return "en"
 }
 
 // OGLocale returns the Open Graph locale value.
 func (c *Catalog) OGLocale() string {
-	if c.locale == "pt" {
+	switch c.locale {
+	case "pt":
 		return "pt_BR"
+	case "es":
+		return "es_419"
+	case "zh":
+		return "zh_CN"
+	default:
+		return "en_US"
 	}
-	return "en_US"
 }
 
 // Funcs returns template helpers: t, htmlLang, ogLocale.

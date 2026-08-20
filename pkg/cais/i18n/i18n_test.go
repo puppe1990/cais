@@ -118,6 +118,12 @@ func TestNormalizeLocale(t *testing.T) {
 		{"pt", "pt"},
 		{"pt_BR", "pt"},
 		{"pt-BR", "pt"},
+		{"es", "es"},
+		{"es-419", "es"},
+		{"es_MX", "es"},
+		{"zh", "zh"},
+		{"zh-CN", "zh"},
+		{"zh_TW", "zh"},
 		{"fr", "en"},
 	}
 	for _, tc := range tests {
@@ -141,6 +147,8 @@ func TestNewCatalogFrom_customLocales(t *testing.T) {
 	locales := map[string]map[string]string{
 		"en": {"greeting": "Hello"},
 		"pt": {"greeting": "Olá"},
+		"es": {"greeting": "Hola"},
+		"zh": {"greeting": "你好"},
 	}
 	c := NewCatalogFrom("pt-BR", locales)
 	if got := c.T("greeting"); got != "Olá" {
@@ -148,6 +156,28 @@ func TestNewCatalogFrom_customLocales(t *testing.T) {
 	}
 	if c.HTMLLang() != "pt-BR" {
 		t.Errorf("HTMLLang() = %q, want pt-BR", c.HTMLLang())
+	}
+
+	es := NewCatalogFrom("es-MX", locales)
+	if got := es.T("greeting"); got != "Hola" {
+		t.Errorf("es T(greeting) = %q, want Hola", got)
+	}
+	if es.HTMLLang() != "es-419" {
+		t.Errorf("es HTMLLang() = %q, want es-419", es.HTMLLang())
+	}
+	if es.OGLocale() != "es_419" {
+		t.Errorf("es OGLocale() = %q, want es_419", es.OGLocale())
+	}
+
+	zh := NewCatalogFrom("zh-CN", locales)
+	if got := zh.T("greeting"); got != "你好" {
+		t.Errorf("zh T(greeting) = %q, want 你好", got)
+	}
+	if zh.HTMLLang() != "zh-CN" {
+		t.Errorf("zh HTMLLang() = %q, want zh-CN", zh.HTMLLang())
+	}
+	if zh.OGLocale() != "zh_CN" {
+		t.Errorf("zh OGLocale() = %q, want zh_CN", zh.OGLocale())
 	}
 }
 
