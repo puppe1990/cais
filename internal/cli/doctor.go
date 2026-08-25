@@ -295,13 +295,17 @@ func checkViteConfig(dir string) doctorCheck {
 			FixHint: "cais install",
 		}
 	}
-	buildDir := filepath.Join(dir, "web/static/build")
-	if _, err := os.Stat(buildDir); err != nil {
+	// Scaffold writes web/static/build/.gitkeep, so Stat(buildDir) is not a bundle (#159).
+	mainJS := filepath.Join(dir, "web/static/build/assets/main.js")
+	if _, err := os.Stat(mainJS); err != nil {
+		hint := "npm run build (or cais build)"
+		if _, nmErr := os.Stat(filepath.Join(dir, "node_modules")); nmErr != nil {
+			hint = "cais install && npm run build"
+		}
 		return doctorCheck{
-			Name:     "vite.config.js",
-			Optional: true,
-			Detail:   "Vite build output missing — run npm run build before deploy",
-			FixHint:  "npm run build (or cais dev once)",
+			Name:    "vite.config.js",
+			Detail:  "missing web/static/build/assets/main.js — Inertia will render a blank page",
+			FixHint: hint,
 		}
 	}
 	return doctorCheck{Name: "vite.config.js", OK: true, Detail: "Vite + @inertiajs/svelte configured"}
