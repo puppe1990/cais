@@ -124,6 +124,62 @@ func TestEnsureToken_setsSecureInProduction(t *testing.T) {
 	}
 }
 
+// #173: with secure cookies the CSRF cookie name gets the __Host- prefix so a
+// sibling subdomain cannot fixate a known cais_csrf value on the parent domain.
+// __Host- requires Secure, Path=/ and no Domain — exactly what EnsureToken sets.
+func TestEnsureToken_secureUsesHostPrefixedName(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	token, err := EnsureToken(rr, req, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var hostCookie *http.Cookie
+	for _, c := range rr.Result().Cookies() {
+		if c.Name == CookieName {
+			t.Error("plain cais_csrf must not be set when secure")
+		}
+		if c.Name == SecureCookieName {
+			hostCookie = c
+		}
+	}
+	if hostCookie == nil {
+		t.Fatalf("missing %s cookie: %+v", SecureCookieName, rr.Result().Cookies())
+	}
+	if !hostCookie.Secure || hostCookie.Path != "/" || hostCookie.Domain != "" {
+		t.Errorf("__Host- cookie violates prefix rules: %+v", hostCookie)
+	}
+
+	req2 := httptest.NewRequest(http.MethodPost, "/contact", nil)
+	req2.AddCookie(&http.Cookie{Name: SecureCookieName, Value: token})
+	req2.Header.Set(HeaderName, token)
+	if !Valid(req2) {
+		t.Error("Valid rejected double-submit via __Host- cookie")
+	}
+	if got := TokenFromRequest(req2); got != token {
+		t.Errorf("TokenFromRequest = %q, want %q", got, token)
+	}
+}
+
+func TestEnsureToken_insecureKeepsPlainName(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	if _, err := EnsureToken(rr, req, false); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range rr.Result().Cookies() {
+		if c.Name == SecureCookieName {
+			t.Error("__Host- cookie must not be set without Secure")
+		}
+	}
+	if len(rr.Result().Cookies()) == 0 {
+		t.Fatal("no csrf cookie set")
+	}
+}
+
 func TestFieldHTML_escapesValue(t *testing.T) {
 	got := FieldHTML(`"><script>`)
 	if strings.Contains(got, "<script>") {

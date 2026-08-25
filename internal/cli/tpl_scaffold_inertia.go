@@ -34,8 +34,10 @@ createInertiaApp({
     mount(App, { target: el, props })
   },
   // Match pkg/cais/csrf double-submit cookie (not Laravel XSRF defaults).
+  // Production sets Secure cookies, which use the __Host- prefix (#173);
+  // Vite's PROD flag tracks ENV=production, so pick the matching name.
   http: {
-    xsrfCookieName: 'cais_csrf',
+    xsrfCookieName: import.meta.env.PROD ? '__Host-cais_csrf' : 'cais_csrf',
     xsrfHeaderName: 'X-CSRF-Token',
   },
 })

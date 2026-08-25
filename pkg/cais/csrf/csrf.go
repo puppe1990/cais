@@ -18,7 +18,21 @@ const (
 	FormField    = "csrf_token"
 	MetaTag      = "csrf-token"
 	CookieMaxAge = 86400 * 7
+
+	// SecureCookieName carries the __Host- prefix in production (#173): browsers
+	// then reject any sibling-subdomain attempt to set it on the parent domain,
+	// blocking CSRF cookie fixation. __Host- requires Secure, Path=/, no Domain.
+	SecureCookieName = "__Host-cais_csrf"
 )
+
+// cookieForRequest returns the active CSRF cookie, preferring the secure name.
+// Plain-name fallback also makes rotation from older deploys transparent.
+func cookieForRequest(r *http.Request) (*http.Cookie, error) {
+	if c, err := r.Cookie(SecureCookieName); err == nil && c.Value != "" {
+		return c, nil
+	}
+	return r.Cookie(CookieName)
+}
 
 type ctxKey struct{}
 
@@ -41,7 +55,7 @@ func SubmittedToken(r *http.Request) string {
 
 // Valid reports whether the submitted token matches the cookie (double-submit).
 func Valid(r *http.Request) bool {
-	cookie, err := r.Cookie(CookieName)
+	cookie, err := cookieForRequest(r)
 	if err != nil || cookie.Value == "" {
 		return false
 	}
@@ -54,7 +68,7 @@ func Valid(r *http.Request) bool {
 
 // EnsureToken sets the CSRF cookie when missing and returns the active token.
 func EnsureToken(w http.ResponseWriter, r *http.Request, secure bool) (string, error) {
-	if cookie, err := r.Cookie(CookieName); err == nil && cookie.Value != "" {
+	if cookie, err := cookieForRequest(r); err == nil && cookie.Value != "" {
 		return cookie.Value, nil
 	}
 
@@ -63,8 +77,12 @@ func EnsureToken(w http.ResponseWriter, r *http.Request, secure bool) (string, e
 		return "", err
 	}
 
+	name := CookieName
+	if secure {
+		name = SecureCookieName
+	}
 	http.SetCookie(w, &http.Cookie{
-		Name:     CookieName,
+		Name:     name,
 		Value:    token,
 		Path:     "/",
 		MaxAge:   CookieMaxAge,
@@ -85,7 +103,7 @@ func TokenFromRequest(r *http.Request) string {
 	if token, ok := r.Context().Value(ctxKey{}).(string); ok && token != "" {
 		return token
 	}
-	if cookie, err := r.Cookie(CookieName); err == nil {
+	if cookie, err := cookieForRequest(r); err == nil {
 		return cookie.Value
 	}
 	return ""
