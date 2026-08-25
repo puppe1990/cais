@@ -7,6 +7,24 @@ import (
 	"testing"
 )
 
+func TestScaffoldNewApp_DropsUnusedBootstrap(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "noboot")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "noboot",
+		ModulePath: "github.com/puppe1990/noboot",
+	}, false, false); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(appDir, "cmd/server/main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(body), "func bootstrap()") {
+		t.Error("cmd/server/main.go must not define unused func bootstrap()")
+	}
+}
+
 func TestScaffoldNewApp_GoImportsLocalPrefixOrder(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	module := "github.com/puppe1990/imporder"
