@@ -23,15 +23,20 @@ func bindings(s *store.SQLiteStore) map[string]any {
 }
 
 func main() {
-	cfg := cais.Load()
+	if err := run(cais.Load()); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run(cfg cais.Config) error {
 	s, err := openStore(cfg)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer func() { _ = s.Close() }()
 
 	active := s
-	if err := console.Run(console.Options{
+	return console.Run(console.Options{
 		AppName:  "{{.AppName}}",
 		Config:   cfg,
 		Bindings: bindings(active),
@@ -44,8 +49,6 @@ func main() {
 			active = next
 			return bindings(active), nil
 		},
-	}); err != nil {
-		log.Fatal(err)
-	}
+	})
 }
 `
