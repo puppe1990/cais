@@ -6,6 +6,27 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ## Unreleased
 
+## [0.10.0] - 2026-08-25
+
+### Fixed
+
+- `cais g auth` compiles on minimal/blank apps: routes patched via the AST helper, `errors` import ordered correctly, dev demo user seeded so generated auth tests pass (#166).
+- SSE `WriteEvent` splits multi-line payloads into `data:` lines — newlines in chat HTML no longer truncate events or let user text forge extra SSE events (#167).
+- `cais destroy` unpatches via `go/ast`: exact statement/name removal only; user comments, custom `/admin/<plural>` routes and lookalike methods survive (#168).
+- `ClientIP` walks `X-Forwarded-For` right-to-left; leftmost entries were spoofable to evade rate limits (#170).
+- `mail.SMTPSender.Send` rejects CRLF header injection and invalid recipients via `net/mail.ParseAddress` (#171).
+- Jobs stranded in `running` by a crashed worker are requeued on worker boot (`Store.RequeueStuck`) (#172).
+- CSRF cookie uses the `__Host-cais_csrf` prefix when secure (production); generated Inertia apps pick the matching `xsrfCookieName` per Vite `PROD` (#173).
+- Low-severity batch: atomic devlog default buffer, mutex-guarded jobs `Registry`, recurring enqueue + `last_run` in one transaction, cache sweep past 1024 keys, rune-safe `chat.Truncate`, `Recover` logs stack traces, destroy/stream patches propagate I/O errors (#174).
+
+### Added
+
+- `cais destroy resource|model|handler` warns before deleting files modified since generation. Generators record SHA-256 hashes in `.cais-generated.json`; `--force` overrides (#169).
+
+### Changed
+
+- `middleware.Flash` takes a config (`Flash(cfg)`) so flash deletion cookies mirror the production `Secure` flag (#174).
+
 ## [0.9.0] - 2026-08-25
 
 ### Added
