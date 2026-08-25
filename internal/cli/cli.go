@@ -195,6 +195,9 @@ func parseNewArgs(args []string) (newOpts, error) {
 			i++
 			opts.module = args[i]
 		default:
+			if strings.HasPrefix(args[i], "-") {
+				return opts, fmt.Errorf("unknown flag %s", args[i])
+			}
 			positional = append(positional, args[i])
 		}
 	}
