@@ -130,9 +130,15 @@ Examples:
   cais css && cais server`)
 }
 
+const newUsage = "usage: cais new <app> [dir] [--minimal] [--blank] [--module <path>]"
+
 func (c *CLI) cmdNew(args []string) error {
+	if newArgsWantHelp(args) {
+		_, _ = fmt.Fprintln(c.Out, newUsage)
+		return nil
+	}
 	if len(args) == 0 {
-		return fmt.Errorf("usage: cais new <app> [dir] [--minimal] [--blank] [--module <path>]")
+		return fmt.Errorf("%s", newUsage)
 	}
 
 	opts, err := parseNewArgs(args)
@@ -193,7 +199,7 @@ func parseNewArgs(args []string) (newOpts, error) {
 		}
 	}
 	if len(positional) == 0 {
-		return opts, fmt.Errorf("usage: cais new <app> [dir] [--minimal] [--blank] [--module <path>]")
+		return opts, fmt.Errorf("%s", newUsage)
 	}
 
 	opts.name = positional[0]
@@ -202,6 +208,15 @@ func parseNewArgs(args []string) (newOpts, error) {
 		opts.dir = positional[1]
 	}
 	return opts, nil
+}
+
+func newArgsWantHelp(args []string) bool {
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *CLI) cmdGenerate(args []string) error {
