@@ -7,6 +7,29 @@ import (
 	"github.com/puppe1990/cais/pkg/cais"
 )
 
+// #170: append-style proxies leave client-supplied XFF prefixes intact, so the
+// LEFTMOST entry is spoofable (clients rotate fake IPs to evade rate limits).
+// Walk right-to-left and return the first non-trusted address.
+func TestClientIP_xffRightToLeft_skipsSpoofedPrefix(t *testing.T) {
+	cfg := cais.Config{TrustedProxies: []string{"10.0.0.0/8"}}
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("X-Forwarded-For", "6.6.6.6, 7.7.7.7, 203.0.113.50")
+	req.RemoteAddr = "10.1.2.3:8080"
+	if got := ClientIP(req, cfg); got != "203.0.113.50" {
+		t.Errorf("got %q, want 203.0.113.50 (rightmost non-trusted)", got)
+	}
+}
+
+func TestClientIP_xffSingleEntryStillReturned(t *testing.T) {
+	cfg := cais.Config{TrustedProxies: []string{"127.0.0.1"}}
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("X-Forwarded-For", "203.0.113.50")
+	req.RemoteAddr = "127.0.0.1:9999"
+	if got := ClientIP(req, cfg); got != "203.0.113.50" {
+		t.Errorf("got %q, want 203.0.113.50", got)
+	}
+}
+
 func TestClientIP_untrustedIgnoresXFF(t *testing.T) {
 	cfg := cais.Config{} // no trusted proxies
 	req := httptest.NewRequest("GET", "/", nil)
@@ -22,7 +45,8 @@ func TestClientIP_trustedUsesXFF(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Set("X-Forwarded-For", "203.0.113.50, 70.41.3.18")
 	req.RemoteAddr = "127.0.0.1:9999"
-	if got := ClientIP(req, cfg); got != "203.0.113.50" {
+	// Rightmost non-trusted wins (#170): the leftmost prefix is client-controlled.
+	if got := ClientIP(req, cfg); got != "70.41.3.18" {
 		t.Errorf("got %q", got)
 	}
 }
