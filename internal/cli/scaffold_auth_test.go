@@ -1,11 +1,67 @@
 package cli
 
 import (
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// #166: g auth on a blank/minimal app used to splice route statements at package
+// level (routes.go parse error) and reference errors.New without importing it.
+func TestScaffoldAuth_patchesBlankAppRoutesParse(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "blankroutes")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "blankroutes",
+		ModulePath: "github.com/puppe1990/blankroutes",
+	}, false, true); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := scaffoldAuth(appDir, scaffoldData{
+		AppName:    "blankroutes",
+		ModulePath: "github.com/puppe1990/blankroutes",
+	}, false); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, path := range []string{"internal/app/routes.go", "internal/store/store.go"} {
+		src, err := os.ReadFile(filepath.Join(appDir, path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := parser.ParseFile(token.NewFileSet(), path, src, parser.AllErrors); err != nil {
+			t.Errorf("%s does not parse after g auth: %v\n%s", path, err, src)
+		}
+	}
+
+	store, err := os.ReadFile(filepath.Join(appDir, "internal/store/store.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	storeBody := string(store)
+	if !strings.Contains(storeBody, `"errors"`) {
+		t.Errorf("store.go missing errors import:\n%s", storeBody)
+	}
+	// Auth handler tests log in as demo@example.com via the development seed (#166).
+	if !strings.Contains(storeBody, "seedAuthData") {
+		t.Errorf("store.go missing development seed for auth tests:\n%s", storeBody)
+	}
+
+	routes, err := os.ReadFile(filepath.Join(appDir, "internal/app/routes.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(routes)
+	for _, needle := range []string{`r.Get("/login"`, "NewRateLimiter", "/logout"} {
+		if !strings.Contains(body, needle) {
+			t.Errorf("routes.go missing %q:\n%s", needle, body)
+		}
+	}
+}
 
 func TestScaffoldNewApp_includesAuth(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
