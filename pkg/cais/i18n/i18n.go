@@ -47,6 +47,11 @@ func NewCatalogFrom(locale string, locales map[string]map[string]string) *Catalo
 	return &Catalog{locale: tag, messages: copied}
 }
 
+// NormalizeLocale maps BCP 47 / underscore tags to catalog keys (pt-BR → pt).
+func NormalizeLocale(tag string) string {
+	return normalizeLocale(tag)
+}
+
 func normalizeLocale(locale string) string {
 	locale = strings.ToLower(strings.TrimSpace(locale))
 	locale = strings.ReplaceAll(locale, "-", "_")
