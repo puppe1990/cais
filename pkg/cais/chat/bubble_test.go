@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 func TestLiveBubble_marksLiveAndEscapes(t *testing.T) {
@@ -280,5 +281,17 @@ func TestUnsafeMessageHTML_preservesRendered(t *testing.T) {
 	got := UnsafeMessageHTML(RoleAssistant, `<h3>Title</h3><p>para</p>`, timeFromTest())
 	if !strings.Contains(got, `<h3>Title</h3>`) {
 		t.Error("raw HTML not preserved")
+	}
+}
+
+// #174: byte-indexed cutting could split a multi-byte rune and emit invalid UTF-8.
+func TestTruncate_keepsValidUTF8(t *testing.T) {
+	text := strings.Repeat("日", 300)
+	got := Truncate(text, 100)
+	if !utf8.ValidString(got) {
+		t.Errorf("Truncate produced invalid UTF-8: %q", got[:min(len(got), 40)])
+	}
+	if !strings.Contains(got, "[truncated]") {
+		t.Errorf("missing truncation marker: %q", got)
 	}
 }

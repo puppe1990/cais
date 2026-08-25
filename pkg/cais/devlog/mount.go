@@ -1,17 +1,22 @@
 package devlog
 
-import "io"
+import (
+	"io"
+	"sync/atomic"
+)
 
-var defaultBuf *Buffer
+// defaultBuf is atomic so SetDefault (boot) never races per-request
+// MirrorDefault reads (#174).
+var defaultBuf atomic.Pointer[Buffer]
 
 // SetDefault makes the buffer available to MirrorDefault.
 func SetDefault(buf *Buffer) {
-	defaultBuf = buf
+	defaultBuf.Store(buf)
 }
 
 // Default returns the active development log buffer.
 func Default() *Buffer {
-	return defaultBuf
+	return defaultBuf.Load()
 }
 
 // Prepare initializes the default buffer for development environments.

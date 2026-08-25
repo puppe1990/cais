@@ -3,6 +3,7 @@ package devlog
 import (
 	"bytes"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -58,4 +59,21 @@ func TestMirrorDefault_nilDestination(t *testing.T) {
 	if !strings.Contains(Default().Text(), "only-buffer") {
 		t.Fatal("expected buffer write")
 	}
+}
+
+// #174: SetDefault raced with per-request MirrorDefault writes (unsynced global).
+func TestSetDefault_concurrentWithMirrorWrites(t *testing.T) {
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			SetDefault(NewBuffer(10))
+			// Per-goroutine dst so the only shared state is the atomic global.
+			var dst bytes.Buffer
+			m := MirrorDefault(&dst)
+			_, _ = m.Write([]byte("line\n"))
+		}()
+	}
+	wg.Wait()
 }

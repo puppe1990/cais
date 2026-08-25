@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/flash"
 )
 
@@ -28,7 +29,7 @@ func TestFlash_PutsMessageInContext(t *testing.T) {
 
 	var got flash.Message
 	var gotOK bool
-	h := Flash(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := Flash(cais.Config{})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		got, gotOK = FlashMessage(r)
 	}))
 
@@ -60,7 +61,7 @@ func TestFlash_PutsMessageInContext(t *testing.T) {
 
 func TestFlash_NoCookie_PassesThrough(t *testing.T) {
 	called := false
-	h := Flash(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := Flash(cais.Config{})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 		if _, ok := FlashMessage(r); ok {
 			t.Error("expected no flash message")

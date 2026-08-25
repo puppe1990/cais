@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -127,5 +128,25 @@ func TestHash_stableAndShort(t *testing.T) {
 	h3 := Hash(v2)
 	if h3 == h1 {
 		t.Error("different values produced same hash")
+	}
+}
+
+// #174: expired entries were only removed on overwrite, so high-cardinality keys leaked memory.
+func TestSet_sweepsExpiredEntriesUnderPressure(t *testing.T) {
+	c := New[string](time.Millisecond)
+	for i := 0; i < 2000; i++ {
+		c.Set(strconv.Itoa(i), "v")
+	}
+	time.Sleep(5 * time.Millisecond)
+	for i := 0; i < 10; i++ {
+		c.Set("live-"+strconv.Itoa(i), "v")
+	}
+	if got := c.Len(); got > sweepThreshold+64 {
+		t.Errorf("cache unbounded despite sweep: Len = %d", got)
+	}
+	for i := 0; i < 10; i++ {
+		if _, ok := c.Get("live-" + strconv.Itoa(i)); !ok {
+			t.Fatalf("live entry %d evicted by sweep", i)
+		}
 	}
 }

@@ -88,6 +88,35 @@ func (s *Store) UpdateRecurringLastRun(ctx context.Context, id int64, at time.Ti
 	return err
 }
 
+// enqueueRecurring inserts the ready job and bumps last_run atomically (#174):
+// a crash between the two statements would double-enqueue on the next tick.
+func (s *Store) enqueueRecurring(ctx context.Context, task RecurringTask, now time.Time) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	payload := task.Payload
+	if len(payload) == 0 {
+		payload = []byte("{}")
+	}
+	if _, err := tx.ExecContext(ctx, `
+INSERT INTO jobs (queue, kind, payload, priority, max_attempts, run_at, status)
+VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		task.Queue, task.Kind, string(payload), 0, DefaultMaxAttempts, formatTime(now), StatusReady,
+	); err != nil {
+		return fmt.Errorf("insert recurring job: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE recurring_tasks SET last_run = ? WHERE id = ?`,
+		formatTime(now), task.ID,
+	); err != nil {
+		return fmt.Errorf("update recurring last_run: %w", err)
+	}
+	return tx.Commit()
+}
+
 // RunScheduler enqueues jobs for due recurring tasks.
 func RunScheduler(ctx context.Context, store *Store, now time.Time) (int, error) {
 	tasks, err := store.ListRecurring(ctx)
@@ -103,12 +132,7 @@ func RunScheduler(ctx context.Context, store *Store, now time.Time) (int, error)
 		if !run {
 			continue
 		}
-		if _, err := store.insertReady(ctx, Options{
-			Queue: task.Queue, Kind: task.Kind, Payload: task.Payload,
-		}, task.Payload, now); err != nil {
-			return n, err
-		}
-		if err := store.UpdateRecurringLastRun(ctx, task.ID, now); err != nil {
+		if err := store.enqueueRecurring(ctx, task, now); err != nil {
 			return n, err
 		}
 		n++

@@ -34,7 +34,10 @@ func destroyResource(dir, name string, dryRun bool) error {
 	}
 
 	migrationsDir := filepath.Join(dir, "internal/store/migrations")
-	entries, _ := os.ReadDir(migrationsDir)
+	entries, err := os.ReadDir(migrationsDir)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("read migrations dir: %w", err)
+	}
 	for _, e := range entries {
 		if !e.IsDir() && strings.Contains(e.Name(), "_"+data.Plural+".sql") {
 			files = append(files, filepath.Join("internal/store/migrations", e.Name()))
@@ -81,7 +84,10 @@ func destroyModel(dir, name string, dryRun bool) error {
 	}
 
 	migrationsDir := filepath.Join(dir, "internal/store/migrations")
-	entries, _ := os.ReadDir(migrationsDir)
+	entries, err := os.ReadDir(migrationsDir)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("read migrations dir: %w", err)
+	}
 	for _, e := range entries {
 		if !e.IsDir() && strings.Contains(e.Name(), "_"+data.Plural+".sql") {
 			files = append(files, filepath.Join("internal/store/migrations", e.Name()))
@@ -280,7 +286,10 @@ func unpatchStoreTestForResource(dir string, data scaffoldData, dryRun bool) err
 	path := filepath.Join(dir, "internal/store/store_test.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
-		return nil
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read generated file: %w", err)
 	}
 	content, err := removeDeclsByName(string(body), map[string]bool{"TestStore_Insert" + data.Pascal: true})
 	if err != nil {
@@ -293,7 +302,10 @@ func unpatchSeedsForResource(dir string, data scaffoldData, dryRun bool) error {
 	path := filepath.Join(dir, "internal/db/seeds.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
-		return nil
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read generated file: %w", err)
 	}
 	block := fmt.Sprintf("\tif err := s.SeedDemo%s(); err != nil {\n\t\treturn err\n\t}\n", data.PluralPascal)
 	content := strings.Replace(string(body), block, "", 1)
@@ -304,7 +316,10 @@ func unpatchMainForSeed(dir string, data scaffoldData, dryRun bool) error {
 	path := filepath.Join(dir, "cmd/server/main.go")
 	body, err := os.ReadFile(path)
 	if err != nil {
-		return nil
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read generated file: %w", err)
 	}
 	block := fmt.Sprintf(`
 	if err := s.SeedDemo%s(); err != nil {
@@ -320,7 +335,10 @@ func unpatchLayoutNavForResource(dir string, data scaffoldData, dryRun bool) err
 	path, inertia := layoutNavFile(dir)
 	body, err := os.ReadFile(path)
 	if err != nil {
-		return nil
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read layout: %w", err)
 	}
 	link := publicNavLink(data, inertia)
 	content := strings.Replace(string(body), link, "", 1)
