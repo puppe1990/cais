@@ -563,6 +563,48 @@ func TestCLI_New_ModuleRequiresValue(t *testing.T) {
 	}
 }
 
+func TestCLI_New_unknownFlag_errors(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	dir := t.TempDir()
+	t.Chdir(dir)
+
+	var buf bytes.Buffer
+	c := &CLI{Out: &buf}
+	err := c.Run([]string{"new", "--seed"})
+	if err == nil {
+		t.Fatal("expected error for unknown flag --seed")
+	}
+	if !strings.Contains(err.Error(), "unknown flag --seed") {
+		t.Errorf("error = %v, want unknown flag --seed", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "--seed")); err == nil {
+		t.Fatal("unknown flag must not create a --seed directory")
+	}
+}
+
+func TestParseNewArgs_bareHelpIsAppName(t *testing.T) {
+	opts, err := parseNewArgs([]string{"help"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.name != "help" || opts.dir != "help" {
+		t.Errorf("got name=%q dir=%q, want help", opts.name, opts.dir)
+	}
+}
+
+func TestParseNewArgs_knownFlags(t *testing.T) {
+	opts, err := parseNewArgs([]string{"myapp", "outdir", "--minimal", "--blank", "--module", "github.com/acme/x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.name != "myapp" || opts.dir != "outdir" {
+		t.Errorf("got name=%q dir=%q, want myapp/outdir", opts.name, opts.dir)
+	}
+	if !opts.minimal || !opts.blank || opts.module != "github.com/acme/x" {
+		t.Errorf("got %+v, want minimal+blank with custom module", opts)
+	}
+}
+
 func TestCLI_NewMainUsesTemplateHotReload(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	appDir := filepath.Join(t.TempDir(), "hotreload")
