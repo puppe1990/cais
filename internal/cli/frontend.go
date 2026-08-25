@@ -8,6 +8,10 @@ import (
 	"path/filepath"
 )
 
+// viteMainJSRel is the Inertia entry app.html always loads. Checking the build
+// directory is not enough: scaffold writes web/static/build/.gitkeep (#159).
+const viteMainJSRel = "web/static/build/assets/main.js"
+
 // hasViteApp reports whether dir is an Inertia + Vite app (vite.config.js + npm build script).
 func hasViteApp(dir string) bool {
 	if _, err := os.Stat(filepath.Join(dir, "vite.config.js")); err != nil {
@@ -31,7 +35,22 @@ func runViteBuild(dir string) error {
 	if !hasViteApp(dir) {
 		return nil
 	}
-	return runCmd(dir, "npm", "run", "build")
+	if err := runCmd(dir, "npm", "run", "build"); err != nil {
+		return err
+	}
+	return requireViteMainJS(dir)
+}
+
+func requireViteMainJS(dir string) error {
+	path := filepath.Join(dir, viteMainJSRel)
+	if _, err := os.Stat(path); err != nil {
+		hint := "npm run build did not emit " + viteMainJSRel
+		if _, nmErr := os.Stat(filepath.Join(dir, "node_modules")); nmErr != nil {
+			return fmt.Errorf("%s: %w (run cais install if node_modules is missing)", hint, err)
+		}
+		return fmt.Errorf("%s: %w", hint, err)
+	}
+	return nil
 }
 
 // viteWatchArgs is the npm invocation used by cais dev to rebuild SPA assets

@@ -11,6 +11,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 - `cais.Load()` reads `.env` when present (`pkg/cais/dotenv`); does not override process env (tests, systemd, CI). Doctor shares the same parser (#153).
 - `cais doctor` warns (fails when `CI=true` / `GITHUB_ACTIONS=true`) if `go.mod` still has a local `cais link` replace; `cais link` says not to commit it (#154).
 
+### Fixed
+
+- `cais doctor` fails (not a warning) when an Inertia app has no `web/static/build/assets/main.js` — scaffold `.gitkeep` is not a bundle (#159).
+- `cais build` / Vite step fails if `npm run build` did not emit `web/static/build/assets/main.js` (#159).
+
 ### Changed
 
 - Scaffold handlers are **Inertia-only** (no HTMX HTML fallbacks in home/contact/auth/dashboard templates)

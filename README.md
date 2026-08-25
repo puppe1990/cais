@@ -167,7 +167,7 @@ CI runs Go tests, JS unit tests, lint, Prettier, and smoke (`cais new` + product
 ## Production deploy (generated apps)
 
 ```bash
-npm run build   # Vite → web/static/build/
+npm run build   # Vite → web/static/build/assets/main.js (required; go build alone is not a production artifact)
 cais build --os linux --arch amd64 -o bin/server-linux
 tar czf release.tar.gz bin/server-linux web/static
 ```
