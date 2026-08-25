@@ -8,8 +8,13 @@ import (
 
 type catalogCtxKey struct{}
 
-// CookieName matches cais_csrf / cais_flash so locale is a first-party app cookie.
-const CookieName = "cais_locale"
+const (
+	// CookieName matches cais_csrf / cais_flash so locale is a first-party app cookie.
+	CookieName = "cais_locale"
+	// CookieMaxAge is one year so a switcher choice survives visits without
+	// Accept-Language negotiation (out of scope for v1).
+	CookieMaxAge = 86400 * 365
+)
 
 // CatalogForRequest picks a catalog from the request then fallback.
 // Order: ?lang= query, cais_locale cookie, fallback, DefaultLocale, DefaultCatalog.
@@ -51,6 +56,23 @@ func CatalogFromRequest(r *http.Request) *Catalog {
 	}
 	c, _ := r.Context().Value(catalogCtxKey{}).(*Catalog)
 	return c
+}
+
+// SetCookie writes cais_locale for app language-switcher handlers (GET /locale?lang=).
+func SetCookie(w http.ResponseWriter, locale string, secure bool) {
+	if strings.TrimSpace(locale) == "" {
+		return
+	}
+	tag := NormalizeLocale(locale)
+	http.SetCookie(w, &http.Cookie{
+		Name:     CookieName,
+		Value:    tag,
+		Path:     "/",
+		MaxAge:   CookieMaxAge,
+		SameSite: http.SameSiteLaxMode,
+		HttpOnly: true,
+		Secure:   secure,
+	})
 }
 
 func catalogFromQuery(r *http.Request, catalogs map[string]*Catalog) *Catalog {
