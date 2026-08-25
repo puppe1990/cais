@@ -14,6 +14,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 ### Fixed
 
 - `cais doctor` fails (not a warning) when an Inertia app has no `web/static/build/assets/main.js` — scaffold `.gitkeep` is not a bundle (#159).
+- `cais build` / Vite step fails if `npm run build` did not emit `web/static/build/assets/main.js` (#159).
 
 ### Changed
 
