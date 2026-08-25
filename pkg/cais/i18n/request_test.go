@@ -116,6 +116,56 @@ func TestLocaleMiddleware_doesNotSetCookie(t *testing.T) {
 	}
 }
 
+func TestSetCookie_writesCaisLocale(t *testing.T) {
+	rr := httptest.NewRecorder()
+	SetCookie(rr, "pt-BR", false)
+	c := localeCookie(t, rr)
+	if c.Name != CookieName || CookieName != "cais_locale" {
+		t.Errorf("Name = %q, want cais_locale", c.Name)
+	}
+	if c.Value != "pt" {
+		t.Errorf("Value = %q, want pt", c.Value)
+	}
+	if c.Path != "/" {
+		t.Errorf("Path = %q, want /", c.Path)
+	}
+	if c.SameSite != http.SameSiteLaxMode {
+		t.Errorf("SameSite = %v, want Lax", c.SameSite)
+	}
+	if !c.HttpOnly {
+		t.Error("HttpOnly = false, want true")
+	}
+	if c.Secure {
+		t.Error("Secure = true, want false")
+	}
+	if c.MaxAge != 86400*365 {
+		t.Errorf("MaxAge = %d, want 365 days", c.MaxAge)
+	}
+}
+
+func TestSetCookie_secureFlag(t *testing.T) {
+	rr := httptest.NewRecorder()
+	SetCookie(rr, "es", true)
+	c := localeCookie(t, rr)
+	if c.Value != "es" {
+		t.Errorf("Value = %q, want es", c.Value)
+	}
+	if !c.Secure {
+		t.Error("Secure = false, want true")
+	}
+}
+
+func TestSetCookie_emptyLocaleSkipped(t *testing.T) {
+	rr := httptest.NewRecorder()
+	SetCookie(rr, "", false)
+	SetCookie(rr, "   ", false)
+	for _, c := range rr.Result().Cookies() {
+		if c.Name == CookieName {
+			t.Fatalf("set cookie %s=%q for empty locale", c.Name, c.Value)
+		}
+	}
+}
+
 func TestCatalogFromRequest_nilWithoutMiddleware(t *testing.T) {
 	req := newLocaleRequest(t, "/?lang=pt")
 	if c := CatalogFromRequest(req); c != nil {
@@ -152,6 +202,17 @@ func requestCatalogs() map[string]*Catalog {
 		out[tag] = NewCatalogFrom(tag, msgs)
 	}
 	return out
+}
+
+func localeCookie(t *testing.T, rr *httptest.ResponseRecorder) *http.Cookie {
+	t.Helper()
+	for _, c := range rr.Result().Cookies() {
+		if c.Name == CookieName {
+			return c
+		}
+	}
+	t.Fatal("cais_locale cookie missing")
+	return nil
 }
 
 func assertLocale(t *testing.T, c *Catalog, want string) {
