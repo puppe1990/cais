@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -52,9 +53,20 @@ func RelayAndCopy(w http.ResponseWriter, src io.Reader) (int64, error) {
 // WriteEvent emits a named SSE event (e.g. "stream", "message", "thinking").
 // The event name on the wire is the source of truth for client behavior.
 // Clients must not sniff the HTML payload to decide what kind of update it is.
+//
+// Payloads are split into one data: line per segment (#167): the SSE spec keeps
+// only data:-prefixed lines, so a raw newline in chat HTML would truncate the
+// event and \n\n would dispatch attacker-chosen bogus events.
 func WriteEvent(w http.ResponseWriter, event, html string) error {
-	_, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, html)
-	if err != nil {
+	if _, err := fmt.Fprintf(w, "event: %s\n", event); err != nil {
+		return err
+	}
+	for _, line := range strings.Split(html, "\n") {
+		if _, err := fmt.Fprintf(w, "data: %s\n", line); err != nil {
+			return err
+		}
+	}
+	if _, err := fmt.Fprint(w, "\n"); err != nil {
 		return err
 	}
 	return Flush(w)

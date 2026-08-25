@@ -126,6 +126,26 @@ func TestWriteEvent_emitsNamedSSEEvent(t *testing.T) {
 	}
 }
 
+// #167: payloads containing newlines must be split into multiple data: lines.
+// A raw newline inside a single data: field truncates the event for EventSource
+// clients, and \n\n in user text would dispatch a bogus event early.
+func TestWriteEvent_splitsMultiLinePayloadIntoDataLines(t *testing.T) {
+	rr := httptest.NewRecorder()
+	payload := "<p>line one</p>\n<p>line two</p>\n\n<p>three</p>"
+	if err := WriteEvent(rr, "message", payload); err != nil {
+		t.Fatalf("WriteEvent error: %v", err)
+	}
+	want := "event: message\n" +
+		"data: <p>line one</p>\n" +
+		"data: <p>line two</p>\n" +
+		"data: \n" +
+		"data: <p>three</p>\n" +
+		"\n"
+	if got := rr.Body.String(); got != want {
+		t.Errorf("body = %q, want %q", got, want)
+	}
+}
+
 func TestWriteEvent_emitsMessageAndThinking(t *testing.T) {
 	for _, tc := range []struct {
 		event string
