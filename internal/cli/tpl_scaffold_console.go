@@ -7,6 +7,7 @@ import (
 
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/console"
+
 	"{{.ModulePath}}/internal/store"
 )
 

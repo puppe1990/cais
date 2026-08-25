@@ -57,9 +57,11 @@ func (h *%sHandler) Toggle(w http.ResponseWriter, r *http.Request, id int64) {
 `, data.PluralPascal, data.Pascal, boolField.Pascal, boolField.Pascal, data.Pascal, data.Plural)
 	}
 
-	extraImports := ""
+	extraStd := ""
+	paginationImport := ""
 	if data.Paginate {
-		extraImports = fmt.Sprintf("\t\"strconv\"\n\t\"%s/pkg/cais/pagination\"\n", frameworkModule)
+		extraStd = "\t\"strconv\"\n"
+		paginationImport = "\t\"" + frameworkModule + "/pkg/cais/pagination\"\n"
 	}
 
 	return fmt.Sprintf(`package handlers
@@ -67,9 +69,10 @@ func (h *%sHandler) Toggle(w http.ResponseWriter, r *http.Request, id int64) {
 import (
 	"net/http"
 %s
-	"%s/pkg/cais"
+%s	"%s/pkg/cais"
 	"%s/pkg/cais/httpx"
 	"%s/pkg/cais/meta"
+
 	"%s/internal/models"
 	"%s/internal/store"
 )
@@ -91,7 +94,8 @@ func New%sHandler(renderer *cais.Renderer, s store.Store, site meta.Site, cfg ca
 }
 
 %s%s`,
-		extraImports,
+		extraStd,
+		paginationImport,
 		frameworkModule, frameworkModule, frameworkModule, data.ModulePath, data.ModulePath,
 		data.PluralPascal,
 		data.PluralPascal, data.Pascal, listDataExtra, paginationFields,

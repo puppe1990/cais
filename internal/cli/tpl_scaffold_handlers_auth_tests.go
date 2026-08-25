@@ -10,10 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/session"
+
+	"{{.ModulePath}}/internal/store"
 )
 
 func newAuthHandler(t *testing.T) (*AuthHandler, store.Store) {
@@ -94,9 +95,10 @@ import (
 	"strings"
 	"testing"
 
-	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/i18n"
+
+	"{{.ModulePath}}/internal/store"
 )
 
 func newAuthHandlerForSignup(t *testing.T) (*AuthHandler, store.Store) {
@@ -183,11 +185,12 @@ import (
 	"strings"
 	"testing"
 
-	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/passwordreset"
 	"github.com/puppe1990/cais/pkg/cais/session"
+
+	"{{.ModulePath}}/internal/store"
 )
 
 type captureNotifier struct {

@@ -13,6 +13,7 @@ import (
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/boot"
 	"github.com/puppe1990/cais/pkg/cais/meta"
+
 	"{{.ModulePath}}/internal/app"
 	appi18n "{{.ModulePath}}/internal/i18n"
 	"{{.ModulePath}}/internal/store"

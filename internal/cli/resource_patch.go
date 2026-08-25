@@ -77,8 +77,9 @@ func patchStoreForResource(dir string, data scaffoldData, dryRun bool, force boo
 	if !strings.Contains(content, data.ModulePath+"/internal/models") {
 		content = strings.Replace(content,
 			`_ "modernc.org/sqlite"`,
-			`"`+data.ModulePath+`/internal/models"
-	_ "modernc.org/sqlite"`,
+			`_ "modernc.org/sqlite"
+
+	"`+data.ModulePath+`/internal/models"`,
 			1,
 		)
 	}

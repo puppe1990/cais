@@ -7,10 +7,11 @@ import (
 	"net/http"
 
 	inertia "github.com/romsar/gonertia/v3"
-	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/flash"
 	"github.com/puppe1990/cais/pkg/cais/meta"
+
+	"{{.ModulePath}}/internal/store"
 )
 
 type DashboardHandler struct {

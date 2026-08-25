@@ -174,7 +174,9 @@ func patchJobRecurringSeed(dir string, data scaffoldData, opts jobOpts, dryRun b
 			`import (
 	"context"
 
-	caisjobs "github.com/puppe1990/cais/pkg/cais/jobs"`,
+	caisjobs "github.com/puppe1990/cais/pkg/cais/jobs"
+
+`,
 			1,
 		)
 	} else if !strings.Contains(content, `"context"`) {
@@ -204,6 +206,7 @@ import (
 	"database/sql"
 
 	caisjobs "github.com/puppe1990/cais/pkg/cais/jobs"
+
 	"{{.ModulePath}}/internal/store"
 )
 
@@ -227,6 +230,7 @@ import (
 
 	"github.com/puppe1990/cais/pkg/cais"
 	caisjobs "github.com/puppe1990/cais/pkg/cais/jobs"
+
 	appjobs "{{.ModulePath}}/internal/jobs"
 	"{{.ModulePath}}/internal/store"
 )

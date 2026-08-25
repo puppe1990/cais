@@ -223,11 +223,12 @@ func buildResourceAdminHandler(data scaffoldData) string {
 import (
 	"net/http"
 %s	"strings"
+
 	"%s/pkg/cais/validate"
-%s%s
-	"%s/pkg/cais"
+%s%s	"%s/pkg/cais"
 	"%s/pkg/cais/httpx"
 	"%s/pkg/cais/meta"
+
 	"%s/internal/models"
 	"%s/internal/store"
 )
