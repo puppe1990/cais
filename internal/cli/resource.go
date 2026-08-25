@@ -106,7 +106,18 @@ func scaffoldResource(dir, name string, opts resourceOpts) error {
 	if opts.dryRun {
 		return nil
 	}
-	return gofmtGoFiles(dir)
+	if err := gofmtGoFiles(dir); err != nil {
+		return err
+	}
+	// Record after gofmt: formatting rewrites the generated files (#169).
+	rels := make([]string, 0, len(files))
+	for rel := range files {
+		rels = append(rels, filepath.ToSlash(rel))
+	}
+	if err := recordGeneratedFiles(dir, rels); err != nil {
+		return fmt.Errorf("record generated manifest: %w", err)
+	}
+	return nil
 }
 
 func buildResourceAdminTest(data scaffoldData) string {

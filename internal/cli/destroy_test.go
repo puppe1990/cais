@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"go/parser"
 	"go/token"
 	"os"
@@ -45,7 +46,7 @@ func TestDestroyResource_removesGeneratedFiles(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := destroyResource(appDir, "bookmark", false); err != nil {
+	if err := destroyResource(appDir, "bookmark", false, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -94,7 +95,7 @@ func TestDestroyModel_removesGeneratedFiles(t *testing.T) {
 	if err := scaffoldModel(appDir, "tag", modelOpts{Fields: "name:string"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := destroyModel(appDir, "tag", false); err != nil {
+	if err := destroyModel(appDir, "tag", false, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -152,7 +153,7 @@ func TestDestroyModel_dryRunWritesNothing(t *testing.T) {
 		t.Fatalf("model file should exist before dry-run: %v", err)
 	}
 
-	if err := destroyModel(appDir, "label", true); err != nil {
+	if err := destroyModel(appDir, "label", true, false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(modelPath); err != nil {
@@ -429,7 +430,7 @@ func TestDestroyResource_propagesReadErrors(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(migDir, 0o755) })
 
-	if err := destroyResource(appDir, "bookmark", false); err == nil {
+	if err := destroyResource(appDir, "bookmark", false, false); err == nil {
 		t.Error("destroyResource ignored unreadable migrations dir")
 	}
 }
@@ -480,5 +481,83 @@ func TestDestroyResource_toleratesMissingOptionalFiles(t *testing.T) {
 	}
 	if err := unpatchMainForSeed(appDir, data, false); err != nil {
 		t.Errorf("missing main.go should be tolerated: %v", err)
+	}
+}
+
+// #169: destroy wiped user-modified files silently. The generator records
+// content hashes in .cais-generated.json; destroy warns and skips modified
+// files unless --force is passed.
+func TestScaffoldResource_recordsManifestHashes(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "manifestapp")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "manifestapp",
+		ModulePath: "github.com/puppe1990/manifestapp",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "bookmark", resourceOpts{Fields: "title:string", Seed: false}); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(appDir, ".cais-generated.json"))
+	if err != nil {
+		t.Fatalf("manifest missing: %v", err)
+	}
+	var entries map[string]string
+	if err := json.Unmarshal(raw, &entries); err != nil {
+		t.Fatalf("manifest not valid JSON map: %v", err)
+	}
+	for _, want := range []string{
+		"internal/handlers/admin_bookmarks.go",
+		"internal/models/bookmark.go",
+	} {
+		if _, ok := entries[want]; !ok {
+			t.Errorf("manifest missing %q: %s", want, raw)
+		}
+	}
+}
+
+func TestDestroyResource_skipsModifiedFilesWithoutForce(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "modwarn")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "modwarn",
+		ModulePath: "github.com/puppe1990/modwarn",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "bookmark", resourceOpts{Fields: "title:string", Seed: false}); err != nil {
+		t.Fatal(err)
+	}
+
+	adminHandler := filepath.Join(appDir, "internal/handlers/admin_bookmarks.go")
+	f, err := os.OpenFile(adminHandler, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString("\n// custom export endpoint (#42)\n"); err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close()
+
+	// Without force: modified file survives.
+	if err := destroyResource(appDir, "bookmark", false, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(adminHandler); err != nil {
+		t.Error("modified admin handler deleted without --force")
+	}
+	// Unmodified files are still removed.
+	if _, err := os.Stat(filepath.Join(appDir, "internal/models/bookmark.go")); !os.IsNotExist(err) {
+		t.Error("unmodified model should have been removed")
+	}
+
+	// With force: everything goes.
+	if err := destroyResource(appDir, "bookmark", false, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(adminHandler); !os.IsNotExist(err) {
+		t.Error("modified file survived --force destroy")
 	}
 }
