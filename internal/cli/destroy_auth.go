@@ -62,11 +62,14 @@ func unpatchStoreForAuth(dir string, dryRun bool) error {
 	if err != nil {
 		return err
 	}
-	content := removeStoreAuthMethods(string(body))
+	content, err := removeStoreAuthMethods(string(body))
+	if err != nil {
+		return err
+	}
 	return updateScaffoldFile(path, []byte(content), "internal/store/store.go", dryRun)
 }
 
-func removeStoreAuthMethods(content string) string {
+func removeStoreAuthMethods(content string) (string, error) {
 	patterns := []string{
 		"FindUserByEmail",
 		"CreateUser",
@@ -74,13 +77,21 @@ func removeStoreAuthMethods(content string) string {
 		"FindPasswordResetUserID",
 		"ResetPasswordWithToken",
 	}
+	names := make(map[string]bool, len(patterns))
 	for _, p := range patterns {
-		content = removeGoFunc(content, p)
+		names[p] = true
 	}
-	content = removeMethodsFromStoreInterface(content, patterns)
+	content, err := removeDeclsByName(content, names)
+	if err != nil {
+		return "", err
+	}
+	content, err = removeInterfaceMethods(content, "Store", names)
+	if err != nil {
+		return "", err
+	}
 	content = cleanupStoreImports(content)
 	content = cleanupSessionImport(content)
-	return content
+	return content, nil
 }
 
 func cleanupSessionImport(content string) string {

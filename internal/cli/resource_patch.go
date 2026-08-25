@@ -19,7 +19,11 @@ func patchStoreForResource(dir string, data scaffoldData, dryRun bool, force boo
 		if !force {
 			return nil
 		}
-		content = removeStoreResourceMethods(content, data)
+		var err error
+		content, err = removeStoreResourceMethods(content, data)
+		if err != nil {
+			return err
+		}
 	}
 
 	ifaceMarker := "\n\tClose() error"
