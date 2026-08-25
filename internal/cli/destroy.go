@@ -10,7 +10,38 @@ import (
 	"strings"
 )
 
-func destroyResource(dir, name string, dryRun bool) error {
+// removeGeneratedFiles deletes rel paths under dir. Files whose content no
+// longer matches the generation manifest are skipped with a warning unless
+// force is set (#169). Deleted entries leave the manifest.
+func removeGeneratedFiles(dir string, rels []string, dryRun, force bool) error {
+	var removed []string
+	for _, rel := range rels {
+		full := filepath.Join(dir, rel)
+		if _, err := os.Stat(full); err != nil {
+			continue
+		}
+		if !force && fileDiffersFromManifest(dir, filepath.ToSlash(rel)) {
+			printfScaffold("skip", rel+" (modified since generation; use --force to remove)")
+			continue
+		}
+		if dryRun {
+			printfScaffold("remove", rel)
+			continue
+		}
+		if err := os.Remove(full); err != nil {
+			return fmt.Errorf("remove %s: %w", rel, err)
+		}
+		removed = append(removed, filepath.ToSlash(rel))
+	}
+	if len(removed) > 0 && !dryRun {
+		if err := dropManifestEntries(dir, removed); err != nil {
+			return fmt.Errorf("update manifest: %w", err)
+		}
+	}
+	return nil
+}
+
+func destroyResource(dir, name string, dryRun, force bool) error {
 	data := dataForResource(name)
 
 	files := []string{
@@ -44,18 +75,8 @@ func destroyResource(dir, name string, dryRun bool) error {
 		}
 	}
 
-	for _, rel := range files {
-		full := filepath.Join(dir, rel)
-		if _, err := os.Stat(full); err != nil {
-			continue
-		}
-		if dryRun {
-			printfScaffold("remove", rel)
-			continue
-		}
-		if err := os.Remove(full); err != nil {
-			return fmt.Errorf("remove %s: %w", rel, err)
-		}
+	if err := removeGeneratedFiles(dir, files, dryRun, force); err != nil {
+		return err
 	}
 
 	if err := unpatchRoutesForResource(dir, data, dryRun); err != nil {
@@ -76,7 +97,7 @@ func destroyResource(dir, name string, dryRun bool) error {
 	return unpatchLayoutNavForResource(dir, data, dryRun)
 }
 
-func destroyModel(dir, name string, dryRun bool) error {
+func destroyModel(dir, name string, dryRun, force bool) error {
 	data := dataForResource(name)
 
 	files := []string{
@@ -94,42 +115,21 @@ func destroyModel(dir, name string, dryRun bool) error {
 		}
 	}
 
-	for _, rel := range files {
-		full := filepath.Join(dir, rel)
-		if _, err := os.Stat(full); err != nil {
-			continue
-		}
-		if dryRun {
-			printfScaffold("remove", rel)
-			continue
-		}
-		if err := os.Remove(full); err != nil {
-			return fmt.Errorf("remove %s: %w", rel, err)
-		}
+	if err := removeGeneratedFiles(dir, files, dryRun, force); err != nil {
+		return err
 	}
-
 	return unpatchStoreForResource(dir, data, dryRun)
 }
 
-func destroyHandler(dir, name string, dryRun bool) error {
+func destroyHandler(dir, name string, dryRun, force bool) error {
 	data := dataForHandler(name)
 	files := []string{
 		filepath.Join("internal/handlers", data.Snake+".go"),
 		filepath.Join("internal/handlers", data.Snake+"_test.go"),
 		filepath.Join("web/templates/pages", data.Snake+".html"),
 	}
-	for _, rel := range files {
-		full := filepath.Join(dir, rel)
-		if _, err := os.Stat(full); err != nil {
-			continue
-		}
-		if dryRun {
-			printfScaffold("remove", rel)
-			continue
-		}
-		if err := os.Remove(full); err != nil {
-			return fmt.Errorf("remove %s: %w", rel, err)
-		}
+	if err := removeGeneratedFiles(dir, files, dryRun, force); err != nil {
+		return err
 	}
 	return unpatchRoutesForHandler(dir, data, dryRun)
 }
@@ -348,10 +348,15 @@ func unpatchLayoutNavForResource(dir string, data scaffoldData, dryRun bool) err
 
 func (c *CLI) cmdDestroy(args []string) error {
 	dryRun := false
+	force := false
 	filtered := make([]string, 0, len(args))
 	for _, arg := range args {
 		if arg == "--dry-run" {
 			dryRun = true
+			continue
+		}
+		if arg == "--force" {
+			force = true
 			continue
 		}
 		filtered = append(filtered, arg)
@@ -381,11 +386,11 @@ func (c *CLI) cmdDestroy(args []string) error {
 		name := args[1]
 		switch kind {
 		case "resource":
-			genErr = destroyResource(cwd, name, dryRun)
+			genErr = destroyResource(cwd, name, dryRun, force)
 		case "handler":
-			genErr = destroyHandler(cwd, name, dryRun)
+			genErr = destroyHandler(cwd, name, dryRun, force)
 		case "model":
-			genErr = destroyModel(cwd, name, dryRun)
+			genErr = destroyModel(cwd, name, dryRun, force)
 		case "migration":
 			genErr = destroyMigration(cwd, name, dryRun)
 		}
