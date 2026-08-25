@@ -180,6 +180,55 @@ func TestDoctor_AllOK(t *testing.T) {
 	}
 }
 
+func TestDoctor_FailsWhenViteMainJSMissing(t *testing.T) {
+	unsetCIEnv(t)
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	dir := t.TempDir()
+	if err := scaffoldNewApp(dir, scaffoldData{
+		AppName:    "nobundle",
+		ModulePath: "github.com/puppe1990/nobundle",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	writeStylesCSSBody(t, dir)
+	// Scaffold keeps web/static/build/.gitkeep so Stat(buildDir) succeeds without
+	// the Inertia entry app.html loads (#159). Directory presence is not enough.
+	if _, err := os.Stat(filepath.Join(dir, "web/static/build/.gitkeep")); err != nil {
+		t.Fatalf("precondition: scaffold .gitkeep missing: %v", err)
+	}
+
+	c := checkViteConfig(dir)
+	if c.OK {
+		t.Fatalf("vite check should fail without assets/main.js, got %+v", c)
+	}
+	if c.Optional {
+		t.Fatalf("missing Vite main.js must not be optional, got %+v", c)
+	}
+
+	var buf bytes.Buffer
+	err := runDoctor(&buf, dir, doctorOptions{})
+	if err == nil {
+		t.Fatalf("runDoctor should fail without main.js, output:\n%s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "[FAIL] vite.config.js") {
+		t.Errorf("expected FAIL vite.config.js, got:\n%s", buf.String())
+	}
+}
+
+func TestDoctor_ViteOKWhenMainJSPresent(t *testing.T) {
+	unsetCIEnv(t)
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	dir := scaffoldDoctorApp(t)
+
+	c := checkViteConfig(dir)
+	if !c.OK {
+		t.Fatalf("vite check should pass with assets/main.js, got %+v", c)
+	}
+	if c.Optional {
+		t.Fatalf("ok vite check should not be optional, got %+v", c)
+	}
+}
+
 func TestDoctor_FailsWhenStylesCSSNotBuilt(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	dir := t.TempDir()
@@ -389,11 +438,30 @@ func scaffoldDoctorApp(t *testing.T) string {
 // writeBuiltStylesCSS marks styles.css as a real Tailwind build so doctor can pass (#141).
 func writeBuiltStylesCSS(t *testing.T, dir string) {
 	t.Helper()
+	writeStylesCSSBody(t, dir)
+	writeBuiltViteMainJS(t, dir)
+}
+
+func writeStylesCSSBody(t *testing.T, dir string) {
+	t.Helper()
 	path := filepath.Join(dir, "web/static/css/styles.css")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(path, []byte("*,::before{box-sizing:border-box}.text-stone-900{color:#1c1917}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// writeBuiltViteMainJS plants a dummy Inertia bundle so passing doctor tests stay green.
+// Scaffold writes web/static/build/.gitkeep, so Stat(buildDir) is not a bundle (#159).
+func writeBuiltViteMainJS(t *testing.T, dir string) {
+	t.Helper()
+	path := filepath.Join(dir, "web/static/build/assets/main.js")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("/* test vite bundle */\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
