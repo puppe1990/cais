@@ -1,9 +1,12 @@
 package i18n
 
 import (
+	"context"
 	"net/http"
 	"strings"
 )
+
+type catalogCtxKey struct{}
 
 // CookieName matches cais_csrf / cais_flash so locale is a first-party app cookie.
 const CookieName = "cais_locale"
@@ -26,6 +29,28 @@ func CatalogForRequest(r *http.Request, catalogs map[string]*Catalog, fallback s
 		return c
 	}
 	return DefaultCatalog()
+}
+
+// LocaleMiddleware resolves the catalog for each request and stores it on
+// context. It is read-only: ?lang= is not written to cais_locale here; apps
+// persist a language switch via SetCookie on a dedicated /locale route.
+func LocaleMiddleware(catalogs map[string]*Catalog, fallback string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			cat := CatalogForRequest(r, catalogs, fallback)
+			ctx := context.WithValue(r.Context(), catalogCtxKey{}, cat)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// CatalogFromRequest returns the catalog stored by LocaleMiddleware, or nil.
+func CatalogFromRequest(r *http.Request) *Catalog {
+	if r == nil {
+		return nil
+	}
+	c, _ := r.Context().Value(catalogCtxKey{}).(*Catalog)
+	return c
 }
 
 func catalogFromQuery(r *http.Request, catalogs map[string]*Catalog) *Catalog {
