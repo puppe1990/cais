@@ -10,18 +10,26 @@ import (
 
 // ClientIP returns the client address. X-Forwarded-For is trusted only when RemoteAddr is in TRUSTED_PROXIES.
 // Without the allowlist, clients can spoof XFF and evade rate limits.
+//
+// XFF is walked right-to-left: append-style proxies leave client-supplied
+// prefixes intact, so the leftmost entry is spoofable (#170). Trusted hops are
+// skipped; the first non-trusted address is returned.
 func ClientIP(r *http.Request, cfg cais.Config) string {
 	remote := remoteAddrIP(r)
-	if isTrustedProxy(remote, cfg.TrustedProxies) {
-		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-			if i := strings.Index(xff, ","); i >= 0 {
-				return strings.TrimSpace(xff[:i])
+	if !isTrustedProxy(remote, cfg.TrustedProxies) {
+		return remote
+	}
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		for i := len(parts) - 1; i >= 0; i-- {
+			candidate := strings.TrimSpace(parts[i])
+			if candidate != "" && !isTrustedProxy(candidate, cfg.TrustedProxies) {
+				return candidate
 			}
-			return strings.TrimSpace(xff)
 		}
-		if xri := strings.TrimSpace(r.Header.Get("X-Real-IP")); xri != "" {
-			return xri
-		}
+	}
+	if xri := strings.TrimSpace(r.Header.Get("X-Real-IP")); xri != "" {
+		return xri
 	}
 	return remote
 }
