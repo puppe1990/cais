@@ -2,6 +2,7 @@ package i18n
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -73,6 +74,53 @@ func TestCatalogForRequest_emptyMap_returnsDefaultCatalog(t *testing.T) {
 		t.Fatal("empty catalogs returned nil")
 	}
 	assertLocale(t, got, DefaultLocale)
+}
+
+func TestLocaleMiddleware_storesCatalogOnContext(t *testing.T) {
+	var got string
+	h := LocaleMiddleware(requestCatalogs(), "en")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c := CatalogFromRequest(r)
+		if c == nil {
+			t.Fatal("CatalogFromRequest returned nil")
+		}
+		got = c.Locale()
+	}))
+	req := newLocaleRequest(t, "/?lang=pt")
+	h.ServeHTTP(httptest.NewRecorder(), req)
+	if got != "pt" {
+		t.Errorf("CatalogFromRequest locale = %q, want pt", got)
+	}
+}
+
+func TestLocaleMiddleware_usesCookieWhenNoQuery(t *testing.T) {
+	var got string
+	h := LocaleMiddleware(requestCatalogs(), "en")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = CatalogFromRequest(r).Locale()
+	}))
+	req := newLocaleRequest(t, "/")
+	req.AddCookie(&http.Cookie{Name: CookieName, Value: "es"})
+	h.ServeHTTP(httptest.NewRecorder(), req)
+	if got != "es" {
+		t.Errorf("CatalogFromRequest locale = %q, want es", got)
+	}
+}
+
+func TestLocaleMiddleware_doesNotSetCookie(t *testing.T) {
+	h := LocaleMiddleware(requestCatalogs(), "en")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, newLocaleRequest(t, "/?lang=pt"))
+	for _, c := range rr.Result().Cookies() {
+		if c.Name == CookieName {
+			t.Fatalf("middleware set %s=%q; persist ?lang= from the app /locale route", c.Name, c.Value)
+		}
+	}
+}
+
+func TestCatalogFromRequest_nilWithoutMiddleware(t *testing.T) {
+	req := newLocaleRequest(t, "/?lang=pt")
+	if c := CatalogFromRequest(req); c != nil {
+		t.Errorf("CatalogFromRequest = %v, want nil", c)
+	}
 }
 
 func TestCatalogForRequest_esAndZhFromCustomMaps(t *testing.T) {
