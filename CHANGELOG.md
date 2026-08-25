@@ -6,27 +6,40 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ## Unreleased
 
+## [0.9.0] - 2026-08-25
+
 ### Added
 
+- `pkg/cais/i18n` — per-request catalog: `NormalizeLocale`, `CatalogForRequest` (`?lang=` then `cais_locale` cookie then fallback), `LocaleMiddleware`, `CatalogFromRequest`, `SetCookie`. Accept-Language stays out of scope (#160).
+- Locale tags `es` and `zh` in `normalizeLocale`.
 - `cais.Load()` reads `.env` when present (`pkg/cais/dotenv`); does not override process env (tests, systemd, CI). Doctor shares the same parser (#153).
 - `cais doctor` warns (fails when `CI=true` / `GITHUB_ACTIONS=true`) if `go.mod` still has a local `cais link` replace; `cais link` says not to commit it (#154).
+- `cais new` ships `AGENTS.md` with the app (#150).
+- Auth pages use shared `AuthLayout` (centered) by default (#151).
+- Password inputs default to show/hide eye (#137).
+- `cais routes` / router panic hint when two ServeMux patterns collide (#145).
+
+### Changed
+
+- Scaffold handlers are **Inertia-only** (no HTMX HTML fallbacks in home/contact/auth/dashboard templates) (#138).
+- `cais g auth` writes Svelte pages (`Login`/`Signup`/…) instead of `web/templates/pages/*.html`.
+- `cais destroy auth` removes Svelte auth pages (and leftover HTMX login HTML if present).
+- Framework repo is CLI + `pkg/cais` only — smoke production boots a scaffolded app via `cais new` (#138).
+- Flash on Inertia redirects uses `flash.Set` cookies, not `inertia.SetFlash` (#143).
+- Scaffold `go.mod` default pin when CLI is `dev`: `v0.9.0`.
 
 ### Fixed
 
 - `cais doctor` fails (not a warning) when an Inertia app has no `web/static/build/assets/main.js` — scaffold `.gitkeep` is not a bundle (#159).
 - `cais build` / Vite step fails if `npm run build` did not emit `web/static/build/assets/main.js` (#159).
-
-### Changed
-
-- Scaffold handlers are **Inertia-only** (no HTMX HTML fallbacks in home/contact/auth/dashboard templates)
-- `cais g auth` writes Svelte pages (`Login`/`Signup`/…) instead of `web/templates/pages/*.html`
-- `cais destroy auth` removes Svelte auth pages (and leftover HTMX login HTML if present)
-- Framework repo is CLI + `pkg/cais` only — smoke production boots a scaffolded app via `cais new`
+- `cais new --help` / `-h` print usage and do not create a directory; unknown flags error instead of becoming the app name (#158).
+- Fresh `cais new` apps pass their own CI: goimports local-prefixes, unused `bootstrap()`, console `log.Fatal` after defer, Prettier on Vite JS configs (#157, #152).
+- `cais doctor` / install / server detect unbuilt `styles.css` and auto-build on install/server (#144).
 
 ### Removed
 
-- **Dogfood app** from this repository (`cmd/server`, `internal/app|handlers|store|models|db`, `web/` SPA)
-- Root Vite/Svelte/Tailwind dogfood tooling (apps bring their own via `cais new`)
+- **Dogfood app** from this repository (`cmd/server`, `internal/app|handlers|store|models|db`, `web/` SPA) (#138).
+- Root Vite/Svelte/Tailwind dogfood tooling (apps bring their own via `cais new`).
 
 ## [0.8.1] - 2026-07-27
 
