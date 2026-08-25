@@ -136,6 +136,23 @@ RETURNING id, kind, payload, priority, attempts, max_attempts`,
 	return &j, nil
 }
 
+// RequeueStuck returns jobs stranded in running by a crashed worker back to
+// the ready queue (#172). Safe because the scaffold runs a single worker
+// process; call it once on boot before polling starts.
+func (s *Store) RequeueStuck(ctx context.Context) (int64, error) {
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE jobs SET status = ? WHERE status = ?`, StatusReady, StatusRunning,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("requeue stuck jobs: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("requeue stuck jobs: %w", err)
+	}
+	return n, nil
+}
+
 // MarkFinished sets status to finished.
 func (s *Store) MarkFinished(ctx context.Context, id int64) error {
 	_, err := s.db.ExecContext(ctx, `

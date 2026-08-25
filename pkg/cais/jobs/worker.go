@@ -50,6 +50,13 @@ func NewWorker(cfg WorkerConfig) *Worker {
 
 // Run starts dispatcher and worker goroutines until ctx is cancelled.
 func (w *Worker) Run(ctx context.Context) error {
+	// Recover jobs stranded in running by a previous crashed worker (#172).
+	if n, err := w.cfg.Store.RequeueStuck(ctx); err != nil {
+		w.cfg.Logger.Printf("jobs requeue-stuck: %v", err)
+	} else if n > 0 {
+		w.cfg.Logger.Printf("jobs requeued %d stuck job(s) from previous run", n)
+	}
+
 	errCh := make(chan error, w.cfg.Concurrency+1)
 
 	go func() {
