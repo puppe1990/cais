@@ -8,14 +8,15 @@ import (
 	"strings"
 
 	inertia "github.com/romsar/gonertia/v3"
-	"{{.ModulePath}}/internal/models"
-	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/flash"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
 	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/validate"
+
+	"{{.ModulePath}}/internal/models"
+	"{{.ModulePath}}/internal/store"
 )
 
 type ContactHandler struct {

@@ -321,8 +321,8 @@ import (
 	inertia "github.com/romsar/gonertia/v3"
 	"%s/pkg/cais/httpx"
 	"%s/pkg/cais/validate"
-%s
-	"%s/pkg/cais/meta"
+%s	"%s/pkg/cais/meta"
+
 	"%s/internal/models"
 	"%s/internal/store"
 )
@@ -480,9 +480,11 @@ func TestAdmin%sHandler_Create_Inertia(t *testing.T) {
 
 func buildResourcePublicInertiaHandler(data scaffoldData) string {
 	listMethod := buildPublicListInertiaMethod(data)
-	extraImports := ""
+	extraStd := ""
+	paginationImport := ""
 	if data.Paginate {
-		extraImports = fmt.Sprintf("\t\"strconv\"\n\t\"%s/pkg/cais/pagination\"\n", frameworkModule)
+		extraStd = "\t\"strconv\"\n"
+		paginationImport = "\t\"" + frameworkModule + "/pkg/cais/pagination\"\n"
 	}
 	return fmt.Sprintf(`package handlers
 
@@ -490,7 +492,8 @@ import (
 	"net/http"
 %s
 	inertia "github.com/romsar/gonertia/v3"
-	"%s/pkg/cais/meta"
+%s	"%s/pkg/cais/meta"
+
 	"%s/internal/store"
 )
 
@@ -505,7 +508,7 @@ func New%sHandler(s store.Store, site meta.Site, i *inertia.Inertia) *%sHandler 
 }
 
 %s
-`, extraImports, frameworkModule, data.ModulePath, data.PluralPascal, data.PluralPascal, data.PluralPascal, data.PluralPascal, listMethod)
+`, extraStd, paginationImport, frameworkModule, data.ModulePath, data.PluralPascal, data.PluralPascal, data.PluralPascal, data.PluralPascal, listMethod)
 }
 
 func buildPublicListInertiaMethod(data scaffoldData) string {

@@ -13,6 +13,7 @@ import (
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/boot"
 	"github.com/puppe1990/cais/pkg/cais/meta"
+
 	"{{.ModulePath}}/internal/app"
 	appi18n "{{.ModulePath}}/internal/i18n"
 	"{{.ModulePath}}/internal/store"
@@ -49,10 +50,6 @@ func main() {
 	if err := a.Run(); err != nil {
 		log.Fatal(err)
 	}
-}
-
-func bootstrap() (*app.App, error) {
-	return bootstrapWithConfig(cais.Load())
 }
 
 func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {

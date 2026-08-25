@@ -343,48 +343,48 @@ const tplSvelteResetPassword = `<script>
 </AuthLayout>
 `
 
-const tplViteConfig = `import { defineConfig } from 'vite'
-import { svelte } from '@sveltejs/vite-plugin-svelte'
-import { resolve } from 'path'
+const tplViteConfig = `import { defineConfig } from "vite";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { resolve } from "path";
 
 export default defineConfig({
   plugins: [svelte()],
-  root: '.',
+  root: ".",
   build: {
     manifest: true,
-    outDir: 'web/static/build',
+    outDir: "web/static/build",
     emptyOutDir: false,
     rollupOptions: {
-      input: resolve(__dirname, 'web/src/main.js'),
+      input: resolve(__dirname, "web/src/main.js"),
       output: {
-        entryFileNames: 'assets/main.js',
-        chunkFileNames: 'assets/[name].js',
-        assetFileNames: 'assets/[name][extname]',
+        entryFileNames: "assets/main.js",
+        chunkFileNames: "assets/[name].js",
+        assetFileNames: "assets/[name][extname]",
       },
     },
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'web/src'),
+      "@": resolve(__dirname, "web/src"),
     },
-    conditions: ['browser'],
+    conditions: ["browser"],
   },
   test: {
-    environment: 'jsdom',
+    environment: "jsdom",
     globals: true,
-    setupFiles: ['./vitest-setup.js'],
+    setupFiles: ["./vitest-setup.js"],
   },
-})
+});
 `
 
-const tplSvelteConfig = `import { vitePreprocess } from '@sveltejs/vite-plugin-svelte'
+const tplSvelteConfig = `import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 
 export default {
   preprocess: vitePreprocess(),
-}
+};
 `
 
-const tplVitestSetup = `import '@testing-library/jest-dom/vitest'
+const tplVitestSetup = `import "@testing-library/jest-dom/vitest";
 `
 
 const tplBuildGitkeep = ``

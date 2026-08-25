@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	inertia "github.com/romsar/gonertia/v3"
-	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/flash"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
@@ -18,6 +17,8 @@ import (
 	"github.com/puppe1990/cais/pkg/cais/passwordreset"
 	"github.com/puppe1990/cais/pkg/cais/session"
 	"github.com/puppe1990/cais/pkg/cais/validate"
+
+	"{{.ModulePath}}/internal/store"
 )
 
 type AuthHandler struct {

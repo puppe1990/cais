@@ -8,6 +8,7 @@ import (
 
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/middleware"
+
 	"{{.ModulePath}}/internal/handlers"
 )
 
@@ -41,6 +42,7 @@ const tplRoutesMinimal = `package app
 
 import (
 	"github.com/puppe1990/cais/pkg/cais"
+
 	"{{.ModulePath}}/internal/handlers"
 )
 

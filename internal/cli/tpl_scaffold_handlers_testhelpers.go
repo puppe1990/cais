@@ -8,10 +8,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/i18n"
 	"github.com/puppe1990/cais/pkg/cais/meta"
+
+	"{{.ModulePath}}/internal/store"
 )
 
 func testSite() meta.Site {

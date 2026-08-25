@@ -33,8 +33,6 @@ import (
 	"strings"
 	"time"
 
-	"{{.ModulePath}}/internal/models"
-	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/chat"
 	"github.com/puppe1990/cais/pkg/cais/httpx"
@@ -42,6 +40,9 @@ import (
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/stream"
 	"github.com/puppe1990/cais/pkg/cais/validate"
+
+	"{{.ModulePath}}/internal/models"
+	"{{.ModulePath}}/internal/store"
 )
 
 type ChatHandler struct {

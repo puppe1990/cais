@@ -9,10 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"{{.ModulePath}}/internal/store"
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/flash"
 	"github.com/puppe1990/cais/pkg/cais/i18n"
+
+	"{{.ModulePath}}/internal/store"
 )
 
 func newContactHandler(t *testing.T) (*ContactHandler, store.Store) {
