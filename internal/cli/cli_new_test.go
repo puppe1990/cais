@@ -164,7 +164,7 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 	for _, needle := range []string{
 		`import { mount } from 'svelte'`,
 		`mount(App, { target: el, props })`,
-		`xsrfCookieName: 'cais_csrf'`,
+		`xsrfCookieName: import.meta.env.PROD ? '__Host-cais_csrf' : 'cais_csrf'`,
 		`xsrfHeaderName: 'X-CSRF-Token'`,
 	} {
 		if !strings.Contains(mainBody, needle) {
