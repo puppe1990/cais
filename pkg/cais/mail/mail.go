@@ -3,6 +3,7 @@ package mail
 import (
 	"fmt"
 	"io"
+	"net/mail"
 	"net/smtp"
 	"net/url"
 	"os"
@@ -65,10 +66,29 @@ type SMTPSender struct {
 }
 
 func (s SMTPSender) Send(to, subject, body string) error {
+	if err := validateHeaders(s.Config.From, to, subject); err != nil {
+		return err
+	}
 	addr := s.Config.Host + ":" + s.Config.Port
 	msg := buildMessage(s.Config.From, to, subject, body)
 	auth := smtp.PlainAuth("", s.Config.User, s.Config.Password, s.Config.Host)
 	return smtp.SendMail(addr, auth, s.Config.From, []string{to}, []byte(msg))
+}
+
+// validateHeaders rejects user-controlled header values before they reach the
+// SMTP envelope (#171): CRLF in to/subject injects Bcc:/extra headers, and an
+// unparsable recipient would fail later with a confusing SMTP error.
+func validateHeaders(from, to, subject string) error {
+	if strings.ContainsAny(from, "\r\n") {
+		return fmt.Errorf("from contains newline")
+	}
+	if strings.ContainsAny(subject, "\r\n") {
+		return fmt.Errorf("subject contains newline")
+	}
+	if _, err := mail.ParseAddress(to); err != nil {
+		return fmt.Errorf("invalid recipient %q: %w", to, err)
+	}
+	return nil
 }
 
 func buildMessage(from, to, subject, body string) string {

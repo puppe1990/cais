@@ -35,6 +35,30 @@ func TestConfig_Enabled_falseWhenHostEmpty(t *testing.T) {
 	}
 }
 
+// #171: to/subject reach SMTP headers verbatim; user input with CRLF must be
+// rejected before it can inject Bcc:/extra headers.
+func TestSMTPSender_rejectsHeaderInjection(t *testing.T) {
+	s := SMTPSender{Config: Config{Host: "smtp.example.com", Port: "587", From: "noreply@example.com"}}
+
+	err := s.Send("victim@example.com\r\nBcc: attacker@example.com", "Hi", "body")
+	if err == nil || !strings.Contains(err.Error(), "invalid recipient") {
+		t.Errorf("recipient CRLF injection not rejected by validation, got: %v", err)
+	}
+	err = s.Send("victim@example.com", "Hi\r\nBcc: attacker@example.com", "body")
+	if err == nil || !strings.Contains(err.Error(), "subject contains newline") {
+		t.Errorf("subject CRLF injection not rejected by validation, got: %v", err)
+	}
+	if err := s.Send("not-an-email", "Hi", "body"); err == nil || !strings.Contains(err.Error(), "invalid recipient") {
+		t.Errorf("invalid recipient not rejected by validation, got: %v", err)
+	}
+}
+
+func TestValidateHeaders_acceptsCleanInput(t *testing.T) {
+	if err := validateHeaders("noreply@example.com", "user@example.com", "Hello"); err != nil {
+		t.Errorf("clean input rejected: %v", err)
+	}
+}
+
 func TestBuildResetMessage_containsLink(t *testing.T) {
 	subject, body := BuildResetMessage("MyApp", "https://app.example.com", "abc123")
 	if subject == "" {
