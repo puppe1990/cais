@@ -52,10 +52,6 @@ func main() {
 	}
 }
 
-func bootstrap() (*app.App, error) {
-	return bootstrapWithConfig(cais.Load())
-}
-
 func bootstrapWithConfig(cfg cais.Config) (*app.App, error) {
 	tmplFS, err := fs.Sub(web.Templates, "templates")
 	if err != nil {
