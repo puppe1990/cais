@@ -200,7 +200,10 @@ func patchLayoutNavForStreamChat(dir string, dryRun bool) error {
 	path, inertia := layoutNavFile(dir)
 	body, err := os.ReadFile(path)
 	if err != nil {
-		return nil
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read layout nav: %w", err)
 	}
 	content := string(body)
 	if strings.Contains(content, `href="/chat"`) {

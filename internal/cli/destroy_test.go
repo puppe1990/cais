@@ -404,3 +404,81 @@ type Store interface {
 		t.Error("unrelated Store methods should remain")
 	}
 }
+
+// #174: ignored os.ReadDir/read errors made partial destroys report success.
+// Missing paths stay tolerated; real I/O errors must surface.
+func TestDestroyResource_propagesReadErrors(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("permission errors unreliable as root")
+	}
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "destrerr")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "destrerr",
+		ModulePath: "github.com/puppe1990/destrerr",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := scaffoldResource(appDir, "bookmark", resourceOpts{Fields: "title:string", Seed: false}); err != nil {
+		t.Fatal(err)
+	}
+
+	migDir := filepath.Join(appDir, "internal/store/migrations")
+	if err := os.Chmod(migDir, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(migDir, 0o755) })
+
+	if err := destroyResource(appDir, "bookmark", false); err == nil {
+		t.Error("destroyResource ignored unreadable migrations dir")
+	}
+}
+
+func TestUnpatchSeedsForResource_propagatesReadErrors(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("permission errors unreliable as root")
+	}
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "destrseed")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "destrseed",
+		ModulePath: "github.com/puppe1990/destrseed",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+
+	seedsPath := filepath.Join(appDir, "internal/db/seeds.go")
+	if err := os.Chmod(seedsPath, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(seedsPath, 0o644) })
+
+	data := dataForResource("bookmark")
+	if err := unpatchSeedsForResource(appDir, data, false); err == nil {
+		t.Error("unpatchSeedsForResource ignored unreadable seeds.go")
+	} else if os.IsNotExist(err) {
+		t.Errorf("should tolerate missing file, got: %v", err)
+	}
+}
+
+func TestDestroyResource_toleratesMissingOptionalFiles(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "destrmiss")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "destrmiss",
+		ModulePath: "github.com/puppe1990/destrmiss",
+	}, true, false); err != nil {
+		t.Fatal(err)
+	}
+	data := dataForResource("bookmark")
+	// No migrations dir, seeds or main seed block exist yet — must not error.
+	if err := os.RemoveAll(filepath.Join(appDir, "internal/store/migrations")); err != nil {
+		t.Fatal(err)
+	}
+	if err := unpatchSeedsForResource(appDir, data, false); err != nil {
+		t.Errorf("missing seeds.go should be tolerated: %v", err)
+	}
+	if err := unpatchMainForSeed(appDir, data, false); err != nil {
+		t.Errorf("missing main.go should be tolerated: %v", err)
+	}
+}

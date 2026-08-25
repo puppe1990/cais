@@ -43,14 +43,34 @@ func (c *Cache[V]) Get(key string) (V, bool) {
 	return e.val, true
 }
 
+// sweepThreshold bounds memory: expired entries are only removed lazily on
+// overwrite, so high-cardinality keys would otherwise leak forever (#174).
+const sweepThreshold = 1024
+
 // Set stores val under key; it expires after the cache TTL.
+// When the map grows past sweepThreshold, expired entries are swept inline.
 func (c *Cache[V]) Set(key string, val V) {
 	c.mu.Lock()
 	c.data[key] = entry[V]{
 		val:       val,
 		expiresAt: time.Now().Add(c.ttl),
 	}
+	if len(c.data) > sweepThreshold {
+		now := time.Now()
+		for k, e := range c.data {
+			if now.After(e.expiresAt) {
+				delete(c.data, k)
+			}
+		}
+	}
 	c.mu.Unlock()
+}
+
+// Len reports the number of entries currently stored (including not-yet-expired).
+func (c *Cache[V]) Len() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.data)
 }
 
 // Delete removes key from the cache.

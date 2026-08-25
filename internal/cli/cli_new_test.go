@@ -431,7 +431,7 @@ func TestScaffoldBlankApp_IncludesSessionMiddleware(t *testing.T) {
 	s := string(appGo)
 	for _, want := range []string{
 		"middleware.LoadSession(deps.Store.Sessions())",
-		"r.Use(middleware.Flash)",
+		"r.Use(middleware.Flash(cfg))",
 	} {
 		if !strings.Contains(s, want) {
 			t.Errorf("blank app missing %q in app.go", want)

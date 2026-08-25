@@ -69,7 +69,7 @@ func TestSetAndConsume(t *testing.T) {
 	}
 
 	rr2 := httptest.NewRecorder()
-	Clear(rr2)
+	Clear(rr2, true)
 	clearRes := rr2.Result()
 	defer func() { _ = clearRes.Body.Close() }()
 
@@ -85,5 +85,23 @@ func TestSetAndConsume(t *testing.T) {
 	}
 	if cleared.MaxAge != -1 {
 		t.Errorf("clear MaxAge = %d, want -1", cleared.MaxAge)
+	}
+}
+
+// #174: deletion cookie must mirror the Secure flag used by Set in production.
+func TestClear_mirrorsSecureFlag(t *testing.T) {
+	rr := httptest.NewRecorder()
+	Clear(rr, true)
+	for _, c := range rr.Result().Cookies() {
+		if c.Name == CookieName && !c.Secure {
+			t.Error("Clear ignored secure=true")
+		}
+	}
+	rr2 := httptest.NewRecorder()
+	Clear(rr2, false)
+	for _, c := range rr2.Result().Cookies() {
+		if c.Name == CookieName && c.Secure {
+			t.Error("Clear set Secure with secure=false")
+		}
 	}
 }

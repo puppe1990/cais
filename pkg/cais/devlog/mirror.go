@@ -26,8 +26,8 @@ func (m *mirror) Write(p []byte) (int, error) {
 }
 
 func (m *dynamicMirror) Write(p []byte) (int, error) {
-	if defaultBuf != nil {
-		_, _ = defaultBuf.Write(p)
+	if buf := Default(); buf != nil {
+		_, _ = buf.Write(p)
 	}
 	if m.dst == nil {
 		return len(p), nil

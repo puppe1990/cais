@@ -228,14 +228,14 @@ func patchAppForAuth(dir string, dryRun bool) error {
 		}
 		content = strings.Replace(content,
 			"r.Use(middleware.CSRF(cfg))\n",
-			"r.Use(middleware.CSRF(cfg))\n\tr.Use(middleware.LoadSession(deps.Store.Sessions()))\n\tr.Use(middleware.Flash)\n",
+			"r.Use(middleware.CSRF(cfg))\n\tr.Use(middleware.LoadSession(deps.Store.Sessions()))\n\tr.Use(middleware.Flash(cfg))\n",
 			1,
 		)
 		changed = true
 	} else if !strings.Contains(content, "middleware.Flash") {
 		content = strings.Replace(content,
 			"r.Use(middleware.LoadSession(deps.Store.Sessions()))\n",
-			"r.Use(middleware.LoadSession(deps.Store.Sessions()))\n\tr.Use(middleware.Flash)\n",
+			"r.Use(middleware.LoadSession(deps.Store.Sessions()))\n\tr.Use(middleware.Flash(cfg))\n",
 			1,
 		)
 		changed = true

@@ -62,14 +62,17 @@ func Consume(r *http.Request) (Message, bool) {
 	return msg, true
 }
 
-// Clear removes the flash cookie from the response.
-func Clear(w http.ResponseWriter) {
+// Clear removes the flash cookie from the response. Pass the same secure flag
+// used with Set so deletion cookies match production cookie flags (#174).
+func Clear(w http.ResponseWriter, secure bool) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     CookieName,
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
 		SameSite: http.SameSiteLaxMode,
+		HttpOnly: true,
+		Secure:   secure,
 	})
 }
 

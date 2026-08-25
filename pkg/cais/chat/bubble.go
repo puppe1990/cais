@@ -5,6 +5,7 @@ import (
 	"html"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // Role identifies who sent a chat message.
@@ -98,6 +99,10 @@ func Truncate(text string, max int) string {
 			cut = i
 			break
 		}
+	}
+	// Back up to a rune boundary so multi-byte characters don't emit invalid UTF-8 (#174).
+	for cut > 0 && !utf8.RuneStart(text[cut]) {
+		cut--
 	}
 	return strings.TrimSpace(text[:cut]) + " … [truncated]"
 }
