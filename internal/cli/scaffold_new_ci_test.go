@@ -52,6 +52,42 @@ func TestScaffoldNewApp_ConsoleDoesNotFatalAfterDefer(t *testing.T) {
 	}
 }
 
+func TestScaffoldNewApp_ViteJSConfigsMatchPrettier(t *testing.T) {
+	t.Setenv("CAIS_SKIP_TIDY", "1")
+	appDir := filepath.Join(t.TempDir(), "fmtjs")
+	if err := scaffoldNewApp(appDir, scaffoldData{
+		AppName:    "fmtjs",
+		ModulePath: "github.com/puppe1990/fmtjs",
+	}, false, false); err != nil {
+		t.Fatal(err)
+	}
+
+	checks := []struct {
+		rel     string
+		needles []string
+	}{
+		{"vite.config.js", []string{`from "vite"`, `";`, `from "@sveltejs/vite-plugin-svelte"`}},
+		{"svelte.config.js", []string{`from "@sveltejs/vite-plugin-svelte"`, `";`}},
+		{"vitest-setup.js", []string{`import "@testing-library/jest-dom/vitest";`}},
+	}
+	for _, tc := range checks {
+		body, err := os.ReadFile(filepath.Join(appDir, tc.rel))
+		if err != nil {
+			t.Errorf("%s: %v", tc.rel, err)
+			continue
+		}
+		src := string(body)
+		if strings.Contains(src, "'") {
+			t.Errorf("%s: single-quoted strings fail Prettier (singleQuote: false)", tc.rel)
+		}
+		for _, needle := range tc.needles {
+			if !strings.Contains(src, needle) {
+				t.Errorf("%s missing %q", tc.rel, needle)
+			}
+		}
+	}
+}
+
 func TestScaffoldNewApp_GoImportsLocalPrefixOrder(t *testing.T) {
 	t.Setenv("CAIS_SKIP_TIDY", "1")
 	module := "github.com/puppe1990/imporder"
