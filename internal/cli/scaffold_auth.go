@@ -78,6 +78,19 @@ func patchStoreForAuth(dir string, dryRun bool) error {
 	module := readModulePath(dir)
 	modelsImport := fmt.Sprintf(`"%s/internal/models"`, module)
 
+	// Patch the errors import before inserting modelsImport: that insertion rewrites
+	// the `import (` line, which would break this block's `import (\n"database/sql"` anchor (#166).
+	if !strings.Contains(content, `"errors"`) {
+		content = strings.Replace(content,
+			`import (
+	"database/sql"`,
+			`import (
+	"database/sql"
+	"errors"`,
+			1,
+		)
+	}
+
 	if !strings.Contains(content, modelsImport) {
 		content = strings.Replace(content,
 			`import (`,
@@ -96,16 +109,6 @@ func patchStoreForAuth(dir string, dryRun bool) error {
 		)
 	}
 
-	if !strings.Contains(content, `"errors"`) {
-		content = strings.Replace(content,
-			`import (
-	"database/sql"`,
-			`import (
-	"database/sql"
-	"errors"`,
-			1,
-		)
-	}
 	if !strings.Contains(content, `"strings"`) {
 		content = strings.Replace(content,
 			`"path/filepath"`,
@@ -173,6 +176,34 @@ func (s *SQLiteStore) Sessions() session.Store {
 `
 	}
 	content = strings.Replace(content, "\nfunc (s *SQLiteStore) Close()", insert+"\nfunc (s *SQLiteStore) Close()", 1)
+
+	// Minimal/blank stores lack the development demo user; auth tests log in as
+	// demo@example.com, so wire the same dev-only seed the full scaffold ships (#166).
+	if !strings.Contains(content, "seedAuthData") {
+		const bootstrap = "return &SQLiteStore{db: sqllog.Wrap(db, cfg)}, nil"
+		seedBootstrap := `wrapped := sqllog.Wrap(db, cfg)
+	if err := seedAuthData(wrapped.Raw(), env); err != nil {
+		_ = wrapped.Close()
+		return nil, err
+	}
+	return &SQLiteStore{db: wrapped}, nil
+}
+
+func seedAuthData(db *sql.DB, env string) error {
+	if env != "development" {
+		return nil
+	}
+	hash, err := session.HashPassword("password")
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("INSERT OR IGNORE INTO users (email, password_hash) VALUES (?, ?)", "demo@example.com", hash)
+	return err`
+		if !strings.Contains(content, bootstrap) {
+			return fmt.Errorf("could not patch store bootstrap for auth seed")
+		}
+		content = strings.Replace(content, bootstrap, seedBootstrap, 1)
+	}
 
 	return updateScaffoldFile(path, []byte(content), "internal/store/store.go", dryRun)
 }
@@ -272,7 +303,13 @@ func patchRoutesForAuth(dir string, dryRun bool) error {
 	r.Post("/logout", auth.LogoutPost)
 
 `
-	content = strings.Replace(content, "func registerRoutes", insert+"func registerRoutes", 1)
+	// AST-safe insertion: splicing statements before `func registerRoutes` puts them
+	// at package level and breaks compilation (#166). Same pattern as resource_patch.go.
+	patched, err := insertBeforeFunctionEnd(content, "registerRoutes", insert)
+	if err != nil {
+		return err
+	}
+	content = patched
 
 	content = strings.Replace(content,
 		`r.Get("/dashboard", dashboard.ServeHTTP)`,
