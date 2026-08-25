@@ -125,6 +125,50 @@ func TestMarkFailed_retriesThenFails(t *testing.T) {
 	}
 }
 
+// #172: a worker crash leaves claimed jobs stuck in running forever — silent
+// job loss. RequeueStuck (called on worker boot) makes them claimable again.
+func TestRequeueStuck_recoversJobsFromCrashedWorker(t *testing.T) {
+	db := testDB(t)
+	store := NewStore(db)
+	ctx := context.Background()
+
+	if _, err := Enqueue(ctx, store, Options{Kind: "Orphan"}); err != nil {
+		t.Fatal(err)
+	}
+	keepReadyID, err := Enqueue(ctx, store, Options{Kind: "Pending"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Claim(ctx, DefaultQueue); err != nil {
+		t.Fatal(err)
+	}
+
+	n, err := store.RequeueStuck(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("requeued = %d, want 1", n)
+	}
+
+	recovered, err := store.Claim(ctx, DefaultQueue)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recovered == nil || recovered.Kind != "Orphan" {
+		t.Fatalf("recovered = %+v, want the stuck Orphan job", recovered)
+	}
+
+	// Ready jobs must be untouched.
+	pending, err := store.Claim(ctx, DefaultQueue)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pending == nil || pending.ID != keepReadyID {
+		t.Fatalf("pending = %+v, want untouched ready job %d", pending, keepReadyID)
+	}
+}
+
 func TestCountByStatus(t *testing.T) {
 	db := testDB(t)
 	store := NewStore(db)
