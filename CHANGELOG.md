@@ -6,17 +6,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ## Unreleased
 
+## [0.11.0] - 2026-08-28
+
 ### Added
 
-- `GET /jobs` queue dashboard (`pkg/cais/jobsui`) — localhost only, all envs; retry/discard failed jobs; job detail; kind filter; prune finished; worker heartbeats.
-- Jobs inspect APIs: `List` (status/queue/kind), `Get`, `RetryFailed`, `Discard`, `ListScheduled`, `CountByQueue`, `PruneFinished`, `TouchWorker` / `ListLiveWorkers`, `RequeueOrphaned`.
-- Worker heartbeat (`job_workers`) so `/jobs` shows live processes; `RequeueOrphaned` skips in-flight jobs of live workers.
-- Built-in `PruneFinished` job (daily 04:00 UTC when a worker runs) plus `cais jobs prune [--older 24h]`.
-- `cais jobs retry|discard <id>`; `cais jobs status` prints workers.
-- `cais routes` lists `/jobs` when `jobsui.Register` is in `app.go`.
-- Boot banner lists `http://127.0.0.1:<port>/jobs`.
-- `cais doctor` checks `jobsui.Register` in `app.go`.
-- Dashboard warns when two workers share one SQLite file.
+- `GET /jobs` queue dashboard (`pkg/cais/jobsui`) — localhost only, all envs; retry/discard failed jobs; job detail; kind filter; prune finished; worker heartbeats (#185).
+- Jobs inspect APIs: `List` (status/queue/kind), `Get`, `RetryFailed`, `Discard`, `ListScheduled`, `CountByQueue`, `PruneFinished`, `TouchWorker` / `ListLiveWorkers`, `RequeueOrphaned` (#185).
+- Worker heartbeat (`job_workers`) so `/jobs` shows live processes; `RequeueOrphaned` skips in-flight jobs of live workers (#185).
+- Built-in `PruneFinished` job (daily 04:00 UTC when a worker runs) plus `cais jobs prune [--older 24h]` (#185).
+- `cais jobs retry|discard <id>`; `cais jobs status` prints workers (#185).
+- `cais routes` lists `/jobs` when `jobsui.Register` is in `app.go` (#185).
+- Boot banner lists `http://127.0.0.1:<port>/jobs` (#185).
+- `cais doctor` checks `jobsui.Register` in `app.go` (#185).
+- Dashboard warns when two workers share one SQLite file (#185).
 
 ## [0.10.0] - 2026-08-25
 

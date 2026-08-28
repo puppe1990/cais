@@ -22,8 +22,8 @@ This repository is the **framework + CLI** only. Generate apps with `cais new`.
 
 ```bash
 export PATH="$HOME/go/bin:$PATH"
-go install github.com/puppe1990/cais/cmd/cais@v0.10.0   # or: make install-cli from this repo
-cais version   # expect 0.10.0
+go install github.com/puppe1990/cais/cmd/cais@v0.11.0   # or: make install-cli from this repo
+cais version   # expect 0.11.0
 cais new myapp
 cd myapp && cais install && cais dev   # http://localhost:8080
 ```
