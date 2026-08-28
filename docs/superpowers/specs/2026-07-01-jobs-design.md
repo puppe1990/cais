@@ -91,12 +91,12 @@ worker.Run(ctx)  // dispatcher + worker loops
 
 ## CLI
 
-| Command                                                    | Description                                  |
-| ---------------------------------------------------------- | -------------------------------------------- |
-| `cais jobs work [--queues default,mail] [--concurrency 2]` | Run worker + dispatcher                      |
-| `cais jobs status`                                         | Counts, queues, live workers, recurring      |
-| `cais jobs retry\|discard <id>`                            | Recover or drop a failed job                 |
-| `cais jobs prune [--older 24h]`                            | Delete finished jobs                         |
+| Command                                                    | Description                             |
+| ---------------------------------------------------------- | --------------------------------------- |
+| `cais jobs work [--queues default,mail] [--concurrency 2]` | Run worker + dispatcher                 |
+| `cais jobs status`                                         | Counts, queues, live workers, recurring |
+| `cais jobs retry\|discard <id>`                            | Recover or drop a failed job            |
+| `cais jobs prune [--older 24h]`                            | Delete finished jobs                    |
 
 ## Dashboard (`pkg/cais/jobsui`)
 
