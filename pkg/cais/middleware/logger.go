@@ -44,7 +44,8 @@ func LoggerWithWriter(cfg cais.Config, w io.Writer, next http.Handler) http.Hand
 }
 
 func skipRequestLog(path string) bool {
-	return path == "/health" || path == "/logs" || strings.HasPrefix(path, "/static/")
+	return path == "/health" || path == "/logs" || path == "/jobs" ||
+		strings.HasPrefix(path, "/jobs/") || strings.HasPrefix(path, "/static/")
 }
 
 func skipCompletedLog(path string) bool {

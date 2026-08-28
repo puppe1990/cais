@@ -139,6 +139,17 @@ func TestCLI_NewCreatesApp(t *testing.T) {
 	if !strings.Contains(appGoBody, "deps.Inertia, err = inertia.New") {
 		t.Error("app.New must assign fallback Inertia onto deps.Inertia before registerRoutes")
 	}
+	if !strings.Contains(appGoBody, "jobsui.Register") {
+		t.Error("app.go should mount the localhost /jobs dashboard")
+	}
+
+	storeGo, err := os.ReadFile(filepath.Join(appDir, "internal/store/store.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(storeGo), "DB() *sql.DB") {
+		t.Error("Store interface should expose DB() for jobsui.Register")
+	}
 
 	gomod, err := os.ReadFile(filepath.Join(appDir, "go.mod"))
 	if err != nil {

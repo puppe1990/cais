@@ -86,7 +86,9 @@ const tplAgentsMD = "# {{.AppName}} — AI Conventions\n\n" +
 	"cais doctor [--mobile]\n" +
 	"cais routes\n" +
 	"cais db migrate | status | rollback | seed\n" +
+	"cais jobs work | status\n" +
 	"```\n\n" +
+	"`GET /jobs` — localhost queue dashboard (heartbeats, retry/discard, prune, `?kind=`). Production: SSH tunnel.\n\n" +
 	"## Do not\n\n" +
 	"- Parse templates per request\n" +
 	"- Use inline CSS (Tailwind classes)\n" +

@@ -3,6 +3,8 @@ package jobs
 import (
 	"context"
 	"log"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -21,6 +23,7 @@ type WorkerConfig struct {
 // Worker processes jobs from SQLite.
 type Worker struct {
 	cfg WorkerConfig
+	id  string
 }
 
 func NewWorker(cfg WorkerConfig) *Worker {
@@ -50,14 +53,40 @@ func NewWorker(cfg WorkerConfig) *Worker {
 
 // Run starts dispatcher and worker goroutines until ctx is cancelled.
 func (w *Worker) Run(ctx context.Context) error {
-	// Recover jobs stranded in running by a previous crashed worker (#172).
-	if n, err := w.cfg.Store.RequeueStuck(ctx); err != nil {
-		w.cfg.Logger.Printf("jobs requeue-stuck: %v", err)
+	w.id = NewWorkerID()
+	pulse := w.pulse()
+	if err := w.cfg.Store.TouchWorker(ctx, pulse); err != nil {
+		w.cfg.Logger.Printf("jobs heartbeat: %v", err)
+	}
+	defer func() { _ = w.cfg.Store.RemoveWorker(context.Background(), w.id) }()
+
+	// Recover jobs whose worker heartbeat is gone (#172) without stealing live work.
+	if n, err := w.cfg.Store.RequeueOrphaned(ctx, DefaultWorkerStale); err != nil {
+		w.cfg.Logger.Printf("jobs requeue-orphaned: %v", err)
 	} else if n > 0 {
-		w.cfg.Logger.Printf("jobs requeued %d stuck job(s) from previous run", n)
+		w.cfg.Logger.Printf("jobs requeued %d orphaned job(s) from previous run", n)
 	}
 
-	errCh := make(chan error, w.cfg.Concurrency+1)
+	if err := w.ensureFinishedPrune(ctx); err != nil {
+		w.cfg.Logger.Printf("jobs prune-finished recurring: %v", err)
+	}
+
+	errCh := make(chan error, w.cfg.Concurrency+2)
+
+	go func() {
+		ticker := time.NewTicker(w.cfg.PollInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := w.cfg.Store.TouchWorker(ctx, pulse); err != nil {
+					w.cfg.Logger.Printf("jobs heartbeat: %v", err)
+				}
+			}
+		}
+	}()
 
 	go func() {
 		ticker := time.NewTicker(w.cfg.DispatchInterval)
@@ -119,7 +148,7 @@ func (w *Worker) Run(ctx context.Context) error {
 
 func (w *Worker) pollOnce(ctx context.Context) error {
 	for _, queue := range w.cfg.Queues {
-		job, err := w.cfg.Store.Claim(ctx, queue)
+		job, err := w.cfg.Store.ClaimFor(ctx, queue, w.id)
 		if err != nil {
 			return err
 		}
@@ -145,4 +174,23 @@ func (w *Worker) runJob(ctx context.Context, job *Job) {
 		return
 	}
 	w.cfg.Logger.Printf("jobs failed id=%d kind=%s: %v", job.ID, job.Kind, err)
+}
+
+func (w *Worker) pulse() WorkerPulse {
+	host, _ := os.Hostname()
+	return WorkerPulse{
+		ID:          w.id,
+		Hostname:    host,
+		PID:         os.Getpid(),
+		Queues:      strings.Join(w.cfg.Queues, ","),
+		Concurrency: w.cfg.Concurrency,
+	}
+}
+
+func (w *Worker) ensureFinishedPrune(ctx context.Context) error {
+	return w.cfg.Store.UpsertRecurring(ctx, RecurringOptions{
+		Kind:    KindPruneFinished,
+		Cron:    pruneFinishedCron,
+		Payload: map[string]any{"older_than_hours": 24},
+	})
 }

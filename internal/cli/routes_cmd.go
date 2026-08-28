@@ -18,6 +18,36 @@ type RouteEntry struct {
 
 var routePattern = regexp.MustCompile(`(?:r|g)\.(Get|Post|Put|Patch|Delete)\("([^"]+)"(?:,\s*(.+)\))?\s*$`)
 
+func appendFrameworkRoutes(entries []RouteEntry, appGo string) []RouteEntry {
+	if !strings.Contains(appGo, "jobsui.Register") {
+		return entries
+	}
+	have := map[string]bool{}
+	for _, e := range entries {
+		have[e.Method+" "+e.Path] = true
+	}
+	for _, e := range jobsUIRoutes() {
+		if have[e.Method+" "+e.Path] {
+			continue
+		}
+		entries = append(entries, e)
+	}
+	return entries
+}
+
+func jobsUIRoutes() []RouteEntry {
+	mw := "localhost"
+	h := "jobsui.Register"
+	return []RouteEntry{
+		{Method: "GET", Path: "/jobs", Handler: h, Middleware: mw},
+		{Method: "GET", Path: "/jobs/{id}", Handler: h, Middleware: mw},
+		{Method: "POST", Path: "/jobs/requeue-stuck", Handler: h, Middleware: mw},
+		{Method: "POST", Path: "/jobs/prune-finished", Handler: h, Middleware: mw},
+		{Method: "POST", Path: "/jobs/{id}/retry", Handler: h, Middleware: mw},
+		{Method: "POST", Path: "/jobs/{id}/discard", Handler: h, Middleware: mw},
+	}
+}
+
 func parseRoutesFile(path string) ([]RouteEntry, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -106,6 +136,9 @@ func (c *CLI) cmdRoutes(args []string) error {
 	entries, err := parseRoutesFile(path)
 	if err != nil {
 		return fmt.Errorf("read routes: %w", err)
+	}
+	if appGo, err := os.ReadFile(filepath.Join(dir, "internal/app/app.go")); err == nil {
+		entries = appendFrameworkRoutes(entries, string(appGo))
 	}
 	for _, e := range entries {
 		if verbose {

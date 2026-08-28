@@ -15,6 +15,7 @@ import (
 	"github.com/puppe1990/cais/pkg/cais"
 	"github.com/puppe1990/cais/pkg/cais/devlog"
 	"github.com/puppe1990/cais/pkg/cais/i18n"
+	"github.com/puppe1990/cais/pkg/cais/jobsui"
 	"github.com/puppe1990/cais/pkg/cais/meta"
 	"github.com/puppe1990/cais/pkg/cais/middleware"
 	"github.com/puppe1990/cais/pkg/cais/netutil"
@@ -83,6 +84,9 @@ func New(cfg cais.Config, deps Deps) (*App, error) {
 
 	registerRoutes(r, deps, cfg)
 	devlog.Register(r, cfg.Env, buf)
+	if err := jobsui.Register(r, deps.Store.DB()); err != nil {
+		return nil, fmt.Errorf("jobs dashboard: %w", err)
+	}
 	r.Get("/health", healthHandler(deps.Store, cfg))
 
 	return &App{

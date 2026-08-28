@@ -6,6 +6,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versioning foll
 
 ## Unreleased
 
+### Added
+
+- `GET /jobs` queue dashboard (`pkg/cais/jobsui`) — localhost only, all envs; retry/discard failed jobs; job detail; kind filter; prune finished; worker heartbeats.
+- Jobs inspect APIs: `List` (status/queue/kind), `Get`, `RetryFailed`, `Discard`, `ListScheduled`, `CountByQueue`, `PruneFinished`, `TouchWorker` / `ListLiveWorkers`, `RequeueOrphaned`.
+- Worker heartbeat (`job_workers`) so `/jobs` shows live processes; `RequeueOrphaned` skips in-flight jobs of live workers.
+- Built-in `PruneFinished` job (daily 04:00 UTC when a worker runs) plus `cais jobs prune [--older 24h]`.
+- `cais jobs retry|discard <id>`; `cais jobs status` prints workers.
+- `cais routes` lists `/jobs` when `jobsui.Register` is in `app.go`.
+- Boot banner lists `http://127.0.0.1:<port>/jobs`.
+- `cais doctor` checks `jobsui.Register` in `app.go`.
+- Dashboard warns when two workers share one SQLite file.
+
 ## [0.10.0] - 2026-08-25
 
 ### Fixed

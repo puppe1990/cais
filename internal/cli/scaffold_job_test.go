@@ -38,6 +38,9 @@ func TestScaffoldJob_createsWorkerAndHandler(t *testing.T) {
 	if !strings.Contains(string(reg), `reg.Register("SendWelcome", PerformSendWelcome(s))`) {
 		t.Errorf("registry missing SendWelcome registration:\n%s", reg)
 	}
+	if !strings.Contains(string(reg), "KindPruneFinished") {
+		t.Errorf("registry missing PruneFinished:\n%s", reg)
+	}
 }
 
 func TestScaffoldJob_withCronPatchesSeeds(t *testing.T) {

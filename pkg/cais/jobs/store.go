@@ -108,49 +108,15 @@ VALUES (?, ?, ?, ?, ?, datetime('now'), ?)`,
 	return int(n), nil
 }
 
-// Claim reserves the next ready job in queue.
-// Uses a single UPDATE ... RETURNING (SQLite 3.35+) instead of FOR UPDATE SKIP LOCKED.
+// Claim reserves the next ready job in queue (no worker id).
 func (s *Store) Claim(ctx context.Context, queue string) (*Job, error) {
-	var j Job
-	var payload string
-	err := s.db.QueryRowContext(ctx, `
-UPDATE jobs
-SET status = ?, attempts = attempts + 1, last_error = NULL
-WHERE id = (
-  SELECT id FROM jobs
-  WHERE queue = ? AND status = ? AND run_at <= datetime('now')
-  ORDER BY priority ASC, id ASC
-  LIMIT 1
-)
-RETURNING id, kind, payload, priority, attempts, max_attempts`,
-		StatusRunning, queue, StatusReady,
-	).Scan(&j.ID, &j.Kind, &payload, &j.Priority, &j.Attempts, &j.MaxAttempts)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("claim job: %w", err)
-	}
-	j.Queue = queue
-	j.Payload = []byte(payload)
-	return &j, nil
+	return s.ClaimFor(ctx, queue, "")
 }
 
-// RequeueStuck returns jobs stranded in running by a crashed worker back to
-// the ready queue (#172). Safe because the scaffold runs a single worker
-// process; call it once on boot before polling starts.
+// RequeueStuck recovers running jobs with no live heartbeat. Prefer
+// RequeueOrphaned from the dashboard so a live worker is not stolen.
 func (s *Store) RequeueStuck(ctx context.Context) (int64, error) {
-	res, err := s.db.ExecContext(ctx,
-		`UPDATE jobs SET status = ? WHERE status = ?`, StatusReady, StatusRunning,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("requeue stuck jobs: %w", err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("requeue stuck jobs: %w", err)
-	}
-	return n, nil
+	return s.RequeueOrphaned(ctx, DefaultWorkerStale)
 }
 
 // MarkFinished sets status to finished.

@@ -91,10 +91,22 @@ worker.Run(ctx)  // dispatcher + worker loops
 
 ## CLI
 
-| Command                                                    | Description             |
-| ---------------------------------------------------------- | ----------------------- |
-| `cais jobs work [--queues default,mail] [--concurrency 2]` | Run worker + dispatcher |
-| `cais jobs status`                                         | Count jobs by status    |
+| Command                                                    | Description                                  |
+| ---------------------------------------------------------- | -------------------------------------------- |
+| `cais jobs work [--queues default,mail] [--concurrency 2]` | Run worker + dispatcher                      |
+| `cais jobs status`                                         | Counts, queues, live workers, recurring      |
+| `cais jobs retry\|discard <id>`                            | Recover or drop a failed job                 |
+| `cais jobs prune [--older 24h]`                            | Delete finished jobs                         |
+
+## Dashboard (`pkg/cais/jobsui`)
+
+`jobsui.Register(r, db)` mounts **`GET /jobs`** (loopback only, all environments), **`GET /jobs/{id}`**, retry/discard, prune-finished, and requeue-orphaned. Production access is via SSH tunnel — payloads may contain PII.
+
+Workers write a heartbeat (`job_workers`). `RequeueOrphaned` only returns `running` rows whose worker is missing or stale — a live worker keeps its in-flight jobs. Two live heartbeats surface a warning: one SQLite file should have one `cais jobs work`.
+
+`PruneFinished` is a built-in kind; the worker upserts a daily `0 4 * * *` recurring task.
+
+Inspect APIs on `jobs.Store`: `List`, `Get`, `RetryFailed`, `Discard`, `ListScheduled`, `CountByQueue`, `PruneFinished`, `TouchWorker`, `ListLiveWorkers`, `RequeueOrphaned`.
 
 Built-in job: **PruneSessions** (replaces manual-only `cais db prune-sessions` for scheduled use).
 
@@ -110,10 +122,9 @@ On handler error: if `attempts < max_attempts`, set `status=ready`, `run_at=now+
 
 ## Out of scope
 
-- Admin UI for failed jobs
 - Redis / Postgres adapters
 - Per-kind concurrency limits
-- Distributed workers across multiple DB replicas
+- Distributed workers across multiple DB replicas (one process per DB file; heartbeat warns if two are live)
 
 ## Verification
 

@@ -180,6 +180,29 @@ func TestCLI_Routes_verboseFlag(t *testing.T) {
 	}
 }
 
+func TestCLI_Routes_includesJobsDashboard(t *testing.T) {
+	dir := t.TempDir()
+	writeRoutesApp(t, dir)
+	appGo := filepath.Join(dir, "internal/app/app.go")
+	if err := os.WriteFile(appGo, []byte(`package app
+func New() { jobsui.Register(r, deps.Store.DB()) }
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	c := &CLI{Out: &buf}
+	if err := c.cmdRoutes(nil); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	for _, want := range []string{"GET  /jobs", "POST /jobs/{id}/retry", "GET  /jobs/{id}"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("routes missing %q:\n%s", want, out)
+		}
+	}
+}
+
 func TestCLI_Routes_requiresCaisApp(t *testing.T) {
 	c := &CLI{Out: os.Stdout}
 	if err := c.Run([]string{"routes"}); err == nil {

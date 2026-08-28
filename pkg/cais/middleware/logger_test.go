@@ -33,6 +33,23 @@ func TestLogger_RailsStyleRequestLog(t *testing.T) {
 	}
 }
 
+func TestLogger_SkipsJobsDashboard(t *testing.T) {
+	var buf bytes.Buffer
+	handler := LoggerWithWriter(cais.Config{}, &buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	for _, path := range []string{"/jobs", "/jobs/3/retry"} {
+		buf.Reset()
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		if buf.Len() != 0 {
+			t.Errorf("expected no log for %s, got:\n%s", path, buf.String())
+		}
+	}
+}
+
 func TestLogger_SkipsStaticAssets(t *testing.T) {
 	var buf bytes.Buffer
 	handler := LoggerWithWriter(cais.Config{}, &buf, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

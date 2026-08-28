@@ -57,6 +57,7 @@ const tplREADME = "# {{.AppName}}\n\n" +
 	"| DB_PATH   | ./data/app.db   | SQLite file path |\n" +
 	"| ENV       | development     | Environment      |\n\n" +
 	"Health check: GET /health → {\"status\":\"ok\"}\n\n" +
+	"Jobs dashboard: GET /jobs (localhost only) — queue counts, failed retry/discard.\n\n" +
 	"## Testing on phone (LAN)\n\n" +
 	"1. Run `cais dev` and note the **LAN** URL printed at boot (e.g. `http://192.168.1.10:8080`).\n" +
 	"2. Open that URL in mobile Safari/Chrome on the same Wi‑Fi.\n" +
