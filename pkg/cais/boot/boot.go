@@ -33,6 +33,7 @@ func Print(w io.Writer, opts Options) {
 	_, _ = fmt.Fprintf(w, "=> Environment: %s\n", opts.Config.Env)
 	_, _ = fmt.Fprintf(w, "=> Database:    sqlite3 (%s)\n", opts.Config.DBPath)
 	_, _ = fmt.Fprintf(w, "=> Listening on %s\n", ListenURL(opts.Config.Port))
+	_, _ = fmt.Fprintf(w, "=> Jobs:         %s/jobs (localhost)\n", ListenURL(opts.Config.Port))
 	for _, url := range netutil.LANURLs(opts.Config.Port) {
 		_, _ = fmt.Fprintf(w, "=> LAN:          %s\n", url)
 	}

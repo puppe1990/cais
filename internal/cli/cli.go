@@ -107,7 +107,9 @@ Usage:
   cais db seed               Run internal/db/seeds.go
   cais jobs work [--queues default,mail] [--concurrency 2]
                              Run background job worker + dispatcher
-  cais jobs status           Show job counts by status
+  cais jobs status           Show job counts, queues, workers, and recurring tasks
+  cais jobs retry|discard <id>
+  cais jobs prune [--older 24h]
   cais routes [--verbose]    List HTTP routes from internal/app/routes.go
   cais destroy [--dry-run] resource|handler|model <name>
                              Remove generated resource, handler, or model files

@@ -9,6 +9,38 @@ import (
 	"testing"
 )
 
+func TestCheckJobsUI_okWhenRegistered(t *testing.T) {
+	dir := t.TempDir()
+	appDir := filepath.Join(dir, "internal/app")
+	if err := os.MkdirAll(appDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(appDir, "app.go"), []byte(`package app
+func New() { jobsui.Register(r, deps.Store.DB()) }
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := checkJobsUI(dir)
+	if !c.OK {
+		t.Fatalf("expected ok, got %+v", c)
+	}
+}
+
+func TestCheckJobsUI_warnsWhenMissing(t *testing.T) {
+	dir := t.TempDir()
+	appDir := filepath.Join(dir, "internal/app")
+	if err := os.MkdirAll(appDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(appDir, "app.go"), []byte("package app\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := checkJobsUI(dir)
+	if c.OK || !c.Optional {
+		t.Fatalf("expected optional warn, got %+v", c)
+	}
+}
+
 func TestCheckCLIVersion_okOnDevBuild(t *testing.T) {
 	// frameworkVersion() in tests is usually "dev" — should not warn.
 	dir := t.TempDir()
@@ -270,6 +302,9 @@ func TestDoctor_AirOptionalWhenMissing(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "[warn] air") {
 		t.Errorf("expected air warning, got:\n%s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "[ok] /jobs dashboard") {
+		t.Errorf("expected jobs dashboard check, got:\n%s", buf.String())
 	}
 }
 

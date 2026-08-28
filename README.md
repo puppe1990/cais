@@ -59,7 +59,7 @@ export PATH="$HOME/go/bin:$PATH"
 | `cais console`                                                                                 | REPL (store, cfg, db + SQL)                                                              |
 | `cais routes [--verbose]`                                                                      | List routes from `internal/app/routes.go`                                                |
 | `cais db migrate\|status\|rollback\|prune-sessions\|seed`                                      | Migrations & seeds                                                                       |
-| `cais jobs work\|status`                                                                       | SQLite background jobs                                                                   |
+| `cais jobs work\|status\|retry\|discard\|prune`                                                | SQLite background jobs + `/jobs` dashboard                                               |
 | `cais doctor [--mobile]`                                                                       | Verify Inertia/Vite, PWA, mobile SSE, SW cache strategy                                  |
 | `cais pwa [--bump]`                                                                            | Write/refresh PWA assets; **migrates** `sw.js` to network-first SPA; `--bump` cache      |
 | `cais link [path] [--unlink]`                                                                  | Local `go.mod replace` for framework dev                                                 |
@@ -78,6 +78,7 @@ cais g handler settings   # Go handler + test + web/src/pages/Settings.svelte
 - **Boot banner** with LAN URLs for phone testing on Wi‑Fi
 - **Logs** — JSON request (`kind: request`) + SQL (`kind: sql`); `LOG_FORMAT=text` for plain text
 - **`/logs`** — localhost-only HTMX log viewer in development
+- **`/jobs`** — localhost-only queue dashboard (counts, failed retry/discard, recurring)
 - **Frontend** — `cais dev` rebuilds Vite assets when Svelte sources change
 - **PWA** — SW is **network-first** for `/static/build/` and `/static/css/`; `cais pwa --bump` after HTML changes on phones
 

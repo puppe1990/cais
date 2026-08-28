@@ -36,6 +36,7 @@ func runDoctor(w io.Writer, dir string, opts doctorOptions) error {
 	}
 	checks = append(checks,
 		checkSSEWriteTimeout(dir),
+		checkJobsUI(dir),
 		checkAir(),
 		checkCSS(dir),
 		checkDeployLayout(dir),
@@ -349,6 +350,23 @@ func checkSSEWriteTimeout(dir string) doctorCheck {
 		Optional: true,
 		Detail:   fmt.Sprintf("WriteTimeout: %s*time.Second kills long-lived SSE connections", m[1]),
 		FixHint:  "set WriteTimeout: 0 in internal/app/app.go (see pkg/cais/stream)",
+	}
+}
+
+func checkJobsUI(dir string) doctorCheck {
+	path := filepath.Join(dir, "internal/app/app.go")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return doctorCheck{Name: "/jobs dashboard", OK: true, Detail: "skipped (no internal/app/app.go)"}
+	}
+	if strings.Contains(string(data), "jobsui.Register") {
+		return doctorCheck{Name: "/jobs dashboard", OK: true, Detail: "localhost queue viewer"}
+	}
+	return doctorCheck{
+		Name:     "/jobs dashboard",
+		Optional: true,
+		Detail:   "missing jobsui.Register — queue viewer not mounted",
+		FixHint:  "add jobsui.Register(r, deps.Store.DB()) in app.New (after routes)",
 	}
 }
 

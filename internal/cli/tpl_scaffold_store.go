@@ -44,6 +44,7 @@ type Store interface {
 	ResetPasswordWithToken(token, passwordHash string) error
 	Sessions() session.Store
 	Ping() error
+	DB() *sql.DB
 	Close() error
 }
 
@@ -309,6 +310,7 @@ import (
 type Store interface {
 	Sessions() session.Store
 	Ping() error
+	DB() *sql.DB
 	Close() error
 }
 

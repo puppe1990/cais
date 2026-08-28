@@ -19,6 +19,7 @@ func testDB(t *testing.T) *sql.DB {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
+	db.SetMaxOpenConns(1)
 	if err := EnsureSchema(db); err != nil {
 		t.Fatal(err)
 	}

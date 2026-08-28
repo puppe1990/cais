@@ -26,6 +26,7 @@ func TestPrint_IncludesRailsStyleLines(t *testing.T) {
 		"=> Environment: development",
 		"=> Database:    sqlite3 (./data/app.db)",
 		"=> Listening on http://127.0.0.1:8080",
+		"=> Jobs:         http://127.0.0.1:8080/jobs (localhost)",
 		"=> Ctrl-C to stop",
 	} {
 		if !strings.Contains(out, want) {

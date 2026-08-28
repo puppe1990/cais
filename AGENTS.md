@@ -76,6 +76,7 @@ Scaffold `const tpl*` blobs: one family per file (`tpl_scaffold_handlers_auth.go
 | `pkg/cais/migrate/`       | `schema_migrations` runner (idempotent on boot)                                       |
 | `pkg/cais/flash/`         | One-shot flash cookies                                                                |
 | `pkg/cais/jobs/`          | SQLite background job queue                                                           |
+| `pkg/cais/jobsui/`        | Localhost `/jobs` dashboard (counts, failed retry/discard, recurring)                 |
 | `pkg/cais/testdata/`      | Fixture HTML (HTMX layouts + chat_sse partials for framework tests)                   |
 | `internal/cli/`           | Generators (`cais new`, `cais g`, `cais destroy`) — **Inertia + Svelte scaffolds**    |
 | `cmd/cais/`               | CLI entry point                                                                       |
@@ -467,6 +468,7 @@ In `ENV=development`:
 - `middleware.LoggerTo(devlog.MirrorDefault(...))` — JSON request logs when `cfg.LogJSON()` (`kind: request`); `LOG_FORMAT=text` opts out
 - `sqllog.ConfigForEnv(env)` — SQL JSON logs in development (`kind: sql`); plain text when `JSON: false`
 - `devlog.Register(r, cfg.Env, buf)` — mounts `/logs` (localhost only, HTMX refresh)
+- `jobsui.Register(r, db)` — mounts `/jobs` (localhost only, all envs; SSH tunnel in production)
 
 Boot banner via `boot.Print` in `cmd/server/main.go`. Port auto-pick via `cais.ResolvePort` when preferred port is busy.
 
@@ -551,11 +553,16 @@ cais version           # print framework version
 
 SQLite queue in `pkg/cais/jobs` (same DB file as the app). See [jobs design](docs/superpowers/specs/2026-07-01-jobs-design.md).
 
+**Dashboard:** `GET /jobs` (localhost only, all envs) via `jobsui.Register` in `app.New`. Detail: `GET /jobs/{id}`. Filter `?kind=`. Failed: Retry / Discard. Orphans: Requeue stuck (skips live worker jobs). Finished: Clear finished. Worker heartbeats show liveness; two live workers warn (one SQLite file). `cais routes` lists these when `jobsui.Register` is present.
+
 ```bash
 cais g job prune_sessions --cron "0 3 * * *"  # internal/jobs/*.go + registry + cmd/worker
 cais db migrate                                # jobs + recurring_tasks tables
-cais jobs work --concurrency 2                   # worker + delayed-job dispatcher
-cais jobs status
+cais jobs work --concurrency 2                   # worker + delayed-job dispatcher + heartbeat
+cais jobs status                               # counts + queues + workers + recurring
+cais jobs retry 12
+cais jobs discard 12
+cais jobs prune [--older 24h]
 ```
 
 Enqueue from handlers:
@@ -564,13 +571,26 @@ Enqueue from handlers:
 jobs.Enqueue(ctx, jobStore, jobs.Options{Kind: "SendWelcome", Payload: data})
 ```
 
-Register handlers in `internal/jobs/registry.go`. Built-in: `PruneSessions`. Production: run `cais jobs work` as a separate process next to `bin/server`.
+Inspect / recover:
+
+```go
+store.List(ctx, jobs.ListFilter{Status: jobs.StatusFailed, Kind: "SendWelcome"})
+store.RetryFailed(ctx, id)
+store.Discard(ctx, id)
+store.PruneFinished(ctx, 24*time.Hour) // 0 = all finished rows
+store.RequeueOrphaned(ctx, jobs.DefaultWorkerStale)
+store.ListLiveWorkers(ctx, jobs.DefaultWorkerStale)
+```
+
+Register handlers in `internal/jobs/registry.go`. Built-in: `PruneSessions`. Production: run `cais jobs work` as a separate process next to `bin/server`. Open `http://127.0.0.1:<port>/jobs` (SSH tunnel if remote).
 
 **Generator troubleshooting** — if `could not patch routes.go` or `could not patch store`, check that `registerRoutes` and `Close() error` markers exist. Public nav links need `<!-- cais:nav -->` in the layout (or `</nav>`). Run `cais db migrate` after `g resource` / `g model` / `g auth`.
 
 Console bindings: `store`, `cfg`, `db`, plus any custom keys in `Bindings`. Commands: `help`, `sql`, `reload`, `history`, `!N`/`!!`, `exit`. Arrow keys when stdin is a TTY.
 
 `/logs` — development-only log viewer (localhost). Shows request + SQL logs with HTMX auto-refresh.
+
+`/jobs` — queue dashboard (localhost, all envs). Counts, failed retry/discard, scheduled, recurring. `cais doctor` warns if `jobsui.Register` is missing.
 
 ## CLI generator layout
 

@@ -213,6 +213,7 @@ import (
 // RegisterAll wires app and framework jobs into the worker registry.
 func RegisterAll(reg *caisjobs.Registry, db *sql.DB, s store.Store) {
 	reg.Register(caisjobs.KindPruneSessions, caisjobs.PruneSessionsHandler(db))
+	reg.Register(caisjobs.KindPruneFinished, caisjobs.PruneFinishedHandler(db))
 	// cais:jobs-register
 }
 `
